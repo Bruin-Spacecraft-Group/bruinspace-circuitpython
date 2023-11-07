@@ -147,7 +147,10 @@ static int check_pins(busio_spi_obj_t *self,
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     const mcu_pin_obj_t *sck, const mcu_pin_obj_t *mosi,
-    const mcu_pin_obj_t *miso, bool half_duplex) {
+    const mcu_pin_obj_t *miso, bool half_duplex, bool slave_mode) {
+    if (slave_mode) {
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("Slave mode SPI is not implemented"));
+    }
 
     int periph_index = check_pins(self, sck, mosi, miso);
     SPI_TypeDef *SPIx = mcu_spi_banks[periph_index - 1];

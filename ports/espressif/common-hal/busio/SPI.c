@@ -59,7 +59,7 @@ static void set_spi_config(busio_spi_obj_t *self,
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
-    const mcu_pin_obj_t *miso, bool half_duplex) {
+    const mcu_pin_obj_t *miso, bool half_duplex, bool slave_mode) {
 
     const spi_bus_config_t bus_config = {
         .mosi_io_num = mosi != NULL ? mosi->number : -1,
@@ -71,6 +71,9 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 
     if (half_duplex) {
         mp_raise_NotImplementedError_varg(MP_ERROR_TEXT("%q"), MP_QSTR_half_duplex);
+    }
+    if (slave_mode) {
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("Slave mode SPI is not implemented"));
     }
 
     for (spi_host_device_t host_id = SPI2_HOST; host_id < SOC_SPI_PERIPH_NUM; host_id++) {

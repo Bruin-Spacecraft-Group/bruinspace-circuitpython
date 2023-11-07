@@ -53,12 +53,15 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     const mcu_pin_obj_t *sck,
     const mcu_pin_obj_t *mosi,
     const mcu_pin_obj_t *miso,
-    bool half_duplex) {
+    bool half_duplex, bool slave_mode) {
     Ecode_t sc = ECODE_OK;
 
     if (half_duplex) {
         mp_raise_NotImplementedError(
             MP_ERROR_TEXT("Half duplex SPI is not implemented"));
+    }
+    if (slave_mode) {
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("Slave mode SPI is not implemented"));
     }
 
     if ((sck != NULL) && (mosi != NULL) && (miso != NULL)) {

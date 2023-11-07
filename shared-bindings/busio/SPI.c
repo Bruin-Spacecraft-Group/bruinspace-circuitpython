@@ -54,6 +54,7 @@
 //|         MOSI: Optional[microcontroller.Pin] = None,
 //|         MISO: Optional[microcontroller.Pin] = None,
 //|         half_duplex: bool = False,
+//|         slave_mode: bool = False
 //|     ) -> None:
 //|         """Construct an SPI object on the given pins.
 //|
@@ -76,8 +77,10 @@
 //|         :param ~microcontroller.Pin MOSI: the Main Out Selected In pin.
 //|         :param ~microcontroller.Pin MISO: the Main In Selected Out pin.
 //|         :param bool half_duplex: True when MOSI is used for bidirectional data. False when SPI is full-duplex or simplex.
+//|         :param-bool slave_mode: True when the chip is operating as a slave. False when the chip is operating as a master.
 //|
 //|         **Limitations:** ``half_duplex`` is available only on STM; other chips do not have the hardware support.
+//|         **Limitations:** ``slave_mode`` is available only on SAMD51; other chips do not have the firmware support.
 //|         """
 //|         ...
 
@@ -86,12 +89,13 @@
 static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if CIRCUITPY_BUSIO_SPI
     busio_spi_obj_t *self = mp_obj_malloc(busio_spi_obj_t, &busio_spi_type);
-    enum { ARG_clock, ARG_MOSI, ARG_MISO, ARG_half_duplex };
+    enum { ARG_clock, ARG_MOSI, ARG_MISO, ARG_half_duplex, ARG_slave_mode };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_clock, MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_MOSI, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_MISO, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_half_duplex, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_bool = false} },
+        { MP_QSTR_slave_mode, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_bool = false} },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -104,7 +108,7 @@ static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
         mp_raise_ValueError(MP_ERROR_TEXT("Must provide MISO or MOSI pin"));
     }
 
-    common_hal_busio_spi_construct(self, clock, mosi, miso, args[ARG_half_duplex].u_bool);
+    common_hal_busio_spi_construct(self, clock, mosi, miso, args[ARG_half_duplex].u_bool, args[ARG_slave_mode].u_bool);
     return MP_OBJ_FROM_PTR(self);
     #else
     mp_raise_NotImplementedError(NULL);
