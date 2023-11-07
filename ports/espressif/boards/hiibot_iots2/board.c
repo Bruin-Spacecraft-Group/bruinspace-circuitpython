@@ -53,7 +53,9 @@ static void display_init(void) {
         &pin_GPIO34,    // CLK
         &pin_GPIO33,    // MOSI
         NULL,           // MISO not connected
-        false);         // Not half-duplex
+        false,          // Not half-duplex
+        false           // operate SPI bus as master
+        );
 
     common_hal_busio_spi_never_reset(spi);
 

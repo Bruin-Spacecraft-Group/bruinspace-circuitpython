@@ -129,7 +129,7 @@ void spi_flash_init(void) {
     common_hal_digitalio_digitalinout_never_reset(&cs_pin);
 
     supervisor_flash_spi_bus.base.type = &busio_spi_type;
-    common_hal_busio_spi_construct(&supervisor_flash_spi_bus, SPI_FLASH_SCK_PIN, SPI_FLASH_MOSI_PIN, SPI_FLASH_MISO_PIN, false);
+    common_hal_busio_spi_construct(&supervisor_flash_spi_bus, SPI_FLASH_SCK_PIN, SPI_FLASH_MOSI_PIN, SPI_FLASH_MISO_PIN, false, false);
     common_hal_busio_spi_never_reset(&supervisor_flash_spi_bus);
     common_hal_busio_spi_configure(&supervisor_flash_spi_bus, SPI_FLASH_MAX_BAUDRATE, 0, 0, 8);
 

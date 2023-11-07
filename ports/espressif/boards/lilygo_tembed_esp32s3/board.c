@@ -26,7 +26,7 @@ uint8_t display_init_sequence[] = {
 void board_init(void) {
     fourwire_fourwire_obj_t *bus = &allocate_display_bus()->fourwire_bus;
     busio_spi_obj_t *spi = &bus->inline_bus;
-    common_hal_busio_spi_construct(spi, &pin_GPIO12, &pin_GPIO11, NULL, false);
+    common_hal_busio_spi_construct(spi, &pin_GPIO12, &pin_GPIO11, NULL, false, false);
     common_hal_busio_spi_never_reset(spi);
 
     bus->base.type = &fourwire_fourwire_type;

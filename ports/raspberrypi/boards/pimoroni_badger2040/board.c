@@ -256,7 +256,7 @@ void board_init(void) {
     // Set up the SPI object used to control the display
     fourwire_fourwire_obj_t *bus = &allocate_display_bus()->fourwire_bus;
     busio_spi_obj_t *spi = &bus->inline_bus;
-    common_hal_busio_spi_construct(spi, &pin_GPIO18, &pin_GPIO19, &pin_GPIO16, false);
+    common_hal_busio_spi_construct(spi, &pin_GPIO18, &pin_GPIO19, &pin_GPIO16, false, false);
     common_hal_busio_spi_never_reset(spi);
 
     // Set up the DisplayIO pin object

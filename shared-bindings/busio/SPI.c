@@ -54,7 +54,7 @@
 //|         MOSI: Optional[microcontroller.Pin] = None,
 //|         MISO: Optional[microcontroller.Pin] = None,
 //|         half_duplex: bool = False,
-//|         slave_mode: bool = False
+//|         slave_mode: bool = False,
 //|     ) -> None:
 //|         """Construct an SPI object on the given pins.
 //|

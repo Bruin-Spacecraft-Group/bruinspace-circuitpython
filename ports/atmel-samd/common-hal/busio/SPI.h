@@ -19,4 +19,5 @@ typedef struct {
     uint8_t clock_pin;
     uint8_t MOSI_pin;
     uint8_t MISO_pin;
+    bool slave_mode;
 } busio_spi_obj_t;
