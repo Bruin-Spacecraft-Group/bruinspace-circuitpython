@@ -40,9 +40,6 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     if (half_duplex) {
         mp_raise_NotImplementedError_varg(MP_ERROR_TEXT("%q"), MP_QSTR_half_duplex);
     }
-    if (slave_mode) {
-        mp_raise_NotImplementedError(MP_ERROR_TEXT("Slave mode SPI is not implemented"));
-    }
 
     // Ensure the object starts in its deinit state.
     self->clock_pin = NO_PIN;
@@ -128,6 +125,10 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 
     // Pads must be set after spi_m_sync_init(), which uses default values from
     // the prototypical SERCOM.
+    uint32_t SPI_CONFIG_OFFSETS[] = {0x40003000, 0x40003400, 0x43000000, 0x43000400, 0x43000800, 0x43000C00};
+    if (slave_mode) {
+        *((uint32_t*) SPI_CONFIG_OFFSETS[sercom_index]) &= (1<<2);
+    }
     hri_sercomspi_write_CTRLA_DOPO_bf(sercom, dopo);
     hri_sercomspi_write_CTRLA_DIPO_bf(sercom, miso_pad);
 
