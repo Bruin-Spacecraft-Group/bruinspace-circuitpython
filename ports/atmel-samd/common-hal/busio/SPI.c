@@ -38,7 +38,11 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     uint8_t dopo = 255;
 
     if (half_duplex) {
+<<<<<<< HEAD
         mp_raise_NotImplementedError_varg(MP_ERROR_TEXT("%q"), MP_QSTR_half_duplex);
+=======
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("Half duplex SPI is not implemented but true"));
+>>>>>>> working edits to spi and can attempts
     }
 
     // Ensure the object starts in its deinit state.
@@ -125,10 +129,12 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 
     // Pads must be set after spi_m_sync_init(), which uses default values from
     // the prototypical SERCOM.
-    uint32_t SPI_CONFIG_OFFSETS[] = {0x40003000, 0x40003400, 0x43000000, 0x43000400, 0x43000800, 0x43000C00};
-    if (slave_mode) {
-        *((uint32_t*) SPI_CONFIG_OFFSETS[sercom_index]) &= ~(1<<2);
-    }
+
+    // hri_sercomspi_write_CTRLA_MODE_bf(sercom, slave_mode ? 2 : 3); // this line makes circuitpython crash on a call to "mySpi.write()"
+    // uint32_t SPI_CONFIG_OFFSETS[] = {0x40003000, 0x40003400, 0x43000000, 0x43000400, 0x43000800, 0x43000C00};
+    // if (slave_mode) {
+    //     *((uint32_t*) SPI_CONFIG_OFFSETS[sercom_index]) &= ~(1<<2);
+    // }
     hri_sercomspi_write_CTRLA_DOPO_bf(sercom, dopo);
     hri_sercomspi_write_CTRLA_DIPO_bf(sercom, miso_pad);
 
@@ -141,7 +147,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         mp_raise_OSError(MP_EIO);
     }
 
-    gpio_set_pin_direction(clock->number, GPIO_DIRECTION_OUT);
+    gpio_set_pin_direction(clock->number, slave_mode ? GPIO_DIRECTION_IN : GPIO_DIRECTION_OUT);
     gpio_set_pin_pull_mode(clock->number, GPIO_PULL_OFF);
     gpio_set_pin_function(clock->number, clock_pinmux);
     claim_pin(clock);
@@ -150,7 +156,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     if (mosi_none) {
         self->MOSI_pin = NO_PIN;
     } else {
-        gpio_set_pin_direction(mosi->number, GPIO_DIRECTION_OUT);
+        gpio_set_pin_direction(mosi->number, slave_mode ? GPIO_DIRECTION_IN : GPIO_DIRECTION_OUT);
         gpio_set_pin_pull_mode(mosi->number, GPIO_PULL_OFF);
         gpio_set_pin_function(mosi->number, mosi_pinmux);
         self->MOSI_pin = mosi->number;
@@ -160,7 +166,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     if (miso_none) {
         self->MISO_pin = NO_PIN;
     } else {
-        gpio_set_pin_direction(miso->number, GPIO_DIRECTION_IN);
+        gpio_set_pin_direction(miso->number, slave_mode ? GPIO_DIRECTION_OUT : GPIO_DIRECTION_IN);
         gpio_set_pin_pull_mode(miso->number, GPIO_PULL_OFF);
         gpio_set_pin_function(miso->number, miso_pinmux);
         self->MISO_pin = miso->number;
