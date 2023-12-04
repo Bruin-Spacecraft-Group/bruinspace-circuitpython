@@ -127,7 +127,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     // the prototypical SERCOM.
     uint32_t SPI_CONFIG_OFFSETS[] = {0x40003000, 0x40003400, 0x43000000, 0x43000400, 0x43000800, 0x43000C00};
     if (slave_mode) {
-        *((uint32_t*) SPI_CONFIG_OFFSETS[sercom_index]) &= (1<<2);
+        *((uint32_t*) SPI_CONFIG_OFFSETS[sercom_index]) &= ~(1<<2);
     }
     hri_sercomspi_write_CTRLA_DOPO_bf(sercom, dopo);
     hri_sercomspi_write_CTRLA_DIPO_bf(sercom, miso_pad);
