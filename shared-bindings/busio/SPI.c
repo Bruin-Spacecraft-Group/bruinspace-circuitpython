@@ -94,8 +94,8 @@ static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
         { MP_QSTR_clock, MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_MOSI, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_MISO, MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_half_duplex, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_bool = false} },
-        { MP_QSTR_slave_mode, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_bool = false} },
+        { MP_QSTR_half_duplex, MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false} },
+        { MP_QSTR_slave_mode, MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false} },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
