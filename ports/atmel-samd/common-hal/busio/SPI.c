@@ -39,10 +39,14 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 
     if (half_duplex) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         mp_raise_NotImplementedError_varg(MP_ERROR_TEXT("%q"), MP_QSTR_half_duplex);
 =======
         mp_raise_NotImplementedError(MP_ERROR_TEXT("Half duplex SPI is not implemented but true"));
 >>>>>>> working edits to spi and can attempts
+=======
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("Half duplex SPI is not implemented"));
+>>>>>>> SPI responds to clock with this change, data transfer still ununcertain and parameter passing has issues
     }
 
     // Ensure the object starts in its deinit state.
@@ -130,11 +134,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     // Pads must be set after spi_m_sync_init(), which uses default values from
     // the prototypical SERCOM.
 
-    // hri_sercomspi_write_CTRLA_MODE_bf(sercom, slave_mode ? 2 : 3); // this line makes circuitpython crash on a call to "mySpi.write()"
-    // uint32_t SPI_CONFIG_OFFSETS[] = {0x40003000, 0x40003400, 0x43000000, 0x43000400, 0x43000800, 0x43000C00};
-    // if (slave_mode) {
-    //     *((uint32_t*) SPI_CONFIG_OFFSETS[sercom_index]) &= ~(1<<2);
-    // }
+    hri_sercomspi_write_CTRLA_MODE_bf(sercom, slave_mode ? 2 : 3);
     hri_sercomspi_write_CTRLA_DOPO_bf(sercom, dopo);
     hri_sercomspi_write_CTRLA_DIPO_bf(sercom, miso_pad);
 
