@@ -32,7 +32,7 @@ void board_init(void) {
     fb->base.type = &sharpdisplay_framebuffer_type;
 
     busio_spi_obj_t *spi = &fb->inline_bus;
-    common_hal_busio_spi_construct(spi, &pin_P0_26, &pin_P0_27, NULL, false, false);
+    common_hal_busio_spi_construct(spi, &pin_P0_26, &pin_P0_27, NULL, NULL, false, false);
     common_hal_busio_spi_never_reset(spi);
 
     common_hal_sharpdisplay_framebuffer_construct(fb, spi, &pin_P0_05, 500000, 176, 176, true);

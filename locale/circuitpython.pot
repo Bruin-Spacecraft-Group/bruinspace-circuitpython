@@ -1081,6 +1081,10 @@ msgstr ""
 msgid "Hard fault: memory access or instruction error."
 msgstr ""
 
+#: shared-bindings/busio/SPI.c
+msgid "Hardware SS pin only supported for slave mode"
+msgstr ""
+
 #: ports/mimxrt10xx/common-hal/busio/SPI.c
 #: ports/mimxrt10xx/common-hal/busio/UART.c ports/stm/common-hal/busio/I2C.c
 #: ports/stm/common-hal/busio/SPI.c ports/stm/common-hal/busio/UART.c
@@ -1388,6 +1392,10 @@ msgstr ""
 
 #: ports/mimxrt10xx/common-hal/busio/SPI.c shared-bindings/busio/SPI.c
 msgid "Must provide MISO or MOSI pin"
+msgstr ""
+
+#: shared-bindings/busio/SPI.c
+msgid "Must provide SS pin to operate in slave mode"
 msgstr ""
 
 #: shared-bindings/rgbmatrix/RGBMatrix.c
@@ -1932,8 +1940,7 @@ msgstr ""
 msgid "Size not supported"
 msgstr ""
 
-#: ports/atmel-samd/common-hal/busio/SPI.c ports/cxd56/common-hal/busio/SPI.c
-#: ports/espressif/common-hal/busio/SPI.c
+#: ports/cxd56/common-hal/busio/SPI.c ports/espressif/common-hal/busio/SPI.c
 #: ports/mimxrt10xx/common-hal/busio/SPI.c ports/nrf/common-hal/busio/SPI.c
 #: ports/raspberrypi/common-hal/busio/SPI.c ports/stm/common-hal/busio/SPI.c
 msgid "Slave mode SPI is not implemented"

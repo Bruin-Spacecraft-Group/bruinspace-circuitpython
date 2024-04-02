@@ -16,7 +16,7 @@
 #include "shared-bindings/microcontroller/Pin.h"
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self, const mcu_pin_obj_t *clock,
-    const mcu_pin_obj_t *mosi, const mcu_pin_obj_t *miso, bool half_duplex, bool slave_mode) {
+    const mcu_pin_obj_t *mosi, const mcu_pin_obj_t *miso, const mcu_pin_obj_t *ss, bool half_duplex, bool slave_mode) {
     int port = -1;
 
     if (half_duplex) {

@@ -53,6 +53,7 @@ static void display_init(void) {
         &pin_GPIO36,    // CLK
         &pin_GPIO35,    // MOSI
         NULL,           // MISO not connected
+        NULL,           // SS not connected
         false,          // Not half-duplex
         false           // operate SPI bus as master
         );

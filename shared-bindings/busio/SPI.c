@@ -53,6 +53,7 @@
 //|         clock: microcontroller.Pin,
 //|         MOSI: Optional[microcontroller.Pin] = None,
 //|         MISO: Optional[microcontroller.Pin] = None,
+//|         SS: Optional[microcontroller.Pin] = None,
 //|         half_duplex: bool = False,
 //|         slave_mode: bool = False,
 //|     ) -> None:
@@ -89,11 +90,12 @@
 static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if CIRCUITPY_BUSIO_SPI
     busio_spi_obj_t *self = mp_obj_malloc(busio_spi_obj_t, &busio_spi_type);
-    enum { ARG_clock, ARG_MOSI, ARG_MISO, ARG_half_duplex, ARG_slave_mode };
+    enum { ARG_clock, ARG_MOSI, ARG_MISO, ARG_SS, ARG_half_duplex, ARG_slave_mode };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_clock, MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_MOSI, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_MISO, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_SS, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_half_duplex, MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false} },
         { MP_QSTR_slave_mode, MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false} },
     };
@@ -103,12 +105,19 @@ static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
     const mcu_pin_obj_t *clock = validate_obj_is_free_pin(args[ARG_clock].u_obj, MP_QSTR_clock);
     const mcu_pin_obj_t *mosi = validate_obj_is_free_pin_or_none(args[ARG_MOSI].u_obj, MP_QSTR_mosi);
     const mcu_pin_obj_t *miso = validate_obj_is_free_pin_or_none(args[ARG_MISO].u_obj, MP_QSTR_miso);
+    const mcu_pin_obj_t *ss = validate_obj_is_free_pin_or_none(args[ARG_SS].u_obj, MP_QSTR_ss);
 
     if (!miso && !mosi) {
         mp_raise_ValueError(MP_ERROR_TEXT("Must provide MISO or MOSI pin"));
     }
+    if (args[ARG_slave_mode].u_bool && !ss) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Must provide SS pin to operate in slave mode"));
+    }
+    if (!args[ARG_slave_mode].u_bool && ss) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Hardware SS pin only supported for slave mode"));
+    }
 
-    common_hal_busio_spi_construct(self, clock, mosi, miso, args[ARG_half_duplex].u_bool, args[ARG_slave_mode].u_bool);
+    common_hal_busio_spi_construct(self, clock, mosi, miso, ss, args[ARG_half_duplex].u_bool, args[ARG_slave_mode].u_bool);
     return MP_OBJ_FROM_PTR(self);
     #else
     mp_raise_NotImplementedError(NULL);
