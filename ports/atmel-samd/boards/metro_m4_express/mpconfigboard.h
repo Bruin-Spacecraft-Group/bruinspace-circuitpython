@@ -20,7 +20,7 @@
 
 #define MICROPY_HW_NEOPIXEL (&pin_PB22)
 
-#define BOARD_HAS_CRYSTAL 1
+#define BOARD_HAS_CRYSTAL 0
 
 #define DEFAULT_I2C_BUS_SCL (&pin_PB03)
 #define DEFAULT_I2C_BUS_SDA (&pin_PB02)
