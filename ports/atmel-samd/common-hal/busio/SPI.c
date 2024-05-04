@@ -235,6 +235,8 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         claim_pin(ss);
     }
 
+    self->running_dma.failure = 1; // not started
+
     spi_m_sync_enable(&self->spi_desc);
 }
 
@@ -320,6 +322,9 @@ bool common_hal_busio_spi_write(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
+    }
     int32_t status;
     if (len >= 16) {
         size_t bytes_remaining = len;
@@ -350,6 +355,9 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
+    }
     int32_t status;
     if (len >= 16) {
         status = sercom_dma_read(self->spi_desc.dev.prvt, data, len, write_value);
@@ -368,6 +376,9 @@ bool common_hal_busio_spi_transfer(busio_spi_obj_t *self, const uint8_t *data_ou
     if (len == 0) {
         return true;
     }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
+    }
     int32_t status;
     if (len >= 16) {
         status = sercom_dma_transfer(self->spi_desc.dev.prvt, data_out, data_in, len);
@@ -379,6 +390,62 @@ bool common_hal_busio_spi_transfer(busio_spi_obj_t *self, const uint8_t *data_ou
         status = spi_m_sync_transfer(&self->spi_desc, &xfer);
     }
     return status >= 0; // Status is number of chars read or an error code < 0.
+}
+
+void common_hal_busio_spi_transfer_async_start(busio_spi_obj_t *self, const uint8_t *data_out, uint8_t *data_in, size_t len) {
+    if (len == 0) {
+        return;
+    }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
+    }
+    Sercom* sercom = self->spi_desc.dev.prvt;
+    self->running_dma = shared_dma_transfer_start(sercom, data_out, &sercom->SPI.DATA.reg, &sercom->SPI.DATA.reg, data_in, len, 0);
+
+    // There is an issue where if an unexpected SPI transfer is received before the user calls "end" for the in-progress, expected
+    // transfer, the SERCOM has an error and gets confused. This can be detected from INTFLAG.ERROR. I think the code in
+    // ports/atmel-samd/peripherals/samd/dma.c at line 277 (as of this commit; it's the part that reads s->SPI.INTFLAG.bit.RXC and
+    // s->SPI.DATA.reg) is supposed to fix this, but experimentation seems to show that it does not in fact fix anything. Anyways, if
+    // the ERROR bit is set, let's just reset the peripheral and then setup the transfer again -- that seems to work.
+    if (hri_sercomspi_get_INTFLAG_ERROR_bit(sercom)) {
+        shared_dma_transfer_close(self->running_dma);
+
+        // disable the sercom
+        spi_m_sync_disable(&self->spi_desc);
+        hri_sercomspi_wait_for_sync(sercom, SERCOM_SPI_SYNCBUSY_MASK);
+
+        // save configurations
+        hri_sercomspi_ctrla_reg_t ctrla_saved_val = hri_sercomspi_get_CTRLA_reg(sercom, -1); // -1 mask is all ones: save all bits
+        hri_sercomspi_ctrlb_reg_t ctrlb_saved_val = hri_sercomspi_get_CTRLB_reg(sercom, -1); // -1 mask is all ones: save all bits
+        hri_sercomspi_baud_reg_t  baud_saved_val  = hri_sercomspi_get_BAUD_reg(sercom, -1);  // -1 mask is all ones: save all bits
+        // reset
+        hri_sercomspi_set_CTRLA_SWRST_bit(sercom);
+        hri_sercomspi_wait_for_sync(sercom, SERCOM_SPI_SYNCBUSY_MASK);
+        // re-write configurations
+        hri_sercomspi_write_CTRLA_reg(sercom, ctrla_saved_val);
+        hri_sercomspi_write_CTRLB_reg(sercom, ctrlb_saved_val);
+        hri_sercomspi_write_BAUD_reg (sercom, baud_saved_val);
+        hri_sercomspi_wait_for_sync(sercom, SERCOM_SPI_SYNCBUSY_MASK);
+
+        // re-enable the sercom
+        spi_m_sync_enable(&self->spi_desc);
+        hri_sercomspi_wait_for_sync(sercom, SERCOM_SPI_SYNCBUSY_MASK);
+
+        self->running_dma = shared_dma_transfer_start(sercom, data_out, &sercom->SPI.DATA.reg, &sercom->SPI.DATA.reg, data_in, len, 0);
+    }
+}
+
+bool common_hal_busio_spi_transfer_async_check(busio_spi_obj_t *self) {
+    return self->running_dma.failure == 1 || shared_dma_transfer_finished(self->running_dma);
+}
+
+int common_hal_busio_spi_transfer_async_end(busio_spi_obj_t *self) {
+    if (self->running_dma.failure == 1) {
+        return 0;
+    }
+    int res = shared_dma_transfer_close(self->running_dma);
+    self->running_dma.failure = 1;
+    return res;
 }
 
 uint32_t common_hal_busio_spi_get_frequency(busio_spi_obj_t *self) {

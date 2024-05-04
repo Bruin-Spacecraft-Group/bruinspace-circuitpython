@@ -461,6 +461,146 @@ MP_DEFINE_CONST_FUN_OBJ_1(busio_spi_get_frequency_obj, busio_spi_obj_get_frequen
 
 MP_PROPERTY_GETTER(busio_spi_frequency_obj,
     (mp_obj_t)&busio_spi_get_frequency_obj);
+
+#if CIRCUITPY_SAMD
+
+//|     import sys
+//|     def async_transfer_start(
+//|         self,
+//|         out_buffer: ReadableBuffer,
+//|         in_buffer: WriteableBuffer,
+//|         *,
+//|         out_start: int = 0,
+//|         out_end: int = sys.maxsize,
+//|         in_start: int = 0,
+//|         in_end: int = sys.maxsize
+//|     ) -> None:
+//|         """Write out the data in ``out_buffer`` while simultaneously reading data into ``in_buffer``.
+//|         The SPI object must be locked. Note: this method returns immediately, and the data will not
+//|         actually be transferred until some time has passed. Use `async_transfer_finished` and
+//|         `async_transfer_end` to check on the status of the transfer and close out its resources.
+//|
+//|         If ``out_start`` or ``out_end`` is provided, then the buffer will be sliced
+//|         as if ``out_buffer[out_start:out_end]`` were passed, but without copying the data.
+//|         The number of bytes written will be the length of ``out_buffer[out_start:out_end]``.
+//|
+//|         If ``in_start`` or ``in_end`` is provided, then the input buffer will be sliced
+//|         as if ``in_buffer[in_start:in_end]`` were passed,
+//|         The number of bytes read will be the length of ``out_buffer[in_start:in_end]``.
+//|
+//|         The lengths of the slices defined by ``out_buffer[out_start:out_end]``
+//|         and ``in_buffer[in_start:in_end]`` must be equal.
+//|         If buffer slice lengths are both 0, nothing happens.
+//|
+//|         Note: This method is currently only available on atmel-samd` ports of CircuitPython.
+//|
+//|         :param ReadableBuffer out_buffer: write out bytes from this buffer
+//|         :param WriteableBuffer in_buffer: read bytes into this buffer
+//|         :param int out_start: beginning of ``out_buffer`` slice
+//|         :param int out_end: end of ``out_buffer`` slice; if not specified, use ``len(out_buffer)``
+//|         :param int in_start: beginning of ``in_buffer`` slice
+//|         :param int in_end: end of ``in_buffer slice``; if not specified, use ``len(in_buffer)``
+//|         """
+//|         ...
+
+STATIC mp_obj_t busio_spi_start_async_transfer(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum { ARG_out_buffer, ARG_in_buffer, ARG_out_start, ARG_out_end, ARG_in_start, ARG_in_end };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_out_buffer,    MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_in_buffer,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_out_start,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_out_end,       MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = INT_MAX} },
+        { MP_QSTR_in_start,      MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_in_end,        MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = INT_MAX} },
+    };
+    busio_spi_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
+    check_for_deinit(self);
+    check_lock(self);
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    mp_buffer_info_t buf_out_info;
+    mp_get_buffer_raise(args[ARG_out_buffer].u_obj, &buf_out_info, MP_BUFFER_READ);
+    int out_stride_in_bytes = mp_binary_get_size('@', buf_out_info.typecode, NULL);
+    int32_t out_start = args[ARG_out_start].u_int;
+    size_t out_length = buf_out_info.len / out_stride_in_bytes;
+    normalize_buffer_bounds(&out_start, args[ARG_out_end].u_int, &out_length);
+
+    mp_buffer_info_t buf_in_info;
+    mp_get_buffer_raise(args[ARG_in_buffer].u_obj, &buf_in_info, MP_BUFFER_WRITE);
+    int in_stride_in_bytes = mp_binary_get_size('@', buf_in_info.typecode, NULL);
+    int32_t in_start = args[ARG_in_start].u_int;
+    size_t in_length = buf_in_info.len / in_stride_in_bytes;
+    normalize_buffer_bounds(&in_start, args[ARG_in_end].u_int, &in_length);
+
+    // Treat start and length in terms of bytes from now on.
+    out_start *= out_stride_in_bytes;
+    out_length *= out_stride_in_bytes;
+    in_start *= in_stride_in_bytes;
+    in_length *= in_stride_in_bytes;
+
+    if (out_length != in_length) {
+        mp_raise_ValueError(MP_ERROR_TEXT("buffer slices must be of equal length"));
+    }
+
+    common_hal_busio_spi_transfer_async_start(self,
+        ((uint8_t *)buf_out_info.buf) + out_start,
+        ((uint8_t *)buf_in_info.buf) + in_start,
+        out_length);
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_KW(busio_spi_start_transfer_obj, 1, busio_spi_start_async_transfer);
+
+//|     import sys
+//|     def async_transfer_finished(
+//|         self
+//|     ) -> None:
+//|         """Check whether or not the last async transfer started on this SPI object has finished. If
+//|         no transfer was started, this method behaves as though the most recent transfer has finished
+//|         and returns `True`. Otherwise, it returns `False`.
+//|
+//|         Note: This method is currently only available on atmel-samd` ports of CircuitPython.
+//|         """
+//|         ...
+STATIC mp_obj_t busio_spi_obj_check_async_transfer(mp_obj_t self_in) {
+    busio_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    check_for_deinit(self);
+    return common_hal_busio_spi_transfer_async_check(self) ? mp_const_true : mp_const_false;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(busio_spi_check_transfer_obj, busio_spi_obj_check_async_transfer);
+
+//|     import sys
+//|     def async_transfer_end(
+//|         self
+//|     ) -> None:
+//|         """Return the status code with which the last async transfer on this SPI object completed. This
+//|         method MUST be called for all transfers, regardless of user interest in status code. The resources
+//|         for the transfer will be left open until this method is called. Once this method is called, the
+//|         peripheral resets and is ready for another transfer. The return code of this method also resets to
+//|         its pre-transfer state: repeated calls to this method may produce different codes.
+//|
+//|         Return code 0: No transfer has occured, either because `start_async_transfer` was never called, or because
+//|         it was called with zero-length buffers.
+//|         Return code -1: The transfer failed because no DMA channels are available.
+//|         Return code -2: The transfer executed, but the DMA controller indicates that either some data is
+//|         untransferred, that a software issue prevented the data transfer from completing, or that some other error
+//|         has occured within the DMA controller.
+//|         Return code -3: An unaligned buffer was passed to the QSPI peripheral, which prevents the DMA controller from
+//|         appropriately chunking the transfer.
+//|         Return code n>0: A transfer of `n` bytes in each direction has succeeded.
+//|
+//|         Note: This method is currently only available on atmel-samd` ports of CircuitPython.
+//|         """
+//|         ...
+STATIC mp_obj_t busio_spi_obj_end_async_transfer(mp_obj_t self_in) {
+    busio_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    check_for_deinit(self);
+    return MP_OBJ_NEW_SMALL_INT(common_hal_busio_spi_transfer_async_end(self));
+}
+MP_DEFINE_CONST_FUN_OBJ_1(busio_spi_end_transfer_obj, busio_spi_obj_end_async_transfer);
+
+#endif // CIRCUITPY_SAMD
+
 #endif // CIRCUITPY_BUSIO_SPI
 
 
@@ -478,6 +618,14 @@ static const mp_rom_map_elem_t busio_spi_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&busio_spi_write_obj) },
     { MP_ROM_QSTR(MP_QSTR_write_readinto), MP_ROM_PTR(&busio_spi_write_readinto_obj) },
     { MP_ROM_QSTR(MP_QSTR_frequency), MP_ROM_PTR(&busio_spi_frequency_obj) }
+
+    #if CIRCUITPY_SAMD
+    ,
+    { MP_ROM_QSTR(MP_QSTR_async_transfer_start), MP_ROM_PTR(&busio_spi_start_transfer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_async_transfer_finished), MP_ROM_PTR(&busio_spi_check_transfer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_async_transfer_end), MP_ROM_PTR(&busio_spi_end_transfer_obj) }
+    #endif // CIRCUITPY_SAMD
+
     #endif // CIRCUITPY_BUSIO_SPI
 };
 static MP_DEFINE_CONST_DICT(busio_spi_locals_dict, busio_spi_locals_dict_table);

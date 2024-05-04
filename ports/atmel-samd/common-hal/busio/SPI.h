@@ -21,4 +21,5 @@ typedef struct {
     uint8_t MISO_pin;
     uint8_t SS_pin;
     bool slave_mode;
+    dma_descr_t running_dma;
 } busio_spi_obj_t;
