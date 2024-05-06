@@ -191,6 +191,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     self->slave_mode = slave_mode;
     hri_sercomspi_write_CTRLA_DOPO_bf(sercom, dopo);
     hri_sercomspi_write_CTRLA_DIPO_bf(sercom, slave_mode ? mosi_pad : miso_pad);
+    hri_sercomspi_write_CTRLB_PLOADEN_bit(sercom, slave_mode);
 
     // Always start at 250khz which is what SD cards need. They are sensitive to
     // SPI bus noise before they are put into SPI mode.
