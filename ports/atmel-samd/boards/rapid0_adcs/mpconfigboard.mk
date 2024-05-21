@@ -1,9 +1,9 @@
-USB_VID = 0x239A
-USB_PID = 0x8021
+USB_VID = 0x239A # should change as this is adafruit's vendor ID
+USB_PID = 0x8021 # similar to above
 USB_PRODUCT = "RAPID-0 ADCS"
 USB_MANUFACTURER = "Bruin Spacecraft Group"
 
-CHIP_VARIANT = SAMD51J19A
+CHIP_VARIANT = SAMD51N20
 CHIP_FAMILY = samd51
 
 QSPI_FLASH_FILESYSTEM = 1
