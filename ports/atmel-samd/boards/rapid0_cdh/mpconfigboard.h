@@ -15,7 +15,7 @@
 #define BOARD_HAS_CRYSTAL 0
 
 #define CAMERA_I2C_SCL (&pin_PB03)
-#define CAMERA_I2C_SDA (&pin_PB04)
+#define CAMERA_I2C_SDA (&pin_PB02)
 
 #define CAMERA_SPI_SCK (&pin_PA05)
 #define CAMERA_SPI_MISO (&pin_PA04)
