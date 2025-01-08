@@ -1,8 +1,6 @@
 #define MICROPY_HW_BOARD_NAME "RAPID-0 CDH"
 #define MICROPY_HW_MCU_NAME "samd21g18"
 
-#define CIRCUITPY_MCU_FAMILY samd51
-
 // This is for Rev F which is green
 
 // #define MICROPY_HW_LED_TX   (&pin_PA27)
