@@ -36,7 +36,12 @@
 
 #include "component/wdt.h"
 
+#ifdef SAMD21
+#define SYNC_CTRL_WRITE while (WDT->STATUS.reg) {}
+#endif
+#ifdef SAM_D5X_E5X
 #define SYNC_CTRL_WRITE while (WDT->SYNCBUSY.reg) {}
+#endif
 
 static void watchdog_disable(void) {
     // disable watchdog
