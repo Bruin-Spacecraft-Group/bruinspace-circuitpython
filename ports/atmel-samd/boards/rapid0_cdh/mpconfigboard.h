@@ -10,6 +10,11 @@
 
 // #define MICROPY_HW_NEOPIXEL (&pin_PB22)
 
+#define SPI_FLASH_MOSI_PIN          &pin_PA08
+#define SPI_FLASH_MISO_PIN          &pin_PA09
+#define SPI_FLASH_SCK_PIN           &pin_PB10
+#define SPI_FLASH_CS_PIN            &pin_PB11
+
 #define BOARD_HAS_CRYSTAL 0
 
 #define CAMERA_I2C_SCL (&pin_PB03)
