@@ -36,14 +36,14 @@
 
 #include "component/wdt.h"
 
-#ifdef SAMD21
-    #define SYNC_CTRL_WRITE while (WDT->STATUS.reg) {}
-    #define WDT_CTRL WDT->CTRL
-#endif
-#ifdef SAM_D5X_E5X
+// #ifdef SAMD21
+//     #define SYNC_CTRL_WRITE while (WDT->STATUS.reg) {}
+//     #define WDT_CTRL WDT->CTRL
+// #endif
+// #ifdef SAM_D5X_E5X
     #define SYNC_CTRL_WRITE while (WDT->SYNCBUSY.reg) {}
-    #define WDT_CTRL WDT->CTRLA
-#endif
+//     #define WDT_CTRL WDT->CTRLA
+// #endif
 
 static void watchdog_disable(void) {
     // disable watchdog
@@ -64,7 +64,9 @@ static void watchdog_enable(watchdog_watchdogtimer_obj_t *self) {
     int log2_wdt_cycles = (sizeof(int) * CHAR_BIT) - __builtin_clz(wdt_cycles - 1);
     int setting = log2_wdt_cycles - 3;      // CYC8_Val is 0
 
-    OSC32KCTRL->OSCULP32K.bit.EN1K = 1;     // Enable out 1K (for WDT)
+    // #ifdef SAMD51
+        OSC32KCTRL->OSCULP32K.bit.EN1K = 1;     // Enable out 1K (for WDT)
+    // #endif
 
     WDT->INTENCLR.reg = WDT_INTENCLR_EW;    // Disable early warning interrupt
     WDT->CONFIG.bit.PER = setting;          // Set period for chip reset
