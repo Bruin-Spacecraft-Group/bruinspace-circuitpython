@@ -42,7 +42,7 @@
 // #endif
 // #ifdef SAM_D5X_E5X
     #define SYNC_CTRL_WRITE while (WDT->SYNCBUSY.reg) {}
-//     #define WDT_CTRL WDT->CTRLA
+    #define WDT_CTRL WDT->CTRLA
 // #endif
 
 static void watchdog_disable(void) {
