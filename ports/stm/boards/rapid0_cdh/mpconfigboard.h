@@ -1,5 +1,5 @@
 #define MICROPY_HW_BOARD_NAME "RAPID-0 CDH"
-#define MICROPY_HW_MCU_NAME "samd51j19"
+#define MICROPY_HW_MCU_NAME "STM32H743"
 
 #define FLASH_PAGE_SIZE             (0x4000)
 
