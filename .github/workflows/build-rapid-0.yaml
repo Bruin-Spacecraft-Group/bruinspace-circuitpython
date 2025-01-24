@@ -43,11 +43,11 @@ jobs:
         cp-version: ${{ steps.set-up-submodules.outputs.version }}
         download: false
     - name: Build boards
-      run: make -j4 -C ports/stm32 BOARD=${{ matrix.board }}
+      run: make -j4 -C ports/stm BOARD=${{ matrix.board }}
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.board }}
-        path: ports/stm32/build-${{ matrix.board }}/firmware.*
+        path: ports/stm/build-${{ matrix.board }}/firmware.*
         overwrite: true
 
