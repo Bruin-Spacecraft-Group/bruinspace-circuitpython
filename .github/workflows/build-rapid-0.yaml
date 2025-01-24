@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        board: [rapid0_adcs, rapid0_cdh, rapid0_eps]
+        board: [rapid0_cdh]
     steps:
     - name: Set up repository
       uses: actions/checkout@v4
@@ -43,11 +43,11 @@ jobs:
         cp-version: ${{ steps.set-up-submodules.outputs.version }}
         download: false
     - name: Build boards
-      run: make -j4 -C ports/atmel-samd BOARD=${{ matrix.board }}
+      run: make -j4 -C ports/stm32 BOARD=${{ matrix.board }}
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.board }}
-        path: ports/atmel-samd/build-${{ matrix.board }}/firmware.*
+        path: ports/stm32/build-${{ matrix.board }}/firmware.*
         overwrite: true
 
