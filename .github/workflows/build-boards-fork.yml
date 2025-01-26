@@ -69,10 +69,10 @@ jobs:
       run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/workflows/match-build-fail.json"
 
     - name: Build board
-      run: make -j4 -C ports/atmel-samd BOARD=${{ matrix.board }}
+      run: make -j4 -C ports/stm BOARD=${{ matrix.board }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.board }}
-        path: ports/atmel-samd/build-${{ matrix.board }}
+        path: ports/stm/build-${{ matrix.board }}
