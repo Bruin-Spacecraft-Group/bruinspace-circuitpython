@@ -7,8 +7,8 @@ jobs:
   build:
     uses: ./.github/workflows/build-boards.yml
     with:
-      boards: "rapid0_adcs, rapid0_cdh, rapid0_eps, nucleo_h743zi_2"
-      cp-version: "bruinspace-dev"
+      boards: ./.github/workflows/rapid0-boards.json
+      cp-version: bruinspace-dev
 
 # name: Build boards
 
