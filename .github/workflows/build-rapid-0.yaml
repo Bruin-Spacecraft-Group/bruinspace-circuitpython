@@ -2,7 +2,6 @@ name: Build RAPID-0 Boards
 
 on:
   push:
-  workflow_call:
 
 jobs:
   build:
