@@ -68,8 +68,14 @@ jobs:
     - name: Set up build failure matcher
       run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/workflows/match-build-fail.json"
 
+    - name: Pre-fetch tag check
+      run: git tag
+
     - name: Fetch upstream tags
       run: make fetch-tags
+
+    - name: Post-fetch tag check
+      run: git tag
 
     - name: Build board
       run: python3 -u build_release_files.py
