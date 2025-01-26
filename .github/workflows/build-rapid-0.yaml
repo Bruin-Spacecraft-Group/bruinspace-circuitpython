@@ -11,8 +11,8 @@ jobs:
   build:
     uses: ./.github/workflows/build-boards.yml
     with:
-      boards: ${{ env.boards }}
-      cp-version: ${{ env.cp-version }}
+      boards: env.boards
+      cp-version: env.cp-version
 
 # name: Build boards
 
