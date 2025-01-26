@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  boards: ["nucleo_h743zi_2", "rapid0_cdh", "rapid0_eps", "rapid0_adcs"]
+  boards: "[\"nucleo_h743zi_2\", \"rapid0_cdh\", \"rapid0_eps\", \"rapid0_adcs\"]"
   cp-version: bruinspace-dev
 
 jobs:
