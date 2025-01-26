@@ -68,25 +68,11 @@ jobs:
     - name: Set up build failure matcher
       run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/workflows/match-build-fail.json"
 
-    - name: Pre-fetch tag check
-      run: git tag
-
-    - name: Fetch upstream tags
-      run: make fetch-tags
-
-    - name: Post-fetch tag check
-      run: git tag
-
     - name: Build board
-      run: python3 -u build_release_files.py
-      working-directory: tools
-      env:
-        BOARDS: ${{ matrix.board }}
-        PULL: ${{ github.event.number }}
-        HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      run: make -j4 -C ports/atmel-samd BOARD=${{ matrix.board }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.board }}
-        path: bin/${{ matrix.board }}
+        path: ports/atmel-samd/build-${{ matrix.board }}
