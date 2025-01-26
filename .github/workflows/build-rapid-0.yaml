@@ -4,9 +4,10 @@ on:
   push:
 
 jobs:
-  fetch-tags:
+  pre-build:
+    runs-on: ubuntu-latest
     steps:
-      - id: make-fetch-tags
+      - id: fetch-tags
         run: make fetch-tags
   build:
     uses: ./.github/workflows/build-boards.yml
