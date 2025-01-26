@@ -3,7 +3,7 @@ name: Build RAPID-0 Boards
 on:
   push:
 
-settings:
+env:
   boards: ["nucleo_h743zi_2", "rapid0_cdh", "rapid0_eps", "rapid0_adcs"]
   cp-version: bruinspace-dev
 
@@ -11,8 +11,8 @@ jobs:
   build:
     uses: ./.github/workflows/build-boards.yml
     with:
-      boards: ${{ settings.boards }}
-      cp-version: ${{ settings.cp-version }}
+      boards: ${{ env.boards }}
+      cp-version: ${{ env.cp-version }}
 
 # name: Build boards
 
