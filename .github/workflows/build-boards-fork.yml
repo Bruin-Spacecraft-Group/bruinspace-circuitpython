@@ -2,6 +2,7 @@ name: Build boards from a fork repository
 
 # This file is a copy of build-boards.yml, with the following changes
 #  - runs `make fetch-tags` before building the firmware binaries
+#  - eliminates cp-version input and uses output from set-up-submodules step instead
 #  - does not upload completed board binaries to Amazon S3
 
 on:
@@ -10,15 +11,10 @@ on:
       boards:
         required: true
         type: string
-      cp-version:
-        required: true
-        type: string
 
 jobs:
   board:
     runs-on: ubuntu-22.04
-    env:
-      CP_VERSION: ${{ inputs.cp-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +50,7 @@ jobs:
       if: steps.set-up-submodules.outputs.frozen == 'True'
       uses: ./.github/actions/mpy_cross
       with:
-        cp-version: ${{ inputs.cp-version }}
+        cp-version: ${{ steps.set-up-submodules.outputs.version }}
 
     - name: Versions
       run: |

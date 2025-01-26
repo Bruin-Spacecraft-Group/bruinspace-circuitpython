@@ -8,4 +8,3 @@ jobs:
     uses: ./.github/workflows/build-boards-fork.yml
     with:
       boards: "[\"nucleo_h743zi_2\", \"rapid0_cdh\", \"rapid0_eps\", \"rapid0_adcs\"]"
-      cp-version: "bruinspace-dev"
