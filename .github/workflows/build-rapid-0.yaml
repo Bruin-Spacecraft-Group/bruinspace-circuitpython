@@ -5,7 +5,9 @@ on:
 
 jobs:
   fetch-tags:
-    run: make fetch-tags
+    steps:
+      - id: make-fetch-tags
+        run: make fetch-tags
   build:
     uses: ./.github/workflows/build-boards.yml
     with:
