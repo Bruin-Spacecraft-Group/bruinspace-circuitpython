@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    uses: $GITHUB_WORKSPACE/.github/workflows/build-boards.yml@board
+    uses: ./.github/workflows/build-boards.yml@board
     with:
       boards: [rapid0_adcs, rapid0_cdh, rapid0_eps, nucleo_h743zi_2]
       cp-version: bruinspace-dev
