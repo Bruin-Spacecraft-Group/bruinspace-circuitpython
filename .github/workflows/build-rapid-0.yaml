@@ -6,8 +6,10 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build-boards.yml
+    matrix:
+      boards: ["nucleo_h743zi_2", "rapid0_cdh", "rapid0_eps", "rapid0_adcs"]
     with:
-      boards: ./.github/workflows/rapid0-boards.json
+      boards: ${{ matrix.boards }}
       cp-version: bruinspace-dev
 
 # name: Build boards
