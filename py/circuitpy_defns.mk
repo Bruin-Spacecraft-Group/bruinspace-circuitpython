@@ -544,8 +544,6 @@ SRC_COMMON_HAL_ALL = \
 	socketpool/Socket.c \
 	spitarget/SPITarget.c \
 	spitarget/__init__.c \
-	supervisor/Runtime.c \
-	supervisor/__init__.c \
 	usb_host/__init__.c \
 	usb_host/Port.c \
 	watchdog/WatchDogMode.c \
