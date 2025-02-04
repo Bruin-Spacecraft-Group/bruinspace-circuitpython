@@ -17,14 +17,12 @@
 
 #include "hal/include/hal_gpio.h"
 #include "hal/include/hal_spi_m_sync.h"
-#include "hal/include/hpl_spi_m_sync.h"
 
 #include "samd/dma.h"
 #include "samd/sercom.h"
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
-    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
-    const mcu_pin_obj_t *miso, bool half_duplex) {
+    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi, const mcu_pin_obj_t *miso, bool half_duplex) {
     Sercom *sercom = NULL;
     uint8_t sercom_index;
     uint32_t clock_pinmux = 0;
@@ -76,6 +74,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
             if (!samd_peripherals_valid_spi_clock_pad(clock_pad)) {
                 continue;
             }
+            // find mosi_pad first, since it corresponds to dopo which takes limited values
             for (int j = 0; j < NUM_SERCOMS_PER_PIN; j++) {
                 if (!mosi_none) {
                     if (sercom_index == mosi->sercom[j].index) {
@@ -125,6 +124,8 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 
     // Pads must be set after spi_m_sync_init(), which uses default values from
     // the prototypical SERCOM.
+
+    hri_sercomspi_write_CTRLA_MODE_bf(sercom, 3);
     hri_sercomspi_write_CTRLA_DOPO_bf(sercom, dopo);
     hri_sercomspi_write_CTRLA_DIPO_bf(sercom, miso_pad);
 
@@ -162,6 +163,8 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         self->MISO_pin = miso->number;
         claim_pin(miso);
     }
+
+    self->running_dma.failure = 1; // not started
 
     spi_m_sync_enable(&self->spi_desc);
 }
@@ -248,6 +251,9 @@ bool common_hal_busio_spi_write(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
+    }
     int32_t status;
     if (len >= 16) {
         size_t bytes_remaining = len;
@@ -278,6 +284,9 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
+    }
     int32_t status;
     if (len >= 16) {
         status = sercom_dma_read(self->spi_desc.dev.prvt, data, len, write_value);
@@ -295,6 +304,9 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
 bool common_hal_busio_spi_transfer(busio_spi_obj_t *self, const uint8_t *data_out, uint8_t *data_in, size_t len) {
     if (len == 0) {
         return true;
+    }
+    if (self->running_dma.failure != 1) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
     }
     int32_t status;
     if (len >= 16) {

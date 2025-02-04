@@ -1,0 +1,16 @@
+if echo $PATH | grep "gcc-arm-none-eabi" >/dev/null; then
+    true
+else
+    export PATH=/Volumes/Circuit_Python_Case_Sensitive_Disk/bruinspace-circuitpython/gcc-arm-none-eabi-10-2020-q4-major/bin:$PATH
+fi
+
+cd ports/atmel-samd
+make --debug -j8 BOARD=metro_m4_express
+cd ../..
+
+echo "Compilation complete! Press ^C to confirm and exit."
+
+while true; do
+    afplay /System/Library/Sounds/Ping.aiff
+    sleep 5s
+done

@@ -369,6 +369,9 @@ endif
 ifeq ($(CIRCUITPY_SOCKETPOOL),1)
 SRC_PATTERNS += socketpool/%
 endif
+ifeq ($(CIRCUITPY_SPITARGET),1)
+SRC_PATTERNS += spitarget/%
+endif
 ifeq ($(CIRCUITPY_SSL),1)
 SRC_PATTERNS += ssl/%
 endif
@@ -539,6 +542,10 @@ SRC_COMMON_HAL_ALL = \
 	socketpool/__init__.c \
 	socketpool/SocketPool.c \
 	socketpool/Socket.c \
+	spitarget/SPITarget.c \
+	spitarget/__init__.c \
+	supervisor/Runtime.c \
+	supervisor/__init__.c \
 	usb_host/__init__.c \
 	usb_host/Port.c \
 	watchdog/WatchDogMode.c \

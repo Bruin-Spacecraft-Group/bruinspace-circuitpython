@@ -1,0 +1,15 @@
+if echo $PATH | grep "gcc-arm-none-eabi" >/dev/null
+then
+    true
+else
+    export PATH=/mnt/d/Files/Documents/School/UCLA/Organizations/BruinSpace/Rapid-CDH/gcc-arm-none-eabi-10-2020-q4-major/bin:$PATH
+fi
+cd ports/atmel-samd
+make --debug -j8 BOARD=metro_m4_express
+cd ../..
+echo "Compilation complete! Press ^C to confirm and exit."
+while true;
+do
+    paplay /usr/share/sounds/freedesktop/stereo/complete.oga
+    sleep 5s
+done
