@@ -19,5 +19,4 @@ typedef struct {
     uint8_t clock_pin;
     uint8_t MOSI_pin;
     uint8_t MISO_pin;
-    dma_descr_t running_dma;
 } busio_spi_obj_t;

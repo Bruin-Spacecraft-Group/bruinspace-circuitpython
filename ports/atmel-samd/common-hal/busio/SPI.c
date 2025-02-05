@@ -22,7 +22,8 @@
 #include "samd/sercom.h"
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
-    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi, const mcu_pin_obj_t *miso, bool half_duplex) {
+    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
+    const mcu_pin_obj_t *miso, bool half_duplex) {
     Sercom *sercom = NULL;
     uint8_t sercom_index;
     uint32_t clock_pinmux = 0;
@@ -167,8 +168,6 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(miso->number), GPIO_PIN(miso->number));
     }
 
-    self->running_dma.failure = 1; // not started
-
     spi_m_sync_enable(&self->spi_desc);
 }
 
@@ -254,9 +253,6 @@ bool common_hal_busio_spi_write(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
-    if (self->running_dma.failure != 1) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
-    }
     int32_t status;
     if (len >= 16) {
         size_t bytes_remaining = len;
@@ -287,9 +283,6 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
-    if (self->running_dma.failure != 1) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
-    }
     int32_t status;
     if (len >= 16) {
         status = sercom_dma_read(self->spi_desc.dev.prvt, data, len, write_value);
@@ -307,9 +300,6 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
 bool common_hal_busio_spi_transfer(busio_spi_obj_t *self, const uint8_t *data_out, uint8_t *data_in, size_t len) {
     if (len == 0) {
         return true;
-    }
-    if (self->running_dma.failure != 1) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
     }
     int32_t status;
     if (len >= 16) {
