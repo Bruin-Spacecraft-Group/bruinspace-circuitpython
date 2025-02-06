@@ -10,7 +10,7 @@
 	url = https://github.com/atgreen/libffi
 [submodule "lib/berkeley-db-1.xx"]
 	path = lib/berkeley-db-1.xx
-	url = https://github.com/pfalcon/berkeley-db-1.xx
+	url = https://github.com/micropython/berkeley-db-1.xx
 [submodule "tools/uf2"]
 	path = tools/uf2
 	url = https://github.com/Microsoft/uf2.git
@@ -59,12 +59,12 @@
 	url = https://github.com/adafruit/Adafruit_CircuitPython_DotStar.git
 [submodule "ports/atmel-samd/peripherals"]
 	path = ports/atmel-samd/peripherals
-	url = https://github.com/Bruin-Spacecraft-Group/bruinspace-samd-peripherals.git
+	url = https://github.com/adafruit/samd-peripherals.git
 [submodule "frozen/Adafruit_CircuitPython_Crickit"]
 	path = frozen/Adafruit_CircuitPython_Crickit
 	url = https://github.com/adafruit/Adafruit_CircuitPython_Crickit
-[submodule "ports/nrf/nrfx"]
-	path = ports/nrf/nrfx
+[submodule "ports/nordic/nrfx"]
+	path = ports/nordic/nrfx
 	url = https://github.com/adafruit/nrfx.git
 [submodule "lib/tinyusb"]
 	path = lib/tinyusb
@@ -143,10 +143,11 @@
 [submodule "ports/espressif/esp-idf"]
 	path = ports/espressif/esp-idf
 	url = https://github.com/adafruit/esp-idf.git
-	branch = circuitpython-v5.1.3
+	branch = circuitpython-v5.3.2
 [submodule "ports/espressif/esp-protocols"]
 	path = ports/espressif/esp-protocols
-	url = https://github.com/espressif/esp-protocols.git
+	url = https://github.com/adafruit/esp-protocols.git
+	branch = circuitpython
 [submodule "ports/espressif/esp-camera"]
 	path = ports/espressif/esp-camera
 	url = https://github.com/adafruit/esp32-camera.git
@@ -344,8 +345,7 @@
 	url = https://github.com/adafruit/Adafruit_CircuitPython_Wave.git
 [submodule "ports/raspberrypi/lib/Pico-PIO-USB"]
 	path = ports/raspberrypi/lib/Pico-PIO-USB
-	url = https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
-	branch = main
+	url = https://github.com/adafruit/Pico-PIO-USB.git
 [submodule "lib/micropython-lib"]
 	path = lib/micropython-lib
 	url = https://github.com/micropython/micropython-lib.git
@@ -354,8 +354,8 @@
 	url = https://github.com/adafruit/certificates
 [submodule "lib/tlsf"]
 	path = lib/tlsf
-	url = https://github.com/adafruit/tlsf.git
-	branch = circuitpython
+	url = https://github.com/espressif/tlsf.git
+	branch = idf
 [submodule "frozen/CircuitPython_AXP313A"]
 	path = frozen/CircuitPython_AXP313A
 	url = https://github.com/bill88t/CircuitPython_AXP313A
@@ -383,3 +383,30 @@
 [submodule "frozen/Adafruit_CircuitPython_SHT4x"]
 	path = frozen/Adafruit_CircuitPython_SHT4x
 	url = https://github.com/adafruit/Adafruit_CircuitPython_SHT4x
+[submodule "frozen/Adafruit_CircuitPython_Bitmap_Font"]
+	path = frozen/Adafruit_CircuitPython_Bitmap_Font
+	url = https://github.com/adafruit/Adafruit_CircuitPython_Bitmap_Font
+[submodule "frozen/Adafruit_CircuitPython_MPU6050"]
+	path = frozen/Adafruit_CircuitPython_MPU6050
+	url = https://github.com/adafruit/Adafruit_CircuitPython_MPU6050
+[submodule "frozen/Adafruit_CircuitPython_Pixel_Framebuf"]
+	path = frozen/Adafruit_CircuitPython_Pixel_Framebuf
+	url = https://github.com/adafruit/Adafruit_CircuitPython_Pixel_Framebuf
+[submodule "frozen/Adafruit_CircuitPython_LED_Animation"]
+	path = frozen/Adafruit_CircuitPython_LED_Animation
+	url = https://github.com/adafruit/Adafruit_CircuitPython_LED_Animation
+[submodule "frozen/CircuitPython_AXP2101"]
+	path = frozen/CircuitPython_AXP2101
+	url = https://github.com/CDarius/CircuitPython_AXP2101
+[submodule "frozen/CircuitPython_BMA423"]
+	path = frozen/CircuitPython_BMA423
+	url = https://github.com/jposada202020/CircuitPython_BMA423
+[submodule "frozen/Adafruit_CircuitPython_PCF8563"]
+	path = frozen/Adafruit_CircuitPython_PCF8563
+	url = https://github.com/adafruit/Adafruit_CircuitPython_PCF8563
+[submodule "frozen/Adafruit_CircuitPython_Wiznet5k"]
+	path = frozen/Adafruit_CircuitPython_Wiznet5k
+	url = https://github.com/adafruit/Adafruit_CircuitPython_Wiznet5k
+[submodule "ports/analog/msdk"]
+	path = ports/analog/msdk
+	url = https://github.com/analogdevicesinc/msdk.git

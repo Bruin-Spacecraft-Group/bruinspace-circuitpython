@@ -32,8 +32,8 @@
 #define GPIO_PORT_COUNT (MP_ARRAY_SIZE(ports))
 
 GPIO_Port_TypeDef ports[] = {gpioPortA, gpioPortB, gpioPortC, gpioPortD};
-STATIC uint16_t claimed_pins[GPIO_PORT_COUNT];
-STATIC uint16_t __ALIGNED(4) never_reset_pins[GPIO_PORT_COUNT];
+static uint16_t claimed_pins[GPIO_PORT_COUNT];
+static uint16_t __ALIGNED(4) never_reset_pins[GPIO_PORT_COUNT];
 
 // Reset all pin except pin in never_reset_pins list
 void reset_all_pins(void) {

@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2016 Scott Shawcroft
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2016 Scott Shawcroft
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/busio/SPI.h"
 #include "shared-bindings/microcontroller/Pin.h"
@@ -42,7 +22,8 @@
 #include "samd/sercom.h"
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
-    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi, const mcu_pin_obj_t *miso, bool half_duplex) {
+    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
+    const mcu_pin_obj_t *miso, bool half_duplex) {
     Sercom *sercom = NULL;
     uint8_t sercom_index;
     uint32_t clock_pinmux = 0;
@@ -162,6 +143,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     gpio_set_pin_pull_mode(clock->number, GPIO_PULL_OFF);
     gpio_set_pin_function(clock->number, clock_pinmux);
     claim_pin(clock);
+    hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(clock->number), GPIO_PIN(clock->number));
     self->clock_pin = clock->number;
 
     if (mosi_none) {
@@ -172,6 +154,7 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         gpio_set_pin_function(mosi->number, mosi_pinmux);
         self->MOSI_pin = mosi->number;
         claim_pin(mosi);
+        hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(mosi->number), GPIO_PIN(mosi->number));
     }
 
     if (miso_none) {
@@ -182,9 +165,8 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         gpio_set_pin_function(miso->number, miso_pinmux);
         self->MISO_pin = miso->number;
         claim_pin(miso);
+        hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(miso->number), GPIO_PIN(miso->number));
     }
-
-    self->running_dma.failure = 1; // not started
 
     spi_m_sync_enable(&self->spi_desc);
 }
@@ -245,6 +227,9 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
 }
 
 bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self) {
+    if (common_hal_busio_spi_deinited(self)) {
+        return false;
+    }
     bool grabbed_lock = false;
     CRITICAL_SECTION_ENTER()
     if (!self->has_lock) {
@@ -267,9 +252,6 @@ bool common_hal_busio_spi_write(busio_spi_obj_t *self,
     const uint8_t *data, size_t len) {
     if (len == 0) {
         return true;
-    }
-    if (self->running_dma.failure != 1) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
     }
     int32_t status;
     if (len >= 16) {
@@ -301,9 +283,6 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
     if (len == 0) {
         return true;
     }
-    if (self->running_dma.failure != 1) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
-    }
     int32_t status;
     if (len >= 16) {
         status = sercom_dma_read(self->spi_desc.dev.prvt, data, len, write_value);
@@ -321,9 +300,6 @@ bool common_hal_busio_spi_read(busio_spi_obj_t *self,
 bool common_hal_busio_spi_transfer(busio_spi_obj_t *self, const uint8_t *data_out, uint8_t *data_in, size_t len) {
     if (len == 0) {
         return true;
-    }
-    if (self->running_dma.failure != 1) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
     }
     int32_t status;
     if (len >= 16) {

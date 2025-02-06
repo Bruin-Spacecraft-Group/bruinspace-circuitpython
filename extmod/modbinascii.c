@@ -34,6 +34,7 @@
 
 #if MICROPY_PY_BINASCII
 
+// CIRCUITPY-CHANGE: added
 static void check_not_unicode(const mp_obj_t arg) {
     #if MICROPY_CPYTHON_COMPAT
     if (mp_obj_is_str(arg)) {
@@ -43,15 +44,15 @@ static void check_not_unicode(const mp_obj_t arg) {
 }
 
 #if MICROPY_PY_BUILTINS_BYTES_HEX
-STATIC mp_obj_t bytes_hex_as_bytes(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t bytes_hex_as_bytes(size_t n_args, const mp_obj_t *args) {
     return mp_obj_bytes_hex(n_args, args, &mp_type_bytes);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bytes_hex_as_bytes_obj, 1, 2, bytes_hex_as_bytes);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bytes_hex_as_bytes_obj, 1, 2, bytes_hex_as_bytes);
 
-STATIC mp_obj_t bytes_fromhex_bytes(mp_obj_t data) {
+static mp_obj_t bytes_fromhex_bytes(mp_obj_t data) {
     return mp_obj_bytes_fromhex(MP_OBJ_FROM_PTR(&mp_type_bytes), data);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(bytes_fromhex_obj, bytes_fromhex_bytes);
+static MP_DEFINE_CONST_FUN_OBJ_1(bytes_fromhex_obj, bytes_fromhex_bytes);
 #endif
 
 // If ch is a character in the base64 alphabet, and is not a pad character, then
@@ -73,7 +74,7 @@ static int mod_binascii_sextet(byte ch) {
     }
 }
 
-STATIC mp_obj_t mod_binascii_a2b_base64(mp_obj_t data) {
+static mp_obj_t mod_binascii_a2b_base64(mp_obj_t data) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(data, &bufinfo, MP_BUFFER_READ);
     byte *in = bufinfo.buf;
@@ -114,9 +115,9 @@ STATIC mp_obj_t mod_binascii_a2b_base64(mp_obj_t data) {
 
     return mp_obj_new_bytes_from_vstr(&vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_binascii_a2b_base64_obj, mod_binascii_a2b_base64);
+static MP_DEFINE_CONST_FUN_OBJ_1(mod_binascii_a2b_base64_obj, mod_binascii_a2b_base64);
 
-STATIC mp_obj_t mod_binascii_b2a_base64(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t mod_binascii_b2a_base64(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_newline };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_newline, MP_ARG_BOOL, {.u_bool = true} },
@@ -178,13 +179,13 @@ STATIC mp_obj_t mod_binascii_b2a_base64(size_t n_args, const mp_obj_t *pos_args,
     }
     return mp_obj_new_bytes_from_vstr(&vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_binascii_b2a_base64_obj, 1, mod_binascii_b2a_base64);
+static MP_DEFINE_CONST_FUN_OBJ_KW(mod_binascii_b2a_base64_obj, 1, mod_binascii_b2a_base64);
 
 // CIRCUITPY-CHANGE: no deflate
 #if MICROPY_PY_BINASCII_CRC32
 #include "lib/uzlib/uzlib.h"
 
-STATIC mp_obj_t mod_binascii_crc32(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t mod_binascii_crc32(size_t n_args, const mp_obj_t *args) {
     mp_buffer_info_t bufinfo;
     // CIRCUITPY-CHANGE
     check_not_unicode(args[0]);
@@ -193,10 +194,10 @@ STATIC mp_obj_t mod_binascii_crc32(size_t n_args, const mp_obj_t *args) {
     crc = uzlib_crc32(bufinfo.buf, bufinfo.len, crc ^ 0xffffffff);
     return mp_obj_new_int_from_uint(crc ^ 0xffffffff);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_binascii_crc32_obj, 1, 2, mod_binascii_crc32);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_binascii_crc32_obj, 1, 2, mod_binascii_crc32);
 #endif
 
-STATIC const mp_rom_map_elem_t mp_module_binascii_globals_table[] = {
+static const mp_rom_map_elem_t mp_module_binascii_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_binascii) },
     #if MICROPY_PY_BUILTINS_BYTES_HEX
     { MP_ROM_QSTR(MP_QSTR_hexlify), MP_ROM_PTR(&bytes_hex_as_bytes_obj) },
@@ -210,7 +211,7 @@ STATIC const mp_rom_map_elem_t mp_module_binascii_globals_table[] = {
     #endif
 };
 
-STATIC MP_DEFINE_CONST_DICT(mp_module_binascii_globals, mp_module_binascii_globals_table);
+static MP_DEFINE_CONST_DICT(mp_module_binascii_globals, mp_module_binascii_globals_table);
 
 const mp_obj_module_t mp_module_binascii = {
     .base = { &mp_type_module },

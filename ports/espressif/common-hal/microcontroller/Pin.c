@@ -1,42 +1,22 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2016 Scott Shawcroft for Adafruit Industries
- * Copyright (c) 2019 Lucian Copeland for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2016 Scott Shawcroft for Adafruit Industries
+// SPDX-FileCopyrightText: Copyright (c) 2019 Lucian Copeland for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/digitalio/DigitalInOut.h"
 
 #include "py/mphal.h"
 
-#include "components/driver/gpio/include/driver/gpio.h"
-#include "components/hal/include/hal/gpio_hal.h"
+#include "driver/gpio.h"
+#include "soc/gpio_periph.h"
 
-STATIC uint64_t _never_reset_pin_mask;
-STATIC uint64_t _skip_reset_once_pin_mask;
-STATIC uint64_t _preserved_pin_mask;
-STATIC uint64_t _in_use_pin_mask;
+static uint64_t _never_reset_pin_mask;
+static uint64_t _skip_reset_once_pin_mask;
+static uint64_t _preserved_pin_mask;
+static uint64_t _in_use_pin_mask;
 
 #define GPIO_SEL_0              (BIT(0))                    /*!< Pin 0 selected */
 #define GPIO_SEL_1              (BIT(1))                    /*!< Pin 1 selected */
@@ -109,6 +89,22 @@ static const uint64_t pin_mask_reset_forbidden =
     // SPI flash and PSRAM pins are protected at runtime in supervisor/port.c.
     #endif // ESP32
 
+    #if defined(CONFIG_IDF_TARGET_ESP32C2)
+    // Never ever reset pins used to communicate with SPI flash.
+    GPIO_SEL_11 |         // VDD_SPI
+    GPIO_SEL_12 |         // SPIHD
+    GPIO_SEL_13 |         // SPIWP
+    GPIO_SEL_14 |         // SPICS0
+    GPIO_SEL_15 |         // SPICLK
+    GPIO_SEL_16 |         // SPID
+    GPIO_SEL_17 |         // SPIQ
+    #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) && CONFIG_ESP_CONSOLE_UART_DEFAULT && CONFIG_ESP_CONSOLE_UART_NUM == 0
+    // Never reset debug UART/console pins.
+    GPIO_SEL_19 |
+    GPIO_SEL_20 |
+    #endif
+    #endif // ESP32C2
+
     #if defined(CONFIG_IDF_TARGET_ESP32C3)
     // Never ever reset pins used to communicate with SPI flash.
     GPIO_SEL_11 |         // VDD_SPI
@@ -175,8 +171,28 @@ static const uint64_t pin_mask_reset_forbidden =
     #endif
     #endif // ESP32H2
 
+    #if defined(CONFIG_IDF_TARGET_ESP32P4)
+    // Never ever reset pins used to communicate with the SPI flash.
+    GPIO_SEL_28 |
+    GPIO_SEL_29 |
+    GPIO_SEL_30 |
+    GPIO_SEL_32 |
+    GPIO_SEL_33 |
+    GPIO_SEL_34 |
+    #if CIRCUITPY_ESP_USB_SERIAL_JTAG
+    // Never ever reset serial/JTAG communication pins.
+    GPIO_SEL_50 |         // USB D-
+    GPIO_SEL_51 |         // USB D+
+    #endif
+    #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) && CONFIG_ESP_CONSOLE_UART_DEFAULT && CONFIG_ESP_CONSOLE_UART_NUM == 0
+    // Never reset debug UART/console pins.
+    GPIO_SEL_37 |
+    GPIO_SEL_38 |
+    #endif
+    #endif // ESP32P4
+
     #if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
-    #if CIRCUITPY_USB
+    #if CIRCUITPY_USB_DEVICE
     // Never ever reset USB pins.
     GPIO_SEL_19 |         // USB D-
     GPIO_SEL_20 |         // USB D+
@@ -241,23 +257,23 @@ MP_WEAK bool espressif_board_reset_pin_number(gpio_num_t pin_number) {
     return false;
 }
 
-STATIC bool _reset_forbidden(gpio_num_t pin_number) {
+static bool _reset_forbidden(gpio_num_t pin_number) {
     return pin_mask_reset_forbidden & PIN_BIT(pin_number);
 }
 
-STATIC bool _never_reset(gpio_num_t pin_number) {
+static bool _never_reset(gpio_num_t pin_number) {
     return _never_reset_pin_mask & PIN_BIT(pin_number);
 }
 
-STATIC bool _skip_reset_once(gpio_num_t pin_number) {
+static bool _skip_reset_once(gpio_num_t pin_number) {
     return _skip_reset_once_pin_mask & PIN_BIT(pin_number);
 }
 
-STATIC bool _preserved_pin(gpio_num_t pin_number) {
+static bool _preserved_pin(gpio_num_t pin_number) {
     return _preserved_pin_mask & PIN_BIT(pin_number);
 }
 
-STATIC void _reset_pin(gpio_num_t pin_number) {
+static void _reset_pin(gpio_num_t pin_number) {
     // Never ever reset pins used for flash, RAM, and basic communication.
     if (_reset_forbidden(pin_number)) {
         return;
@@ -396,4 +412,17 @@ bool common_hal_mcu_pin_is_free(const mcu_pin_obj_t *pin) {
 
 uint8_t common_hal_mcu_pin_number(const mcu_pin_obj_t *pin) {
     return pin ? pin->number : NO_PIN;
+}
+
+void config_pin_as_output_with_level(gpio_num_t pin_number, bool level) {
+    gpio_config_t cfg = {
+        .pin_bit_mask = BIT64(pin_number),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = false,
+        .pull_down_en = false,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&cfg);
+
+    gpio_set_level(pin_number, level);
 }

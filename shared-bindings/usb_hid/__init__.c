@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2017 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2017 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "py/obj.h"
 #include "py/mphal.h"
@@ -56,7 +36,7 @@
 //|     as `usb_cdc` or `storage` to free up endpoints for use by `usb_hid`.
 //|     """
 //|
-STATIC mp_obj_t usb_hid_disable(void) {
+static mp_obj_t usb_hid_disable(void) {
     if (!common_hal_usb_hid_disable()) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Cannot change USB devices now"));
     }
@@ -85,15 +65,16 @@ MP_DEFINE_CONST_FUN_OBJ_0(usb_hid_disable_obj, usb_hid_disable);
 //|
 //|     **Boot Devices**
 //|
-//|     Boot devices implement a fixed, predefined report descriptor, defined in
-//|     https://www.usb.org/sites/default/files/hid1_12.pdf, Appendix B. A USB host
-//|     can request to use the boot device if the USB device says it is available.
-//|     Usually only a BIOS or other kind of limited-functionality
-//|     host needs boot keyboard support.
+//|     A USB HID boot device implements a fixed, predefined report descriptor,
+//|     as defined in https://www.usb.org/sites/default/files/hid1_12.pdf, Appendix B.
+//|     Currently the only HID boot devices defined in the USB specification are a keyboard and a mouse.
+//|     A USB host can ask a USB device to use a boot device if the USB device says it is available.
+//|     Usually only a limited-functionality host like a BIOS or other boot-time software
+//|     needs boot device support.
 //|
 //|     For example, to make a boot keyboard available, you can use this code::
 //|
-//|       usb_hid.enable((Device.KEYBOARD), boot_device=1)  # 1 for a keyboard
+//|       usb_hid.enable((Device.KEYBOARD,), boot_device=1)  # 1 for a keyboard, 2 for a mouse
 //|
 //|     If the host requests the boot keyboard, the report descriptor provided by `Device.KEYBOARD`
 //|     will be ignored, and the predefined report descriptor will be used.
@@ -108,7 +89,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(usb_hid_disable_obj, usb_hid_disable);
 //|     """
 //|     ...
 //|
-STATIC mp_obj_t usb_hid_enable(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t usb_hid_enable(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_devices, ARG_boot_device };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_devices, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -150,7 +131,7 @@ MP_DEFINE_CONST_FUN_OBJ_KW(usb_hid_enable_obj, 1, usb_hid_enable);
 //|     :rtype int:
 //|     """
 //|
-STATIC mp_obj_t usb_hid_get_boot_device(void) {
+static mp_obj_t usb_hid_get_boot_device(void) {
     return MP_OBJ_NEW_SMALL_INT(common_hal_usb_hid_get_boot_device());
 }
 MP_DEFINE_CONST_FUN_OBJ_0(usb_hid_get_boot_device_obj, usb_hid_get_boot_device);
@@ -167,7 +148,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(usb_hid_get_boot_device_obj, usb_hid_get_boot_device);
 //|     """
 //|     ...
 //|
-STATIC mp_obj_t usb_hid_set_interface_name(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t usb_hid_set_interface_name(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_interface_name, MP_ARG_OBJ | MP_ARG_REQUIRED, {.u_rom_obj = mp_const_none} }
     };
@@ -189,7 +170,7 @@ STATIC mp_obj_t usb_hid_set_interface_name(size_t n_args, const mp_obj_t *pos_ar
 MP_DEFINE_CONST_FUN_OBJ_KW(usb_hid_set_interface_name_obj, 1, usb_hid_set_interface_name);
 
 // usb_hid.devices is set once the usb devices are determined, after boot.py runs.
-STATIC mp_map_elem_t usb_hid_module_globals_table[] = {
+static mp_map_elem_t usb_hid_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_usb_hid) },
     { MP_ROM_QSTR(MP_QSTR_Device),          MP_OBJ_FROM_PTR(&usb_hid_device_type) },
     { MP_ROM_QSTR(MP_QSTR_devices),         mp_const_none },
@@ -199,7 +180,7 @@ STATIC mp_map_elem_t usb_hid_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_set_interface_name), MP_OBJ_FROM_PTR(&usb_hid_set_interface_name_obj) },
 };
 
-STATIC MP_DEFINE_MUTABLE_DICT(usb_hid_module_globals, usb_hid_module_globals_table);
+static MP_DEFINE_MUTABLE_DICT(usb_hid_module_globals, usb_hid_module_globals_table);
 
 const mp_obj_module_t usb_hid_module = {
     .base = { &mp_type_module },

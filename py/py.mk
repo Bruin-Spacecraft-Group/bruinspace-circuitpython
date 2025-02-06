@@ -88,6 +88,7 @@ $(BUILD)/extmod/ulab/code/%.o: CFLAGS += -Os
 endif # CIRCUITPY_ULAB_OPTIMIZE_SIZE
 endif # CIRCUITPY_ULAB
 
+# CIRCUITPY-CHANGE: additional files
 # py object files
 PY_CORE_O_BASENAME = $(addprefix py/,\
 	mpstate.o \
@@ -222,7 +223,7 @@ PY_O += $(PY_CORE_O)
 
 # object file for frozen code specified via a manifest
 ifneq ($(FROZEN_MANIFEST),)
-PY_O += $(BUILD)/$(BUILD)/frozen_content.o
+PY_O += $(BUILD)/frozen_content.o
 endif
 
 # Sources that may contain qstrings
@@ -321,5 +322,6 @@ endif
 # http://www.emulators.com/docs/nx25_nostradamus.htm
 #-fno-crossjumping
 
+# CIRCUITPY-CHANGE: include extmod.mk here instead of in port/*/Makefile
 # Include rules for extmod related code
 include $(TOP)/extmod/extmod.mk

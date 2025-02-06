@@ -174,3 +174,27 @@ internal_bench/bytebuf:
     0.177s (+87.78%) internal_bench/bytebuf-3-bytarray_map.py
 1 tests performed (3 individual testcases)
 ```
+
+## Test key/certificates
+
+SSL/TLS tests in `multi_net` and `net_inet` use a
+self-signed key/cert pair that is randomly generated and to be used for
+testing/demonstration only. You should always generate your own key/cert.
+
+To generate a new self-signed RSA key/cert pair with openssl do:
+```
+$ openssl req -x509 -newkey rsa:2048 -keyout rsa_key.pem -out rsa_cert.pem -days 365 -nodes -subj '/CN=micropython.local/O=MicroPython/C=AU'
+```
+In this case CN is: micropython.local
+
+Convert them to DER format:
+```
+$ openssl pkey -in rsa_key.pem -out rsa_key.der -outform DER
+$ openssl x509 -in rsa_cert.pem -out rsa_cert.der -outform DER
+```
+
+To test elliptic curve key/cert pairs, create a key then a certificate using:
+```
+$ openssl ecparam -name prime256v1 -genkey -noout -out ec_key.der -outform DER
+$ openssl req -new -x509 -key ec_key.der -out ec_cert.der -outform DER -days 365 -nodes -subj '/CN=micropython.local/O=MicroPython/C=AU'
+```

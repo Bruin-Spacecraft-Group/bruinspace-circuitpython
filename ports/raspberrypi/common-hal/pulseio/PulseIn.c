@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Dave Putz for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Dave Putz for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "src/rp2_common/hardware_gpio/include/hardware/gpio.h"
 
@@ -61,20 +41,22 @@ void common_hal_pulseio_pulsein_construct(pulseio_pulsein_obj_t *self,
         1000000, // frequency
         NULL, 0, // init, init_len
         NULL, 0, // may_exec
-        NULL, 0, 0, 0, // first out pin, # out pins, initial_out_pin_state
-        pin, 1, 0, 0, // first in pin, # in pins
-        NULL, 0, 0, 0, // first set pin
-        NULL, 0, 0, 0, // first sideset pin
+        NULL, 0, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first out pin, # out pins, initial_out_pin_state
+        pin, 1, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first in pin, # in pins
+        NULL, 0, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first set pin
+        NULL, 0, false, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first sideset pin
         false, // No sideset enable
         NULL, PULL_NONE, // jump pin, jmp_pull
-        0, // wait gpio pins
+        PIO_PINMASK_NONE, // wait gpio pins
         true, // exclusive pin usage
         false, 8, false, // TX, setting we don't use
         false, // wait for TX stall
         true, 32, true, // RX auto pull every 32 bits. shift left to output msb first
         false, // Not user-interruptible.
         0, -1, // wrap settings
-        PIO_ANY_OFFSET);
+        PIO_ANY_OFFSET,
+        PIO_FIFO_TYPE_DEFAULT,
+        PIO_MOV_STATUS_DEFAULT, PIO_MOV_N_DEFAULT);
 
     common_hal_pulseio_pulsein_pause(self);
 

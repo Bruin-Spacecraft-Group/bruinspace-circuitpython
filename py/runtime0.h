@@ -25,17 +25,20 @@
  */
 #ifndef MICROPY_INCLUDED_PY_RUNTIME0_H
 #define MICROPY_INCLUDED_PY_RUNTIME0_H
-#include "mpconfig.h"
 
-// The first four must fit in 8 bits, see emitbc.c
-// The remaining must fit in 16 bits, see scope.h
-// and must match definitions in mpy-tool.py and mpy_ld.py
+// These constants are used by:
+// - mp_raw_code_t::is_generator (only MP_SCOPE_FLAG_GENERATOR)
+// CIRCUITPY-CHANGE: distinguish generator and async
+// - mp_raw_code_t::is_generator (only MP_SCOPE_FLAG_ASYNC)
+// - scope_t::scope_flags (16 bits)
+// - MP_BC_PRELUDE_SIG_ENCODE macro, masked by MP_SCOPE_FLAG_ALL_SIG (4 bits)
+// - tools/mpy_ld.py, when generating mpy files (maximum 7 bits)
 #define MP_SCOPE_FLAG_ALL_SIG      (0x1f)
 #define MP_SCOPE_FLAG_GENERATOR    (0x01)
 #define MP_SCOPE_FLAG_VARKEYWORDS  (0x02)
 #define MP_SCOPE_FLAG_VARARGS      (0x04)
 #define MP_SCOPE_FLAG_DEFKWARGS    (0x08)
-// CIRCUITPY-CHANGE
+// CIRCUITPY-CHANGE: FLAG_ASYNC
 #define MP_SCOPE_FLAG_ASYNC        (0x10)
 #define MP_SCOPE_FLAG_REFGLOBALS   (0x20) // used only if native emitter enabled
 #define MP_SCOPE_FLAG_HASCONSTS    (0x40) // used only if native emitter enabled

@@ -11,19 +11,7 @@
 //| """Serial Peripheral Interface protocol target
 //|
 //| The `spitarget` module contains classes to support an SPI target.
-//|
-//| Example emulating a target ::
-//|
-//|   import board
-//|   from spitarget import SPITarget
-//|
-//|   TODO
-//|
-//| This example sets up an SPI device that can be accessed from Linux like this::
-//|
-//|   $ TODO command
-//|   TODO result
-//|   $ TODO command
+
 
 STATIC const mp_rom_map_elem_t spitarget_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_spitarget) },

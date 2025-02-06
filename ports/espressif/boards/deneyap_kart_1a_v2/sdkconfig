@@ -7,7 +7,6 @@
 #
 # LWIP
 #
-CONFIG_LWIP_LOCAL_HOSTNAME="DeneyapKart1A_v2"
 # end of LWIP
 
 # end of Component config

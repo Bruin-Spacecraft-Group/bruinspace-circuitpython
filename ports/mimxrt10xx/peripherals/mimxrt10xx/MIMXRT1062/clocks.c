@@ -1,28 +1,8 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Artur Pacholec
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2019 Artur Pacholec
+//
+// SPDX-License-Identifier: MIT
 /*
  * Copyright 2019 NXP
  * All rights reserved.
@@ -187,9 +167,9 @@ void clocks_init(void) {
     CLOCK_DisableClock(kCLOCK_Can2S);
     CLOCK_DisableClock(kCLOCK_Can3S);
     /* Set CAN_CLK_PODF. */
-    CLOCK_SetDiv(kCLOCK_CanDiv, 1);
+    CLOCK_SetDiv(kCLOCK_CanDiv, 2); // Clock divider for master flexcan clock source
     /* Set Can clock source. */
-    CLOCK_SetMux(kCLOCK_CanMux, 2);
+    CLOCK_SetMux(kCLOCK_CanMux, 0); // Select 60M clock divided by USB1 PLL (480 MHz) as master flexcan clock source
     /* Disable UART clock gate. */
     CLOCK_DisableClock(kCLOCK_Lpuart1);
     CLOCK_DisableClock(kCLOCK_Lpuart2);

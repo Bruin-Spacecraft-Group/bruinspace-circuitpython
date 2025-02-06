@@ -1,31 +1,11 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2020 Nick Moore
- * Copyright (c) 2018 shawwwn <shawwwn1@gmail.com>
- * Copyright (c) 2020-2021 Glenn Moloney @glenn20
- * Copyright (c) 2023 MicroDev
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2017-2020 Nick Moore
+// SPDX-FileCopyrightText: Copyright (c) 2018 shawwwn <shawwwn1@gmail.com>
+// SPDX-FileCopyrightText: Copyright (c) 2020-2021 Glenn Moloney @glenn20
+// SPDX-FileCopyrightText: Copyright (c) 2023 MicroDev
+//
+// SPDX-License-Identifier: MIT
 
 #include "py/mperrno.h"
 #include "py/runtime.h"
@@ -97,23 +77,10 @@ static void recv_cb(const esp_now_recv_info_t *esp_now_info, const uint8_t *msg,
         return;
     }
 
-    // Get the RSSI value from the wifi packet header
-    // Secret magic to get the rssi from the wifi packet header
-    // See espnow.c:espnow_recv_cb() at https://github.com/espressif/esp-now/
-    // In the wifi packet the msg comes after a wifi_promiscuous_pkt_t
-    // and a espnow_frame_format_t.
-    // Backtrack to get a pointer to the wifi_promiscuous_pkt_t.
-    #define SIZEOF_ESPNOW_FRAME_FORMAT 39
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wcast-align"
-    wifi_promiscuous_pkt_t *wifi_packet = (wifi_promiscuous_pkt_t *)(
-        msg - SIZEOF_ESPNOW_FRAME_FORMAT - sizeof(wifi_promiscuous_pkt_t));
-    #pragma GCC diagnostic pop
-
     espnow_header_t header;
     header.magic = ESPNOW_MAGIC;
     header.msg_len = msg_len;
-    header.rssi = wifi_packet->rx_ctrl.rssi;
+    header.rssi = esp_now_info->rx_ctrl->rssi;
     header.time_ms = mp_hal_ticks_ms();
 
     ringbuf_put_n(buf, (uint8_t *)&header, sizeof(header));

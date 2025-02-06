@@ -1,3 +1,4 @@
+# CIRCUITPY-CHANGE: signed support
 print((10).to_bytes(1, "little"))
 print((-10).to_bytes(1, "little", signed=True))
 # Test fitting in length that's not a power of two.
@@ -25,6 +26,7 @@ try:
 except ValueError:
     print("ValueError")
 
+# CIRCUITPY-CHANGE: more tests
 # too small buffer should raise an error
 try:
     (256).to_bytes(1, "little")
@@ -41,3 +43,7 @@ try:
     (-256).to_bytes(2, "little", signed=False)
 except OverflowError:
     print("OverflowError")
+
+# byteorder arg can be omitted; default is "big"
+print(int.from_bytes(b"\x01\0"))
+print((100).to_bytes(10))

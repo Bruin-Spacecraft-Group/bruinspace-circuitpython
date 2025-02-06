@@ -34,10 +34,10 @@
 // Note that any bugs introduced in this file can cause crashes
 // at startupfor chips using external SPI flash.
 
-STATIC SPIDRV_HandleData_t spidrv_eusart_handle;
-STATIC SPIDRV_Init_t spidrv_eusart_init = SPIDRV_MASTER_EUSART1;
-STATIC bool in_used = false;
-STATIC bool never_reset = false;
+static SPIDRV_HandleData_t spidrv_eusart_handle;
+static SPIDRV_Init_t spidrv_eusart_init = SPIDRV_MASTER_EUSART1;
+static bool in_used = false;
+static bool never_reset = false;
 
 // Reset SPI when reload
 void spi_reset(void) {
@@ -186,6 +186,9 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
 
 // Lock SPI bus
 bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self) {
+    if (common_hal_busio_spi_deinited(self)) {
+        return false;
+    }
     bool grabbed_lock = false;
     if (!self->has_lock) {
         grabbed_lock = true;

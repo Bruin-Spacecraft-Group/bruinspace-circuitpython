@@ -38,10 +38,10 @@
 // Number of scan channels
 #define NUM_INPUTS 8
 
-STATIC uint8_t num_current_input = 0;
-STATIC volatile uint16_t scan_result[NUM_INPUTS];
-STATIC volatile uint8_t scan_flag = 0;
-STATIC IADC_ScanTable_t init_scan_table = IADC_SCANTABLE_DEFAULT;  // Scan Table
+static uint8_t num_current_input = 0;
+static volatile uint16_t scan_result[NUM_INPUTS];
+static volatile uint8_t scan_flag = 0;
+static IADC_ScanTable_t init_scan_table = IADC_SCANTABLE_DEFAULT;  // Scan Table
 
 // Construct analogin pin. This function is called when init AnalogIn
 void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,

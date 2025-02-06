@@ -30,23 +30,17 @@
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/microcontroller/Pin.h"
 
-STATIC I2CSPM_Init_TypeDef i2cspm_init;
-STATIC bool in_used = false;
-STATIC bool never_reset = false;
-
-// Reser I2C peripheral
-void i2c_reset(void) {
-    if ((!never_reset) && in_used) {
-        I2C_Reset(DEFAULT_I2C_PERIPHERAL);
-        in_used = false;
-    }
-}
+static I2CSPM_Init_TypeDef i2cspm_init;
+static bool in_used = false;
 
 // Construct I2C protocol, this function init i2c peripheral
 void common_hal_busio_i2c_construct(busio_i2c_obj_t *self,
     const mcu_pin_obj_t *scl,
     const mcu_pin_obj_t *sda,
     uint32_t frequency, uint32_t timeout) {
+
+    // Ensure the object starts in its deinit state.
+    common_hal_busio_i2c_mark_deinit(self);
 
     if ((scl != NULL) && (sda != NULL)) {
         if (scl->function_list[ DEFAULT_I2C_PERIPHERAL == I2C1?
@@ -80,7 +74,6 @@ void common_hal_busio_i2c_construct(busio_i2c_obj_t *self,
 
 // Never reset I2C obj when reload
 void common_hal_busio_i2c_never_reset(busio_i2c_obj_t *self) {
-    never_reset = true;
     common_hal_never_reset_pin(self->sda);
     common_hal_never_reset_pin(self->scl);
 }
@@ -98,10 +91,13 @@ void common_hal_busio_i2c_deinit(busio_i2c_obj_t *self) {
     I2C_Reset(self->i2cspm);
     common_hal_reset_pin(self->sda);
     common_hal_reset_pin(self->scl);
-    self->sda = NULL;
-    self->scl = NULL;
     self->i2cspm = NULL;
     in_used = false;
+    common_hal_busio_i2c_mark_deinit(self);
+}
+
+void common_hal_busio_i2c_mark_deinit(busio_i2c_obj_t *self) {
+    self->sda = NULL;
 }
 
 // Probe device in I2C bus
@@ -125,6 +121,9 @@ bool common_hal_busio_i2c_probe(busio_i2c_obj_t *self, uint8_t addr) {
 
 // Lock I2C bus
 bool common_hal_busio_i2c_try_lock(busio_i2c_obj_t *self) {
+    if (common_hal_busio_i2c_deinited(self)) {
+        return false;
+    }
     bool grabbed_lock = false;
 
     if (!self->has_lock) {

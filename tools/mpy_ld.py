@@ -36,7 +36,7 @@ import makeqstrdata as qstrutil
 
 # MicroPython constants
 MPY_VERSION = 6
-MPY_SUB_VERSION = 1
+MPY_SUB_VERSION = 3
 MP_CODE_BYTECODE = 2
 MP_CODE_NATIVE_VIPER = 4
 MP_NATIVE_ARCH_X86 = 1
@@ -48,11 +48,11 @@ MP_NATIVE_ARCH_ARMV7EMDP = 8
 MP_NATIVE_ARCH_XTENSA = 9
 MP_NATIVE_ARCH_XTENSAWIN = 10
 MP_PERSISTENT_OBJ_STR = 5
-# Circuitpython: this does not match upstream because we added MP_SCOPE_FLAG_ASYNC
-MP_SCOPE_FLAG_VIPERRELOC = 0x20
-MP_SCOPE_FLAG_VIPERRODATA = 0x40
-MP_SCOPE_FLAG_VIPERBSS = 0x80
+MP_SCOPE_FLAG_VIPERRELOC = 0x10
+MP_SCOPE_FLAG_VIPERRODATA = 0x20
+MP_SCOPE_FLAG_VIPERBSS = 0x40
 MP_SMALL_INT_BITS = 31
+MP_FUN_TABLE_MP_TYPE_TYPE_OFFSET = 73
 
 # ELF constants
 R_386_32 = 1
@@ -755,8 +755,7 @@ def link_objects(env, native_qstr_vals_len):
     # Resolve unknown symbols
     mp_fun_table_sec = Section(".external.mp_fun_table", b"", 0)
     fun_table = {
-        # Circuitpython: this does not match upstream because we added an item in _mp_fnu_table_t
-        key: 68 + idx
+        key: MP_FUN_TABLE_MP_TYPE_TYPE_OFFSET + idx
         for idx, key in enumerate(
             [
                 "mp_type_type",
@@ -768,6 +767,7 @@ def link_objects(env, native_qstr_vals_len):
                 "mp_type_fun_builtin_2",
                 "mp_type_fun_builtin_3",
                 "mp_type_fun_builtin_var",
+                "mp_type_Exception",
                 "mp_stream_read_obj",
                 "mp_stream_readinto_obj",
                 "mp_stream_unbuffered_readline_obj",
@@ -907,6 +907,7 @@ def build_mpy(env, entry_offset, fmpy, native_qstr_vals):
     # MPY: header
     out.write_bytes(
         bytearray(
+            # CIRCUITPY-CHANGE: CircuitPython uses "C"
             [ord("C"), MPY_VERSION, env.arch.mpy_feature | MPY_SUB_VERSION, MP_SMALL_INT_BITS]
         )
     )

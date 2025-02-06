@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: MIT
 
+# CIRCUITPY-CHANGES: many additions
+
 # Compiled Sources
 ###################
 *.o
@@ -91,3 +93,7 @@ TAGS
 
 # Uncrustify formatting
 *.uncrustify
+
+# clangd cache
+##############
+.cache

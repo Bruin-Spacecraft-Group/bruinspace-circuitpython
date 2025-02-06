@@ -1,4 +1,4 @@
-# CIRCUITPY-CHANGE
+# CIRCUITPY-CHANGE: micropython does not have this test file
 # test bit_length for various sizes of ints
 
 for x in range(-10, 10):

@@ -13,9 +13,9 @@
 #include "supervisor/internal_flash.h"
 #include "supervisor/linker.h"
 
-STATIC uint8_t _busy_bit_shift;
-STATIC bool _busy_bit_polarity;
-STATIC bool _inited = false;
+static uint8_t _busy_bit_shift;
+static bool _busy_bit_polarity;
+static bool _inited = false;
 
 void flexspi_nor_init(void) {
     // Copy busy bit info into RAM so we can use if when flash isn't available.
@@ -24,7 +24,7 @@ void flexspi_nor_init(void) {
     _inited = true;
 }
 
-STATIC status_t PLACE_IN_ITCM(flexspi_nor_write_enable)(FLEXSPI_Type * base, uint32_t baseAddr)
+static status_t PLACE_IN_ITCM(flexspi_nor_write_enable)(FLEXSPI_Type * base, uint32_t baseAddr)
 {
     flexspi_transfer_t flashXfer;
     status_t status;
@@ -41,7 +41,7 @@ STATIC status_t PLACE_IN_ITCM(flexspi_nor_write_enable)(FLEXSPI_Type * base, uin
     return status;
 }
 
-STATIC status_t PLACE_IN_ITCM(flexspi_nor_wait_bus_busy)(FLEXSPI_Type * base)
+static status_t PLACE_IN_ITCM(flexspi_nor_wait_bus_busy)(FLEXSPI_Type * base)
 {
     /* Wait status ready. */
     bool isBusy;

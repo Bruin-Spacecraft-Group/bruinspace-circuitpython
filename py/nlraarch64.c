@@ -26,6 +26,7 @@
 
 #include "py/mpstate.h" // needed for NLR defs
 
+// CIRCUITPY-CHANGE: avoid warnings
 #if defined(MICROPY_NLR_AARCH64) && MICROPY_NLR_AARCH64
 
 // AArch64 callee-saved registers are x19-x29.
@@ -75,7 +76,7 @@ NORETURN void nlr_jump(void *val) {
         "ret                     \n"
         :
         : "r" (top)
-        :
+        : "memory"
         );
 
     MP_UNREACHABLE

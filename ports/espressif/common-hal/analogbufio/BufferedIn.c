@@ -1,31 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * SPDX-FileCopyrightText: Copyright (c) 2023 Milind Movasha
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2023 Milind Movasha
+//
+// SPDX-License-Identifier: MIT
 
 #include <stdio.h>
 #include "bindings/espidf/__init__.h"
@@ -56,7 +33,7 @@
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
 #define ADC_RESULT_BYTE     2
 #define ADC_CONV_LIMIT_EN   0
-#elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32H2)
+#elif defined(CONFIG_IDF_TARGET_ESP32C2) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32H2) || defined(CONFIG_IDF_TARGET_ESP32P4)
 #define ADC_RESULT_BYTE     4
 #define ADC_CONV_LIMIT_EN   0
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -93,6 +70,8 @@ void common_hal_analogbufio_bufferedin_construct(analogbufio_bufferedin_obj_t *s
         raise_ValueError_invalid_pin();
     }
     #endif
+
+    mp_arg_validate_int_range(sample_rate, SOC_ADC_SAMPLE_FREQ_THRES_LOW, SOC_ADC_SAMPLE_FREQ_THRES_HIGH, MP_QSTR_sample_rate);
 
     common_hal_mcu_pin_claim(pin);
 }
@@ -132,7 +111,7 @@ static void start_dma(analogbufio_bufferedin_obj_t *self, adc_digi_convert_mode_
     };
 
     #if defined(DEBUG_ANALOGBUFIO)
-    mp_printf(&mp_plat_print, "pin:%d, ADC channel:%d, ADC index:%d, adc1_chan_mask:0x%x, adc2_chan_mask:0x%x\n", pin->number, pin->adc_channel, pin->adc_index, adc1_chan_mask, adc2_chan_mask);
+    mp_printf(&mp_plat_print, "pin:%d, ADC channel:%d, ADC index:%d\n", pin->number, pin->adc_channel, pin->adc_index);
     #endif // DEBUG_ANALOGBUFIO
     esp_err_t err = adc_continuous_new_handle(&adc_dma_config, &self->handle);
     if (ESP_OK != err) {
@@ -238,7 +217,7 @@ static bool check_valid_data(const adc_digi_output_data_t *data, const mcu_pin_o
     return true;
 }
 
-uint32_t common_hal_analogbufio_bufferedin_readinto(analogbufio_bufferedin_obj_t *self, uint8_t *buffer, uint32_t len, uint8_t bytes_per_sample) {
+uint32_t common_hal_analogbufio_bufferedin_readinto(analogbufio_bufferedin_obj_t *self, uint8_t *buffer, uint32_t len, uint8_t bytes_per_sample, bool loop) {
     uint8_t result[NUM_SAMPLES_PER_INTERRUPT * SOC_ADC_DIGI_DATA_BYTES_PER_CONV] __attribute__ ((aligned(4))) = {0};
     uint32_t captured_samples = 0;
     uint32_t captured_bytes = 0;

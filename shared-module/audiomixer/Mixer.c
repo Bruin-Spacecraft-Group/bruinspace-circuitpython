@@ -1,30 +1,8 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2018 Scott Shawcroft for Adafruit Industries
- *               2018 DeanM for Adafruit Industries
- *               2019 Michael Schroeder
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2018 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/audiomixer/Mixer.h"
 #include "shared-bindings/audiomixer/MixerVoice.h"
@@ -210,9 +188,18 @@ static void mix_down_one_voice(audiomixer_mixer_obj_t *self,
             }
         }
 
-        uint32_t n = MIN(voice->buffer_length, length);
         uint32_t *src = voice->remaining_buffer;
+
+        #if CIRCUITPY_SYNTHIO
+        uint32_t n = MIN(MIN(voice->buffer_length, length), SYNTHIO_MAX_DUR * self->channel_count);
+
+        // Get the current level from the BlockInput. These may change at run time so you need to do bounds checking if required.
+        shared_bindings_synthio_lfo_tick(self->sample_rate, n / self->channel_count);
+        uint16_t level = (uint16_t)(synthio_block_slot_get_limited(&voice->level, MICROPY_FLOAT_CONST(0.0), MICROPY_FLOAT_CONST(1.0)) * (1 << 15));
+        #else
+        uint32_t n = MIN(voice->buffer_length, length);
         uint16_t level = voice->level;
+        #endif
 
         // First active voice gets copied over verbatim.
         if (!voices_active) {

@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2023 Jeff Epler for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2023 Jeff Epler for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 
@@ -39,7 +19,7 @@
 #include "esp_log.h"
 #define TAG "LCD"
 
-#include "components/esp_rom/include/esp_rom_sys.h"
+#include "esp_rom_sys.h"
 
 #include "bindings/espidf/__init__.h"
 #include "py/objarray.h"
@@ -48,11 +28,11 @@
 #include "common-hal/espidf/__init__.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "py/runtime.h"
-#include "components/driver/gpio/include/driver/gpio.h"
-#include "components/esp_rom/include/esp_rom_gpio.h"
-#include "components/hal/esp32s3/include/hal/lcd_ll.h"
-#include "components/hal/include/hal/gpio_hal.h"
-#include "components/soc/esp32s3/include/soc/lcd_cam_struct.h"
+#include "driver/gpio.h"
+#include "esp_rom_gpio.h"
+#include "hal/lcd_ll.h"
+#include "hal/gpio_hal.h"
+#include "soc/lcd_cam_struct.h"
 #include "esp_heap_caps.h"
 
 // should be from rom/cache.h but it wasn't working
@@ -163,15 +143,15 @@ void common_hal_dotclockframebuffer_framebuffer_construct(dotclockframebuffer_fr
     cfg->flags.fb_in_psram = 1; // allocate frame buffer in PSRAM
 
     esp_err_t ret = esp_lcd_new_rgb_panel(&self->panel_config, &self->panel_handle);
-    cp_check_esp_error(ret);
-    cp_check_esp_error(esp_lcd_panel_reset(self->panel_handle));
-    cp_check_esp_error(esp_lcd_panel_init(self->panel_handle));
+    CHECK_ESP_RESULT(ret);
+    CHECK_ESP_RESULT(esp_lcd_panel_reset(self->panel_handle));
+    CHECK_ESP_RESULT(esp_lcd_panel_init(self->panel_handle));
 
     uint16_t color = 0;
-    cp_check_esp_error(self->panel_handle->draw_bitmap(self->panel_handle, 0, 0, 1, 1, &color));
+    CHECK_ESP_RESULT(self->panel_handle->draw_bitmap(self->panel_handle, 0, 0, 1, 1, &color));
 
     void *fb;
-    cp_check_esp_error(esp_lcd_rgb_panel_get_frame_buffer(self->panel_handle, 1, &fb));
+    CHECK_ESP_RESULT(esp_lcd_rgb_panel_get_frame_buffer(self->panel_handle, 1, &fb));
 
     self->frequency = frequency;
     self->width = width;

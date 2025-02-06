@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include <string.h>
 
@@ -32,6 +12,7 @@
 #include "shared-bindings/digitalio/Pull.h"
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/microcontroller/Pin.h"
+#include "shared-bindings/memorymap/AddressRange.h"
 
 #include "src/rp2040/hardware_regs/include/hardware/platform_defs.h"
 #include "src/rp2_common/hardware_clocks/include/hardware/clocks.h"
@@ -48,57 +29,92 @@
 #define NO_DMA_CHANNEL (-1)
 
 // Count how many state machines are using each pin.
-STATIC uint8_t _pin_reference_count[NUM_BANK0_GPIOS];
-STATIC uint32_t _current_program_id[NUM_PIOS][NUM_PIO_STATE_MACHINES];
-STATIC uint8_t _current_program_offset[NUM_PIOS][NUM_PIO_STATE_MACHINES];
-STATIC uint8_t _current_program_len[NUM_PIOS][NUM_PIO_STATE_MACHINES];
-STATIC bool _never_reset[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static uint8_t _pin_reference_count[NUM_BANK0_GPIOS];
+static uint32_t _current_program_id[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static uint8_t _current_program_offset[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static uint8_t _current_program_len[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static bool _never_reset[NUM_PIOS][NUM_PIO_STATE_MACHINES];
 
-STATIC uint32_t _current_pins[NUM_PIOS];
-STATIC uint32_t _current_sm_pins[NUM_PIOS][NUM_PIO_STATE_MACHINES];
-STATIC int8_t _sm_dma_plus_one[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static pio_pinmask_t _current_pins[NUM_PIOS];
+static pio_pinmask_t _current_sm_pins[NUM_PIOS][NUM_PIO_STATE_MACHINES];
 
-#define SM_DMA_ALLOCATED(pio_index, sm) (_sm_dma_plus_one[(pio_index)][(sm)] != 0)
-#define SM_DMA_GET_CHANNEL(pio_index, sm) (_sm_dma_plus_one[(pio_index)][(sm)] - 1)
-#define SM_DMA_CLEAR_CHANNEL(pio_index, sm) (_sm_dma_plus_one[(pio_index)][(sm)] = 0)
-#define SM_DMA_SET_CHANNEL(pio_isntance, sm, channel) (_sm_dma_plus_one[(pio_index)][(sm)] = (channel) + 1)
+static int8_t _sm_dma_plus_one_write[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static int8_t _sm_dma_plus_one_read[NUM_PIOS][NUM_PIO_STATE_MACHINES];
 
-STATIC PIO pio_instances[2] = {pio0, pio1};
+#define SM_DMA_ALLOCATED_WRITE(pio_index, sm) (_sm_dma_plus_one_write[(pio_index)][(sm)] != 0)
+#define SM_DMA_GET_CHANNEL_WRITE(pio_index, sm) (_sm_dma_plus_one_write[(pio_index)][(sm)] - 1)
+#define SM_DMA_CLEAR_CHANNEL_WRITE(pio_index, sm) (_sm_dma_plus_one_write[(pio_index)][(sm)] = 0)
+#define SM_DMA_SET_CHANNEL_WRITE(pio_index, sm, channel) (_sm_dma_plus_one_write[(pio_index)][(sm)] = (channel) + 1)
+
+#define SM_DMA_ALLOCATED_READ(pio_index, sm) (_sm_dma_plus_one_read[(pio_index)][(sm)] != 0)
+#define SM_DMA_GET_CHANNEL_READ(pio_index, sm) (_sm_dma_plus_one_read[(pio_index)][(sm)] - 1)
+#define SM_DMA_CLEAR_CHANNEL_READ(pio_index, sm) (_sm_dma_plus_one_read[(pio_index)][(sm)] = 0)
+#define SM_DMA_SET_CHANNEL_READ(pio_index, sm, channel) (_sm_dma_plus_one_read[(pio_index)][(sm)] = (channel) + 1)
+
 typedef void (*interrupt_handler_type)(void *);
-STATIC interrupt_handler_type _interrupt_handler[NUM_PIOS][NUM_PIO_STATE_MACHINES];
-STATIC void *_interrupt_arg[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static interrupt_handler_type _interrupt_handler[NUM_PIOS][NUM_PIO_STATE_MACHINES];
+static void *_interrupt_arg[NUM_PIOS][NUM_PIO_STATE_MACHINES];
 
-STATIC void rp2pio_statemachine_interrupt_handler(void);
+static void rp2pio_statemachine_interrupt_handler(void);
 
-static void rp2pio_statemachine_set_pull(uint32_t pull_pin_up, uint32_t pull_pin_down, uint32_t pins_we_use) {
+// Workaround for sdk bug: https://github.com/raspberrypi/pico-sdk/issues/1878
+// This workaround can be removed when we upgrade to sdk 2.0.1
+static inline void sm_config_set_in_pin_count_issue1878(pio_sm_config *c, uint in_count) {
+    #if PICO_PIO_VERSION == 0
+    // can't be changed from 32 on PIO v0
+    ((void)c);
+    valid_params_if(HARDWARE_PIO, in_count == 32);
+    #else
+    valid_params_if(HARDWARE_PIO, in_count && in_count <= 32);
+    c->shiftctrl = (c->shiftctrl & ~PIO_SM0_SHIFTCTRL_IN_COUNT_BITS) |
+        ((in_count & 0x1fu) << PIO_SM0_SHIFTCTRL_IN_COUNT_LSB);
+    #endif
+}
+static void rp2pio_statemachine_set_pull(pio_pinmask_t pull_pin_up, pio_pinmask_t pull_pin_down, pio_pinmask_t pins_we_use) {
     for (size_t i = 0; i < NUM_BANK0_GPIOS; i++) {
-        bool used = pins_we_use & (1 << i);
+        bool used = PIO_PINMASK_IS_SET(pins_we_use, i);
         if (used) {
-            bool pull_up = pull_pin_up & (1 << i);
-            bool pull_down = pull_pin_down & (1 << i);
+            bool pull_up = PIO_PINMASK_IS_SET(pull_pin_up, i);
+            bool pull_down = PIO_PINMASK_IS_SET(pull_pin_down, i);
             gpio_set_pulls(i, pull_up, pull_down);
         }
     }
 }
 
-STATIC void rp2pio_statemachine_clear_dma(int pio_index, int sm) {
-    if (SM_DMA_ALLOCATED(pio_index, sm)) {
-        int channel = SM_DMA_GET_CHANNEL(pio_index, sm);
-        uint32_t channel_mask = 1u << channel;
-        dma_hw->inte0 &= ~channel_mask;
+static void rp2pio_statemachine_clear_dma_write(int pio_index, int sm) {
+    if (SM_DMA_ALLOCATED_WRITE(pio_index, sm)) {
+        int channel_write = SM_DMA_GET_CHANNEL_WRITE(pio_index, sm);
+        uint32_t channel_mask_write = 1u << channel_write;
+        dma_hw->inte0 &= ~channel_mask_write;
         if (!dma_hw->inte0) {
             irq_set_mask_enabled(1 << DMA_IRQ_0, false);
         }
-        MP_STATE_PORT(background_pio)[channel] = NULL;
-        dma_channel_abort(channel);
-        dma_channel_unclaim(channel);
+        MP_STATE_PORT(background_pio_write)[channel_write] = NULL;
+        dma_channel_abort(channel_write);
+        dma_channel_unclaim(channel_write);
     }
-    SM_DMA_CLEAR_CHANNEL(pio_index, sm);
+    SM_DMA_CLEAR_CHANNEL_WRITE(pio_index, sm);
 }
 
-STATIC void _reset_statemachine(PIO pio, uint8_t sm, bool leave_pins) {
+static void rp2pio_statemachine_clear_dma_read(int pio_index, int sm) {
+    if (SM_DMA_ALLOCATED_READ(pio_index, sm)) {
+        int channel_read = SM_DMA_GET_CHANNEL_READ(pio_index, sm);
+        uint32_t channel_mask_read = 1u << channel_read;
+        dma_hw->inte0 &= ~channel_mask_read;
+        if (!dma_hw->inte0) {
+            irq_set_mask_enabled(1 << DMA_IRQ_0, false);
+        }
+        MP_STATE_PORT(background_pio_read)[channel_read] = NULL;
+        dma_channel_abort(channel_read);
+        dma_channel_unclaim(channel_read);
+    }
+    SM_DMA_CLEAR_CHANNEL_READ(pio_index, sm);
+}
+
+static void _reset_statemachine(PIO pio, uint8_t sm, bool leave_pins) {
     uint8_t pio_index = pio_get_index(pio);
-    rp2pio_statemachine_clear_dma(pio_index, sm);
+    rp2pio_statemachine_clear_dma_write(pio_index, sm);
+    rp2pio_statemachine_clear_dma_read(pio_index, sm);
     uint32_t program_id = _current_program_id[pio_index][sm];
     if (program_id == 0) {
         return;
@@ -119,9 +135,9 @@ STATIC void _reset_statemachine(PIO pio, uint8_t sm, bool leave_pins) {
         pio_remove_program(pio, &program_struct, offset);
     }
 
-    uint32_t pins = _current_sm_pins[pio_index][sm];
+    pio_pinmask_t pins = _current_sm_pins[pio_index][sm];
     for (size_t pin_number = 0; pin_number < NUM_BANK0_GPIOS; pin_number++) {
-        if ((pins & (1 << pin_number)) == 0) {
+        if (!PIO_PINMASK_IS_SET(pins, pin_number)) {
             continue;
         }
         _pin_reference_count[pin_number]--;
@@ -129,17 +145,17 @@ STATIC void _reset_statemachine(PIO pio, uint8_t sm, bool leave_pins) {
             if (!leave_pins) {
                 reset_pin_number(pin_number);
             }
-            _current_pins[pio_index] &= ~(1 << pin_number);
+            PIO_PINMASK_CLEAR(_current_pins[pio_index], pin_number);
         }
     }
-    _current_sm_pins[pio_index][sm] = 0;
+    _current_sm_pins[pio_index][sm] = PIO_PINMASK_NONE;
     pio->inte0 &= ~((PIO_IRQ0_INTF_SM0_RXNEMPTY_BITS | PIO_IRQ0_INTF_SM0_TXNFULL_BITS | PIO_IRQ0_INTF_SM0_BITS) << sm);
     pio_sm_unclaim(pio, sm);
 }
 
 void reset_rp2pio_statemachine(void) {
     for (size_t i = 0; i < NUM_PIOS; i++) {
-        PIO pio = pio_instances[i];
+        PIO pio = pio_get_instance(i);
         for (size_t j = 0; j < NUM_PIO_STATE_MACHINES; j++) {
             if (_never_reset[i][j]) {
                 continue;
@@ -156,8 +172,8 @@ void reset_rp2pio_statemachine(void) {
     }
 }
 
-STATIC uint32_t _check_pins_free(const mcu_pin_obj_t *first_pin, uint8_t pin_count, bool exclusive_pin_use) {
-    uint32_t pins_we_use = 0;
+static pio_pinmask_t _check_pins_free(const mcu_pin_obj_t *first_pin, uint8_t pin_count, bool exclusive_pin_use) {
+    pio_pinmask_t pins_we_use = PIO_PINMASK_NONE;
     if (first_pin != NULL) {
         for (size_t i = 0; i < pin_count; i++) {
             uint8_t pin_number = first_pin->number + i;
@@ -172,26 +188,79 @@ STATIC uint32_t _check_pins_free(const mcu_pin_obj_t *first_pin, uint8_t pin_cou
             if (exclusive_pin_use || _pin_reference_count[pin_number] == 0) {
                 assert_pin_free(pin);
             }
-            pins_we_use |= 1 << pin_number;
+            PIO_PINMASK_SET(pins_we_use, pin_number);
         }
     }
     return pins_we_use;
 }
 
-static bool can_add_program(PIO pio, const pio_program_t *program, int offset) {
-    if (offset == -1) {
-        return pio_can_add_program(pio, program);
+static enum pio_fifo_join compute_fifo_type(int fifo_type_in, bool rx_fifo, bool tx_fifo) {
+    if (fifo_type_in != PIO_FIFO_JOIN_AUTO) {
+        return fifo_type_in;
     }
-    return pio_can_add_program_at_offset(pio, program, offset);
+    if (!rx_fifo) {
+        return PIO_FIFO_JOIN_TX;
+    }
+    if (!tx_fifo) {
+        return PIO_FIFO_JOIN_RX;
+    }
+    return PIO_FIFO_JOIN_NONE;
 }
 
-static uint add_program(PIO pio, const pio_program_t *program, int offset) {
-    if (offset == -1) {
-        return pio_add_program(pio, program);
-    } else {
-        pio_add_program_at_offset(pio, program, offset);
-        return offset;
+static int compute_fifo_depth(enum pio_fifo_join join) {
+    if (join == PIO_FIFO_JOIN_TX || join == PIO_FIFO_JOIN_RX) {
+        return 8;
     }
+
+    #if PICO_PIO_VERSION > 0
+    if (join == PIO_FIFO_JOIN_PUTGET) {
+        return 0;
+    }
+    #endif
+
+    return 4;
+}
+
+
+// from pico-sdk/src/rp2_common/hardware_pio/pio.c
+static bool is_gpio_compatible(PIO pio, uint32_t used_gpio_ranges) {
+    #if PICO_PIO_VERSION > 0
+    bool gpio_base = pio_get_gpio_base(pio);
+    return !((gpio_base && (used_gpio_ranges & 1)) ||
+        (!gpio_base && (used_gpio_ranges & 4)));
+    #else
+    ((void)pio);
+    ((void)used_gpio_ranges);
+    return true;
+    #endif
+}
+
+static bool use_existing_program(PIO *pio_out, uint *sm_out, int *offset_inout, uint32_t program_id, size_t program_len, uint gpio_base, uint gpio_count) {
+    uint32_t required_gpio_ranges;
+    if (gpio_count) {
+        required_gpio_ranges = (1u << (gpio_base >> 4)) |
+            (1u << ((gpio_base + gpio_count - 1) >> 4));
+    } else {
+        required_gpio_ranges = 0;
+    }
+
+    for (size_t i = 0; i < NUM_PIOS; i++) {
+        PIO pio = pio_get_instance(i);
+        if (!is_gpio_compatible(pio, required_gpio_ranges)) {
+            continue;
+        }
+        for (size_t j = 0; j < NUM_PIO_STATE_MACHINES; j++) {
+            if (_current_program_id[i][j] == program_id &&
+                _current_program_len[i][j] == program_len &&
+                (*offset_inout == -1 || *offset_inout == _current_program_offset[i][j])) {
+                *pio_out = pio;
+                *sm_out = j;
+                *offset_inout = _current_program_offset[i][j];
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
@@ -200,12 +269,12 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     const uint16_t *init, size_t init_len,
     const mcu_pin_obj_t *first_out_pin, uint8_t out_pin_count,
     const mcu_pin_obj_t *first_in_pin, uint8_t in_pin_count,
-    uint32_t pull_pin_up, uint32_t pull_pin_down,
+    pio_pinmask_t pull_pin_up, pio_pinmask_t pull_pin_down, // GPIO numbering
     const mcu_pin_obj_t *first_set_pin, uint8_t set_pin_count,
-    const mcu_pin_obj_t *first_sideset_pin, uint8_t sideset_pin_count,
-    uint32_t initial_pin_state, uint32_t initial_pin_direction,
+    const mcu_pin_obj_t *first_sideset_pin, uint8_t sideset_pin_count, bool sideset_pindirs,
+    pio_pinmask_t initial_pin_state, pio_pinmask_t initial_pin_direction,
     const mcu_pin_obj_t *jmp_pin,
-    uint32_t pins_we_use, bool tx_fifo, bool rx_fifo,
+    pio_pinmask_t pins_we_use, bool tx_fifo, bool rx_fifo,
     bool auto_pull, uint8_t pull_threshold, bool out_shift_right,
     bool wait_for_txstall,
     bool auto_push, uint8_t push_threshold, bool in_shift_right,
@@ -213,75 +282,82 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     bool user_interruptible,
     bool sideset_enable,
     int wrap_target, int wrap,
-    int offset
+    int offset,
+    int fifo_type,
+    int mov_status_type, int mov_status_n
     ) {
     // Create a program id that isn't the pointer so we can store it without storing the original object.
     uint32_t program_id = ~((uint32_t)program);
 
+    uint gpio_base = 0, gpio_count = 0;
+    #if NUM_BANK0_GPIOS > 32
+    if (PIO_PINMASK_VALUE(pins_we_use) >> 32) {
+        if (PIO_PINMASK_VALUE(pins_we_use) & 0xffff) {
+            // Uses pins from 0-15 and 32-47. not possible
+            return false;
+        }
+    }
+
+    pio_pinmask_value_t v = PIO_PINMASK_VALUE(pins_we_use);
+    if (v) {
+        while (!(v & 1)) {
+            gpio_base++;
+            v >>= 1;
+        }
+        while (v) {
+            gpio_count++;
+            v >>= 1;
+        }
+    }
+    #endif
+
     // Next, find a PIO and state machine to use.
-    size_t pio_index = NUM_PIOS;
-    uint8_t program_offset = 32;
     pio_program_t program_struct = {
         .instructions = (uint16_t *)program,
         .length = program_len,
-        .origin = -1
+        .origin = offset,
     };
+    PIO pio;
+    uint state_machine;
+    bool added = false;
+
+    if (!use_existing_program(&pio, &state_machine, &offset, program_id, program_len, gpio_base, gpio_count)) {
+        uint program_offset;
+        bool r = pio_claim_free_sm_and_add_program_for_gpio_range(&program_struct, &pio, &state_machine, &program_offset, gpio_base, gpio_count, true);
+        if (!r) {
+            return false;
+        }
+        offset = program_offset;
+        added = true;
+    }
+
+    size_t pio_index = pio_get_index(pio);
     for (size_t i = 0; i < NUM_PIOS; i++) {
-        PIO pio = pio_instances[i];
-        uint8_t free_count = 0;
-        for (size_t j = 0; j < NUM_PIO_STATE_MACHINES; j++) {
-            if (_current_program_id[i][j] == program_id &&
-                _current_program_len[i][j] == program_len &&
-                (offset == -1 || offset == _current_program_offset[i][j])) {
-                program_offset = _current_program_offset[i][j];
-            }
-            if (!pio_sm_is_claimed(pio, j)) {
-                free_count++;
-            }
+        if (i == pio_index) {
+            continue;
         }
-        if (free_count > 0 && (program_offset < 32 || can_add_program(pio, &program_struct, offset))) {
-            pio_index = i;
-            if (program_offset < 32) {
-                break;
+        pio_pinmask_t intersection = PIO_PINMASK_AND(_current_pins[i], pins_we_use);
+        if (PIO_PINMASK_VALUE(intersection) != 0) {
+            if (added) {
+                pio_remove_program(pio, &program_struct, offset);
             }
+            pio_sm_unclaim(pio, state_machine);
+            // Pin in use by another PIO already.
+            return false;
         }
-        // Reset program offset if we weren't able to find a free state machine
-        // on that PIO. (We would have broken the loop otherwise.)
-        program_offset = 32;
     }
 
-    size_t state_machine = NUM_PIO_STATE_MACHINES;
-    if (pio_index < NUM_PIOS) {
-        PIO pio = pio_instances[pio_index];
-        for (size_t i = 0; i < NUM_PIOS; i++) {
-            if (i == pio_index) {
-                continue;
-            }
-            if ((_current_pins[i] & pins_we_use) != 0) {
-                // Pin in use by another PIO already.
-                return false;
-            }
-        }
-        state_machine = pio_claim_unused_sm(pio, false);
-    }
-    if (pio_index == NUM_PIOS || state_machine < 0 || state_machine >= NUM_PIO_STATE_MACHINES) {
-        return false;
-    }
-
-    self->pio = pio_instances[pio_index];
+    self->pio = pio;
     self->state_machine = state_machine;
-    if (program_offset == 32) {
-        program_offset = add_program(self->pio, &program_struct, offset);
-    }
-    self->offset = program_offset;
+    self->offset = offset;
     _current_program_id[pio_index][state_machine] = program_id;
     _current_program_len[pio_index][state_machine] = program_len;
-    _current_program_offset[pio_index][state_machine] = program_offset;
+    _current_program_offset[pio_index][state_machine] = offset;
     _current_sm_pins[pio_index][state_machine] = pins_we_use;
-    _current_pins[pio_index] |= pins_we_use;
+    PIO_PINMASK_MERGE(_current_pins[pio_index], pins_we_use);
 
-    pio_sm_set_pins_with_mask(self->pio, state_machine, initial_pin_state, pins_we_use);
-    pio_sm_set_pindirs_with_mask(self->pio, state_machine, initial_pin_direction, pins_we_use);
+    pio_sm_set_pins_with_mask64(self->pio, state_machine, PIO_PINMASK_VALUE(initial_pin_state), PIO_PINMASK_VALUE(pins_we_use));
+    pio_sm_set_pindirs_with_mask64(self->pio, state_machine, PIO_PINMASK_VALUE(initial_pin_direction), PIO_PINMASK_VALUE(pins_we_use));
     rp2pio_statemachine_set_pull(pull_pin_up, pull_pin_down, pins_we_use);
     self->initial_pin_state = initial_pin_state;
     self->initial_pin_direction = initial_pin_direction;
@@ -289,11 +365,12 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     self->pull_pin_down = pull_pin_down;
 
     for (size_t pin_number = 0; pin_number < NUM_BANK0_GPIOS; pin_number++) {
-        if ((pins_we_use & (1 << pin_number)) == 0) {
+        if (!PIO_PINMASK_IS_SET(pins_we_use, pin_number)) {
             continue;
         }
         const mcu_pin_obj_t *pin = mcu_get_pin_by_number(pin_number);
         if (!pin) {
+            // TODO: should be impossible, but free resources here anyway
             return false;
         }
         _pin_reference_count[pin_number]++;
@@ -311,7 +388,7 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         gpio_set_drive_strength(pin_number, GPIO_DRIVE_STRENGTH_2MA);
     }
 
-    pio_sm_config c = {0, 0, 0};
+    pio_sm_config c = pio_get_default_sm_config();
 
     if (frequency == 0) {
         frequency = clock_get_hz(clk_sys);
@@ -338,7 +415,7 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         if (sideset_enable) {
             total_sideset_bits += 1;
         }
-        sm_config_set_sideset(&c, total_sideset_bits, sideset_enable, false /* pin direction */);
+        sm_config_set_sideset(&c, total_sideset_bits, sideset_enable, sideset_pindirs);
         sm_config_set_sideset_pins(&c, first_sideset_pin->number);
     }
     if (jmp_pin != NULL) {
@@ -352,20 +429,32 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
 
     mp_arg_validate_int_range(wrap_target, 0, program_len - 1, MP_QSTR_wrap_target);
 
-    wrap += program_offset;
-    wrap_target += program_offset;
+    wrap += offset;
+    wrap_target += offset;
 
     sm_config_set_wrap(&c, wrap_target, wrap);
     sm_config_set_in_shift(&c, in_shift_right, auto_push, push_threshold);
-    sm_config_set_out_shift(&c, out_shift_right, auto_pull, pull_threshold);
+    #if PICO_PIO_VERSION > 0
+    sm_config_set_in_pin_count_issue1878(&c, in_pin_count);
+    #endif
 
-    enum pio_fifo_join join = PIO_FIFO_JOIN_NONE;
-    if (!rx_fifo) {
-        join = PIO_FIFO_JOIN_TX;
-    } else if (!tx_fifo) {
-        join = PIO_FIFO_JOIN_RX;
+    sm_config_set_out_shift(&c, out_shift_right, auto_pull, pull_threshold);
+    sm_config_set_out_pin_count(&c, out_pin_count);
+
+    sm_config_set_set_pin_count(&c, set_pin_count);
+
+    enum pio_fifo_join join = compute_fifo_type(fifo_type, rx_fifo, tx_fifo);
+
+    self->fifo_depth = compute_fifo_depth(join);
+
+    #if PICO_PIO_VERSION > 0
+    if (fifo_type == PIO_FIFO_JOIN_TXPUT || fifo_type == PIO_FIFO_JOIN_TXGET) {
+        self->rxfifo_obj.base.type = &memorymap_addressrange_type;
+        common_hal_memorymap_addressrange_construct(&self->rxfifo_obj, (uint8_t *)self->pio->rxf_putget[self->state_machine], 4 * sizeof(uint32_t));
+    } else {
+        self->rxfifo_obj.base.type = NULL;
     }
-    self->fifo_depth = (join == PIO_FIFO_JOIN_NONE) ? 4 : 8;
+    #endif
 
     if (rx_fifo) {
         self->rx_dreq = pio_get_dreq(self->pio, self->state_machine, false);
@@ -384,12 +473,18 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     self->init_len = init_len;
 
     sm_config_set_fifo_join(&c, join);
+
+    // TODO: these arguments
+    // int mov_status_type, int mov_status_n,
+    // int set_count, int out_count
+
     self->sm_config = c;
 
     // no DMA allocated
-    SM_DMA_CLEAR_CHANNEL(pio_index, state_machine);
+    SM_DMA_CLEAR_CHANNEL_READ(pio_index, state_machine);
+    SM_DMA_CLEAR_CHANNEL_WRITE(pio_index, state_machine);
 
-    pio_sm_init(self->pio, self->state_machine, program_offset, &c);
+    pio_sm_init(self->pio, self->state_machine, offset, &c);
     common_hal_rp2pio_statemachine_run(self, init, init_len);
 
     common_hal_rp2pio_statemachine_set_frequency(self, frequency);
@@ -397,18 +492,20 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     return true;
 }
 
-static uint32_t mask_and_rotate(const mcu_pin_obj_t *first_pin, uint32_t bit_count, uint32_t value) {
+static pio_pinmask_t mask_and_shift(const mcu_pin_obj_t *first_pin, uint32_t bit_count, pio_pinmask32_t value_in) {
     if (!first_pin) {
-        return 0;
+        return PIO_PINMASK_NONE;
     }
-    value = value & ((1 << bit_count) - 1);
-    uint32_t shift = first_pin->number;
-    return value << shift | value >> (32 - shift);
+    pio_pinmask_value_t mask = (PIO_PINMASK_C(1) << bit_count) - 1;
+    pio_pinmask_value_t value = (pio_pinmask_value_t)PIO_PINMASK32_VALUE(value_in);
+    int shift = first_pin->number;
+    return PIO_PINMASK_FROM_VALUE((value & mask) << shift);
 }
 
 typedef struct {
     struct {
-        uint32_t pins_we_use, in_pin_count, out_pin_count;
+        pio_pinmask_t pins_we_use;
+        uint8_t in_pin_count, out_pin_count, pio_gpio_offset;
         bool has_jmp_pin, auto_push, auto_pull, has_in_pin, has_out_pin, has_set_pin;
     } inputs;
     struct {
@@ -435,11 +532,10 @@ static void consider_instruction(introspect_t *state, uint16_t full_instruction,
     }
     if (instruction == pio_instr_bits_wait) {
         uint16_t wait_source = (full_instruction & 0x0060) >> 5;
-        uint16_t wait_index = full_instruction & 0x001f;
-        if (wait_source == 0 && (state->inputs.pins_we_use & (1 << wait_index)) == 0) { // GPIO
+        uint16_t wait_index = (full_instruction & 0x001f) + state->inputs.pio_gpio_offset;
+        if (wait_source == 0 && !PIO_PINMASK_IS_SET(state->inputs.pins_we_use, wait_index)) { // GPIO
             mp_raise_ValueError_varg(MP_ERROR_TEXT("%q[%u] uses extra pin"), what_program, i);
-        }
-        if (wait_source == 1) { // Input pin
+        } else if (wait_source == 1) { // Input pin
             if (!state->inputs.has_in_pin) {
                 mp_raise_ValueError_varg(MP_ERROR_TEXT("Missing first_in_pin. %q[%u] waits based on pin"), what_program, i);
             }
@@ -519,34 +615,49 @@ void common_hal_rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     size_t frequency,
     const uint16_t *init, size_t init_len,
     const uint16_t *may_exec, size_t may_exec_len,
-    const mcu_pin_obj_t *first_out_pin, uint8_t out_pin_count, uint32_t initial_out_pin_state, uint32_t initial_out_pin_direction,
+    const mcu_pin_obj_t *first_out_pin, uint8_t out_pin_count, pio_pinmask32_t initial_out_pin_state32, pio_pinmask32_t initial_out_pin_direction32,
     const mcu_pin_obj_t *first_in_pin, uint8_t in_pin_count,
-    uint32_t pull_pin_up, uint32_t pull_pin_down,
-    const mcu_pin_obj_t *first_set_pin, uint8_t set_pin_count, uint32_t initial_set_pin_state, uint32_t initial_set_pin_direction,
-    const mcu_pin_obj_t *first_sideset_pin, uint8_t sideset_pin_count, uint32_t initial_sideset_pin_state, uint32_t initial_sideset_pin_direction,
+    pio_pinmask32_t in_pull_pin_up32, pio_pinmask32_t in_pull_pin_down32, // relative to first_in_pin
+    const mcu_pin_obj_t *first_set_pin, uint8_t set_pin_count, pio_pinmask32_t initial_set_pin_state32, pio_pinmask32_t initial_set_pin_direction32,
+    const mcu_pin_obj_t *first_sideset_pin, uint8_t sideset_pin_count, bool sideset_pindirs,
+    pio_pinmask32_t initial_sideset_pin_state32, pio_pinmask32_t initial_sideset_pin_direction32,
     bool sideset_enable,
     const mcu_pin_obj_t *jmp_pin, digitalio_pull_t jmp_pull,
-    uint32_t wait_gpio_mask,
+    pio_pinmask_t wait_gpio_mask,
     bool exclusive_pin_use,
     bool auto_pull, uint8_t pull_threshold, bool out_shift_right,
     bool wait_for_txstall,
     bool auto_push, uint8_t push_threshold, bool in_shift_right,
     bool user_interruptible,
     int wrap_target, int wrap,
-    int offset) {
+    int offset,
+    int fifo_type,
+    int mov_status_type,
+    int mov_status_n) {
 
     // First, check that all pins are free OR already in use by any PIO if exclusive_pin_use is false.
-    uint32_t pins_we_use = wait_gpio_mask;
-    pins_we_use |= _check_pins_free(first_out_pin, out_pin_count, exclusive_pin_use);
-    pins_we_use |= _check_pins_free(first_in_pin, in_pin_count, exclusive_pin_use);
-    pins_we_use |= _check_pins_free(first_set_pin, set_pin_count, exclusive_pin_use);
-    pins_we_use |= _check_pins_free(first_sideset_pin, sideset_pin_count, exclusive_pin_use);
-    pins_we_use |= _check_pins_free(jmp_pin, 1, exclusive_pin_use);
+    pio_pinmask_t pins_we_use = wait_gpio_mask;
+    PIO_PINMASK_MERGE(pins_we_use, _check_pins_free(first_out_pin, out_pin_count, exclusive_pin_use));
+    PIO_PINMASK_MERGE(pins_we_use, _check_pins_free(first_in_pin, in_pin_count, exclusive_pin_use));
+    PIO_PINMASK_MERGE(pins_we_use, _check_pins_free(first_set_pin, set_pin_count, exclusive_pin_use));
+    PIO_PINMASK_MERGE(pins_we_use, _check_pins_free(first_sideset_pin, sideset_pin_count, exclusive_pin_use));
+    PIO_PINMASK_MERGE(pins_we_use, _check_pins_free(jmp_pin, 1, exclusive_pin_use));
+
+    int pio_gpio_offset = 0;
+    #if NUM_BANK0_GPIOS > 32
+    if (PIO_PINMASK_VALUE(pins_we_use) >> 32) {
+        pio_gpio_offset = 16;
+        if (PIO_PINMASK_VALUE(pins_we_use) & 0xffff) {
+            mp_raise_ValueError_varg(MP_ERROR_TEXT("Cannot use GPIO0..15 together with GPIO32..47"));
+        }
+    }
+    #endif
 
     // Look through the program to see what we reference and make sure it was provided.
     introspect_t state = {
         .inputs = {
             .pins_we_use = pins_we_use,
+            .pio_gpio_offset = pio_gpio_offset,
             .has_jmp_pin = jmp_pin != NULL,
             .has_in_pin = first_in_pin != NULL,
             .has_out_pin = first_out_pin != NULL,
@@ -568,43 +679,54 @@ void common_hal_rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         mp_raise_ValueError_varg(MP_ERROR_TEXT("Program does OUT without loading OSR"));
     }
 
-    uint32_t initial_pin_state = mask_and_rotate(first_out_pin, out_pin_count, initial_out_pin_state);
-    uint32_t initial_pin_direction = mask_and_rotate(first_out_pin, out_pin_count, initial_out_pin_direction);
-    initial_set_pin_state = mask_and_rotate(first_set_pin, set_pin_count, initial_set_pin_state);
-    initial_set_pin_direction = mask_and_rotate(first_set_pin, set_pin_count, initial_set_pin_direction);
-    uint32_t set_out_overlap = mask_and_rotate(first_out_pin, out_pin_count, 0xffffffff) &
-        mask_and_rotate(first_set_pin, set_pin_count, 0xffffffff);
+    pio_pinmask_t initial_pin_state = mask_and_shift(first_out_pin, out_pin_count, initial_out_pin_state32);
+    pio_pinmask_t initial_pin_direction = mask_and_shift(first_out_pin, out_pin_count, initial_out_pin_direction32);
+    pio_pinmask_t initial_set_pin_state = mask_and_shift(first_set_pin, set_pin_count, initial_set_pin_state32);
+    pio_pinmask_t initial_set_pin_direction = mask_and_shift(first_set_pin, set_pin_count, initial_set_pin_direction32);
+    pio_pinmask_t set_out_overlap = PIO_PINMASK_AND(mask_and_shift(first_out_pin, out_pin_count, PIO_PINMASK32_ALL),
+        mask_and_shift(first_set_pin, set_pin_count, PIO_PINMASK32_ALL));
     // Check that OUT and SET settings agree because we don't have a way of picking one over the other.
-    if ((initial_pin_state & set_out_overlap) != (initial_set_pin_state & set_out_overlap)) {
+    if (!PIO_PINMASK_EQUAL(
+        PIO_PINMASK_AND(initial_pin_state, set_out_overlap),
+        PIO_PINMASK_AND(initial_set_pin_state, set_out_overlap))) {
         mp_raise_ValueError(MP_ERROR_TEXT("Initial set pin state conflicts with initial out pin state"));
     }
-    if ((initial_pin_direction & set_out_overlap) != (initial_set_pin_direction & set_out_overlap)) {
+    if (!PIO_PINMASK_EQUAL(
+        PIO_PINMASK_AND(initial_pin_direction, set_out_overlap),
+        PIO_PINMASK_AND(initial_set_pin_direction, set_out_overlap))) {
         mp_raise_ValueError(MP_ERROR_TEXT("Initial set pin direction conflicts with initial out pin direction"));
     }
-    initial_pin_state |= initial_set_pin_state;
-    initial_pin_direction |= initial_set_pin_direction;
+    PIO_PINMASK_MERGE(initial_pin_state, initial_set_pin_state);
+    PIO_PINMASK_MERGE(initial_pin_direction, initial_set_pin_direction);
 
     // Sideset overrides OUT or SET so we always use its values.
-    uint32_t sideset_mask = mask_and_rotate(first_sideset_pin, sideset_pin_count, 0x1f);
-    initial_pin_state = (initial_pin_state & ~sideset_mask) | mask_and_rotate(first_sideset_pin, sideset_pin_count, initial_sideset_pin_state);
-    initial_pin_direction = (initial_pin_direction & ~sideset_mask) | mask_and_rotate(first_sideset_pin, sideset_pin_count, initial_sideset_pin_direction);
+    pio_pinmask_t sideset_mask = mask_and_shift(first_sideset_pin, sideset_pin_count, PIO_PINMASK32_FROM_VALUE(0x1f));
+    initial_pin_state = PIO_PINMASK_OR(
+        PIO_PINMASK_AND_NOT(initial_pin_state, sideset_mask),
+        mask_and_shift(first_sideset_pin, sideset_pin_count, initial_sideset_pin_state32));
+    initial_pin_direction = PIO_PINMASK_OR(
+        PIO_PINMASK_AND_NOT(initial_pin_direction, sideset_mask),
+        mask_and_shift(first_sideset_pin, sideset_pin_count, initial_sideset_pin_direction32));
 
     // Deal with pull up/downs
-    uint32_t pull_up = mask_and_rotate(first_in_pin, in_pin_count, pull_pin_up);
-    uint32_t pull_down = mask_and_rotate(first_in_pin, in_pin_count, pull_pin_down);
+    pio_pinmask_t pull_up = mask_and_shift(first_in_pin, in_pin_count, in_pull_pin_up32);
+    pio_pinmask_t pull_down = mask_and_shift(first_in_pin, in_pin_count, in_pull_pin_down32);
 
     if (jmp_pin) {
-        uint32_t jmp_mask = mask_and_rotate(jmp_pin, 1, 0x1f);
+        pio_pinmask_t jmp_mask = mask_and_shift(jmp_pin, 1, PIO_PINMASK32_FROM_VALUE(0x1f));
         if (jmp_pull == PULL_UP) {
-            pull_up |= jmp_mask;
+            PIO_PINMASK_MERGE(pull_up, jmp_mask);
         }
         if (jmp_pull == PULL_DOWN) {
-            pull_up |= jmp_mask;
+            PIO_PINMASK_MERGE(pull_down, jmp_mask);
         }
     }
-    if (initial_pin_direction & (pull_up | pull_down)) {
+    if (PIO_PINMASK_VALUE(
+        PIO_PINMASK_AND(initial_pin_direction,
+            PIO_PINMASK_OR(pull_up, pull_down)))) {
         mp_raise_ValueError(MP_ERROR_TEXT("pull masks conflict with direction masks"));
     }
+
     bool ok = rp2pio_statemachine_construct(
         self,
         program, program_len,
@@ -614,7 +736,7 @@ void common_hal_rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         first_in_pin, in_pin_count,
         pull_up, pull_down,
         first_set_pin, set_pin_count,
-        first_sideset_pin, sideset_pin_count,
+        first_sideset_pin, sideset_pin_count, sideset_pindirs,
         initial_pin_state, initial_pin_direction,
         jmp_pin,
         pins_we_use, state.outputs.tx_fifo, state.outputs.rx_fifo,
@@ -624,7 +746,9 @@ void common_hal_rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         true /* claim pins */,
         user_interruptible,
         sideset_enable,
-        wrap_target, wrap, offset);
+        wrap_target, wrap, offset,
+        fifo_type,
+        mov_status_type, mov_status_n);
     if (!ok) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("All state machines in use"));
     }
@@ -637,9 +761,9 @@ void common_hal_rp2pio_statemachine_restart(rp2pio_statemachine_obj_t *self) {
     pio_sm_exec(self->pio, self->state_machine, self->offset);
     pio_sm_restart(self->pio, self->state_machine);
     uint8_t pio_index = pio_get_index(self->pio);
-    uint32_t pins_we_use = _current_sm_pins[pio_index][self->state_machine];
-    pio_sm_set_pins_with_mask(self->pio, self->state_machine, self->initial_pin_state, pins_we_use);
-    pio_sm_set_pindirs_with_mask(self->pio, self->state_machine, self->initial_pin_direction, pins_we_use);
+    pio_pinmask_t pins_we_use = _current_sm_pins[pio_index][self->state_machine];
+    pio_sm_set_pins_with_mask64(self->pio, self->state_machine, PIO_PINMASK_VALUE(self->initial_pin_state), PIO_PINMASK_VALUE(pins_we_use));
+    pio_sm_set_pindirs_with_mask64(self->pio, self->state_machine, PIO_PINMASK_VALUE(self->initial_pin_direction), PIO_PINMASK_VALUE(pins_we_use));
     rp2pio_statemachine_set_pull(self->pull_pin_up, self->pull_pin_down, pins_we_use);
     common_hal_rp2pio_statemachine_run(self, self->init, self->init_len);
     pio_sm_set_enabled(self->pio, self->state_machine, true);
@@ -717,7 +841,7 @@ bool common_hal_rp2pio_statemachine_deinited(rp2pio_statemachine_obj_t *self) {
     return self->state_machine == NUM_PIO_STATE_MACHINES;
 }
 
-STATIC enum dma_channel_transfer_size _stride_to_dma_size(uint8_t stride) {
+static enum dma_channel_transfer_size _stride_to_dma_size(uint8_t stride) {
     switch (stride) {
         case 4:
             return DMA_SIZE_32;
@@ -964,9 +1088,9 @@ void common_hal_rp2pio_statemachine_set_interrupt_handler(rp2pio_statemachine_ob
     common_hal_mcu_enable_interrupts();
 }
 
-STATIC void rp2pio_statemachine_interrupt_handler(void) {
+static void rp2pio_statemachine_interrupt_handler(void) {
     for (size_t pio_index = 0; pio_index < NUM_PIOS; pio_index++) {
-        PIO pio = pio_instances[pio_index];
+        PIO pio = pio_get_instance(pio_index);
         for (size_t sm = 0; sm < NUM_PIO_STATE_MACHINES; sm++) {
             if (!_interrupt_handler[pio_index][sm]) {
                 continue;
@@ -985,16 +1109,49 @@ uint8_t rp2pio_statemachine_program_offset(rp2pio_statemachine_obj_t *self) {
     return _current_program_offset[pio_index][sm];
 }
 
-bool common_hal_rp2pio_statemachine_background_write(rp2pio_statemachine_obj_t *self, const sm_buf_info *once, const sm_buf_info *loop, uint8_t stride_in_bytes, bool swap) {
+bool common_hal_rp2pio_statemachine_background_write(rp2pio_statemachine_obj_t *self, uint8_t stride_in_bytes, bool swap) {
+
     uint8_t pio_index = pio_get_index(self->pio);
     uint8_t sm = self->state_machine;
 
-    int pending_buffers = (once->info.len != 0) + (loop->info.len != 0);
-    if (!once->info.len) {
-        once = loop;
+    self->switched_write_buffers = false;
+
+    int pending_buffers_write = (self->once_write_buf_info.info.len != 0) + (self->loop_write_buf_info.info.len != 0) + (self->loop2_write_buf_info.info.len != 0);
+
+    // If all buffer arguments have nonzero length, write once_write_buf, loop_write_buf, loop2_write_buf and repeat last two forever
+
+    if (!(self->once_write_buf_info.info.len)) {
+        if (!self->loop_write_buf_info.info.len) {
+            // If once_write_buf and loop_write_buf have zero length, write loop2_write_buf forever
+            self->once_write_buf_info = self->loop2_write_buf_info;
+            self->loop_write_buf_info = self->loop2_write_buf_info;
+        } else {
+            if (!(self->loop2_write_buf_info.info.len)) {
+                // If once_write_buf and loop2_write_buf have zero length, write loop_write_buf forever
+                self->once_write_buf_info = self->loop_write_buf_info;
+                self->loop2_write_buf_info = self->loop_write_buf_info;
+            } else {
+                // If only once_write_buf has zero length, write loop_write_buf, loop2_write_buf, and repeat last two forever
+                self->once_write_buf_info = self->loop_write_buf_info;
+                self->loop_write_buf_info = self->loop2_write_buf_info;
+                self->loop2_write_buf_info = self->once_write_buf_info;
+            }
+        }
+    } else {
+        if (!(self->loop_write_buf_info.info.len)) {
+            // If once_write_buf has nonzero length and loop_write_buf has zero length, write once_write_buf, loop2_write_buf and repeat last buf forever
+            self->loop_write_buf_info = self->loop2_write_buf_info;
+        } else {
+            if (!self->loop2_write_buf_info.info.len) {
+                // If once_write_buf has nonzero length and loop2_write_buf have zero length, write once_write_buf, loop_write_buf and repeat last buf forever
+                self->loop2_write_buf_info = self->loop_write_buf_info;
+            }
+        }
     }
 
-    if (SM_DMA_ALLOCATED(pio_index, sm)) {
+    // if DMA is already going (i.e. this is not the first call to background_write),
+    // block until once_write_buf and loop_write_buf have each been written at least once
+    if (SM_DMA_ALLOCATED_WRITE(pio_index, sm)) {
         if (stride_in_bytes != self->background_stride_in_bytes) {
             mp_raise_ValueError(MP_ERROR_TEXT("Mismatched data size"));
         }
@@ -1002,7 +1159,7 @@ bool common_hal_rp2pio_statemachine_background_write(rp2pio_statemachine_obj_t *
             mp_raise_ValueError(MP_ERROR_TEXT("Mismatched swap flag"));
         }
 
-        while (self->pending_buffers) {
+        while (self->pending_buffers_write) {
             RUN_BACKGROUND_TASKS;
             if (self->user_interruptible && mp_hal_is_interrupted()) {
                 return false;
@@ -1010,13 +1167,14 @@ bool common_hal_rp2pio_statemachine_background_write(rp2pio_statemachine_obj_t *
         }
 
         common_hal_mcu_disable_interrupts();
-        self->once = *once;
-        self->loop = *loop;
-        self->pending_buffers = pending_buffers;
+        self->next_write_buf_1 = self->once_write_buf_info;
+        self->next_write_buf_2 = self->loop_write_buf_info;
+        self->next_write_buf_3 = self->loop2_write_buf_info;
+        self->pending_buffers_write = pending_buffers_write;
 
-        if (self->dma_completed && self->once.info.len) {
-            rp2pio_statemachine_dma_complete(self, SM_DMA_GET_CHANNEL(pio_index, sm));
-            self->dma_completed = false;
+        if (self->dma_completed_write && self->next_write_buf_1.info.len) {
+            rp2pio_statemachine_dma_complete_write(self, SM_DMA_GET_CHANNEL_WRITE(pio_index, sm));
+            self->dma_completed_write = false;
         }
 
         common_hal_mcu_enable_interrupts();
@@ -1024,84 +1182,301 @@ bool common_hal_rp2pio_statemachine_background_write(rp2pio_statemachine_obj_t *
         return true;
     }
 
-    int channel = dma_claim_unused_channel(false);
-    if (channel == -1) {
+    int channel_write = dma_claim_unused_channel(false);
+    if (channel_write == -1) {
         return false;
     }
 
-    SM_DMA_SET_CHANNEL(pio_index, sm, channel);
+    SM_DMA_SET_CHANNEL_WRITE(pio_index, sm, channel_write);
 
     volatile uint8_t *tx_destination = (volatile uint8_t *)&self->pio->txf[self->state_machine];
 
     self->tx_dreq = pio_get_dreq(self->pio, self->state_machine, true);
 
-    dma_channel_config c;
+    dma_channel_config c_write;
 
-    self->current = *once;
-    self->once = *loop;
-    self->loop = *loop;
-    self->pending_buffers = pending_buffers;
-    self->dma_completed = false;
+    self->current_write_buf = self->once_write_buf_info;
+    self->next_write_buf_1 = self->loop_write_buf_info;
+    self->next_write_buf_2 = self->loop2_write_buf_info;
+    self->next_write_buf_3 = self->loop_write_buf_info;
+
+    self->pending_buffers_write = pending_buffers_write;
+    self->dma_completed_write = false;
+
     self->background_stride_in_bytes = stride_in_bytes;
     self->byteswap = swap;
 
-    c = dma_channel_get_default_config(channel);
-    channel_config_set_transfer_data_size(&c, _stride_to_dma_size(stride_in_bytes));
-    channel_config_set_dreq(&c, self->tx_dreq);
-    channel_config_set_read_increment(&c, true);
-    channel_config_set_write_increment(&c, false);
-    channel_config_set_bswap(&c, swap);
-    dma_channel_configure(channel, &c,
+    c_write = dma_channel_get_default_config(channel_write);
+    channel_config_set_transfer_data_size(&c_write, _stride_to_dma_size(stride_in_bytes));
+    channel_config_set_dreq(&c_write, self->tx_dreq);
+    channel_config_set_read_increment(&c_write, true);
+    channel_config_set_write_increment(&c_write, false);
+    channel_config_set_bswap(&c_write, swap);
+    dma_channel_configure(channel_write, &c_write,
         tx_destination,
-        once->info.buf,
-        once->info.len / stride_in_bytes,
+        self->once_write_buf_info.info.buf,
+        self->once_write_buf_info.info.len / stride_in_bytes,
         false);
 
     common_hal_mcu_disable_interrupts();
-    MP_STATE_PORT(background_pio)[channel] = self;
-    dma_hw->inte0 |= 1u << channel;
+
+    // Acknowledge any previous pending interrupt
+    dma_hw->ints0 |= 1u << channel_write;
+    MP_STATE_PORT(background_pio_write)[channel_write] = self;
+    dma_hw->inte0 |= 1u << channel_write;
+
     irq_set_mask_enabled(1 << DMA_IRQ_0, true);
-    dma_start_channel_mask(1u << channel);
+    dma_start_channel_mask(1u << channel_write);
     common_hal_mcu_enable_interrupts();
 
     return true;
 }
 
-void rp2pio_statemachine_dma_complete(rp2pio_statemachine_obj_t *self, int channel) {
-    self->current = self->once;
-    self->once = self->loop;
+void rp2pio_statemachine_dma_complete_write(rp2pio_statemachine_obj_t *self, int channel_write) {
+    self->current_write_buf = self->next_write_buf_1;
+    self->next_write_buf_1 = self->next_write_buf_2;
+    self->next_write_buf_2 = self->next_write_buf_3;
+    self->next_write_buf_3 = self->next_write_buf_1;
 
-    if (self->current.info.buf) {
-        if (self->pending_buffers > 0) {
-            self->pending_buffers--;
+    if (self->current_write_buf.info.buf) {
+        if (self->pending_buffers_write > 0) {
+            self->pending_buffers_write--;
         }
-        dma_channel_set_read_addr(channel, self->current.info.buf, false);
-        dma_channel_set_trans_count(channel, self->current.info.len / self->background_stride_in_bytes, true);
+        dma_channel_set_read_addr(channel_write, self->current_write_buf.info.buf, false);
+        dma_channel_set_trans_count(channel_write, self->current_write_buf.info.len / self->background_stride_in_bytes, true);
     } else {
-        self->dma_completed = true;
-        self->pending_buffers = 0; // should be a no-op
+        self->dma_completed_write = true;
+        self->pending_buffers_write = 0; // should be a no-op
     }
+
+    self->switched_write_buffers = true;
 }
 
 bool common_hal_rp2pio_statemachine_stop_background_write(rp2pio_statemachine_obj_t *self) {
     uint8_t pio_index = pio_get_index(self->pio);
     uint8_t sm = self->state_machine;
-    rp2pio_statemachine_clear_dma(pio_index, sm);
-    memset(&self->current, 0, sizeof(self->current));
-    memset(&self->once, 0, sizeof(self->once));
-    memset(&self->loop, 0, sizeof(self->loop));
-    self->pending_buffers = 0;
+    rp2pio_statemachine_clear_dma_write(pio_index, sm);
+    memset(&self->current_write_buf, 0, sizeof(self->current_write_buf));
+    memset(&self->next_write_buf_1, 0, sizeof(self->next_write_buf_1));
+    memset(&self->next_write_buf_2, 0, sizeof(self->next_write_buf_2));
+    memset(&self->next_write_buf_3, 0, sizeof(self->next_write_buf_3));
+    self->pending_buffers_write = 0;
     return true;
 }
 
 bool common_hal_rp2pio_statemachine_get_writing(rp2pio_statemachine_obj_t *self) {
-    return !self->dma_completed;
+    return !self->dma_completed_write;
 }
 
-int common_hal_rp2pio_statemachine_get_pending(rp2pio_statemachine_obj_t *self) {
-    return self->pending_buffers;
+int common_hal_rp2pio_statemachine_get_pending_write(rp2pio_statemachine_obj_t *self) {
+    return self->pending_buffers_write;
 }
+
+// =================================================================================
+
+bool common_hal_rp2pio_statemachine_background_read(rp2pio_statemachine_obj_t *self, uint8_t stride_in_bytes, bool swap) {
+
+    uint8_t pio_index = pio_get_index(self->pio);
+    uint8_t sm = self->state_machine;
+
+    self->switched_read_buffers = false;
+
+    int pending_buffers_read = (self->once_read_buf_info.info.len != 0) + (self->loop_read_buf_info.info.len != 0) + (self->loop2_read_buf_info.info.len != 0);
+
+    // If all buffer arguments have nonzero length, read once_read_buf, loop_read_buf, loop2_read_buf and repeat last two forever
+
+    if (!(self->once_read_buf_info.info.len)) {
+        if (!(self->loop_read_buf_info.info.len)) {
+            // If once_read_buf and loop_read_buf have zero length, read loop2_read_buf forever
+            self->once_read_buf_info = self->loop2_read_buf_info;
+            self->loop_read_buf_info = self->loop2_read_buf_info;
+        } else {
+            if (!(self->loop2_read_buf_info.info.len)) {
+                // If once_read_buf and loop2_read_buf have zero length, read loop_read_buf forever
+                self->once_read_buf_info = self->loop_read_buf_info;
+                self->loop2_read_buf_info = self->loop_read_buf_info;
+            } else {
+                // If only once_read_buf has zero length, read loop_read_buf, loop2_read_buf, and repeat last two forever
+                self->once_read_buf_info = self->loop_read_buf_info;
+                self->loop_read_buf_info = self->loop2_read_buf_info;
+                self->loop2_read_buf_info = self->once_read_buf_info;
+            }
+        }
+    } else {
+        if (!(self->loop_read_buf_info.info.len)) {
+            // If once_read_buf has nonzero length and loop_read_buf has zero length, read once_read_buf, loop2_read_buf and repeat last buf forever
+            self->loop_read_buf_info = self->loop2_read_buf_info;
+        } else {
+            if (!(self->loop2_read_buf_info.info.len)) {
+                // If once_read_buf has nonzero length and loop2_read_buf have zero length, read once_read_buf, loop_read_buf and repeat last buf forever
+                self->loop2_read_buf_info = self->loop_read_buf_info;
+
+            }
+        }
+    }
+
+    if (SM_DMA_ALLOCATED_READ(pio_index, sm)) {
+        if (stride_in_bytes != self->background_stride_in_bytes) {
+            mp_raise_ValueError(MP_ERROR_TEXT("Mismatched data size"));
+        }
+        if (swap != self->byteswap) {
+            mp_raise_ValueError(MP_ERROR_TEXT("Mismatched swap flag"));
+        }
+
+        while (self->pending_buffers_read) {
+            RUN_BACKGROUND_TASKS;
+            if (self->user_interruptible && mp_hal_is_interrupted()) {
+                return false;
+            }
+        }
+
+        common_hal_mcu_disable_interrupts();
+        self->next_read_buf_1 = self->once_read_buf_info;
+        self->next_read_buf_2 = self->loop_read_buf_info;
+        self->next_read_buf_3 = self->loop2_read_buf_info;
+        self->pending_buffers_read = pending_buffers_read;
+
+        if (self->dma_completed_read && self->next_read_buf_1.info.len) {
+            rp2pio_statemachine_dma_complete_read(self, SM_DMA_GET_CHANNEL_READ(pio_index, sm));
+            self->dma_completed_read = false;
+        }
+
+        common_hal_mcu_enable_interrupts();
+
+        return true;
+    }
+
+    int channel_read = dma_claim_unused_channel(false);
+    if (channel_read == -1) {
+        return false;
+    }
+    SM_DMA_SET_CHANNEL_READ(pio_index, sm, channel_read);
+
+    // set up receive DMA
+
+    volatile uint8_t *rx_source = (volatile uint8_t *)&self->pio->rxf[self->state_machine];
+
+    self->rx_dreq = pio_get_dreq(self->pio, self->state_machine, false);
+
+    dma_channel_config c_read;
+
+    self->current_read_buf = self->once_read_buf_info;
+    self->next_read_buf_1 = self->loop_read_buf_info;
+    self->next_read_buf_2 = self->loop2_read_buf_info;
+    self->next_read_buf_3 = self->loop_read_buf_info;
+
+    self->pending_buffers_read = pending_buffers_read;
+    self->dma_completed_read = false;
+
+    self->background_stride_in_bytes = stride_in_bytes;
+    self->byteswap = swap;
+
+    c_read = dma_channel_get_default_config(channel_read);
+    channel_config_set_transfer_data_size(&c_read, _stride_to_dma_size(stride_in_bytes));
+    channel_config_set_dreq(&c_read, self->rx_dreq);
+    channel_config_set_read_increment(&c_read, false);
+    channel_config_set_write_increment(&c_read, true);
+    channel_config_set_bswap(&c_read, swap);
+    dma_channel_configure(channel_read, &c_read,
+        self->once_read_buf_info.info.buf,
+        rx_source,
+        self->once_read_buf_info.info.len / stride_in_bytes,
+        false);
+
+    common_hal_mcu_disable_interrupts();
+    // Acknowledge any previous pending interrupt
+    dma_hw->ints0 |= 1u << channel_read;
+    MP_STATE_PORT(background_pio_read)[channel_read] = self;
+    dma_hw->inte0 |= 1u << channel_read;
+    irq_set_mask_enabled(1 << DMA_IRQ_0, true);
+    dma_start_channel_mask((1u << channel_read));
+    common_hal_mcu_enable_interrupts();
+
+    return true;
+}
+
+void rp2pio_statemachine_dma_complete_read(rp2pio_statemachine_obj_t *self, int channel_read) {
+
+    self->current_read_buf = self->next_read_buf_1;
+    self->next_read_buf_1 = self->next_read_buf_2;
+    self->next_read_buf_2 = self->next_read_buf_3;
+    self->next_read_buf_3 = self->next_read_buf_1;
+
+    if (self->current_read_buf.info.buf) {
+        if (self->pending_buffers_read > 0) {
+            self->pending_buffers_read--;
+        }
+        dma_channel_set_write_addr(channel_read, self->current_read_buf.info.buf, false);
+        dma_channel_set_trans_count(channel_read, self->current_read_buf.info.len / self->background_stride_in_bytes, true);
+    } else {
+        self->dma_completed_read = true;
+        self->pending_buffers_read = 0; // should be a no-op
+    }
+
+    self->switched_read_buffers = true;
+}
+
+bool common_hal_rp2pio_statemachine_stop_background_read(rp2pio_statemachine_obj_t *self) {
+    uint8_t pio_index = pio_get_index(self->pio);
+    uint8_t sm = self->state_machine;
+    rp2pio_statemachine_clear_dma_read(pio_index, sm);
+    memset(&self->current_read_buf, 0, sizeof(self->current_read_buf));
+    memset(&self->next_read_buf_1, 0, sizeof(self->next_read_buf_1));
+    memset(&self->next_read_buf_2, 0, sizeof(self->next_read_buf_2));
+    memset(&self->next_read_buf_3, 0, sizeof(self->next_read_buf_3));
+    self->pending_buffers_read = 0;
+    return true;
+}
+
+bool common_hal_rp2pio_statemachine_get_reading(rp2pio_statemachine_obj_t *self) {
+    return !self->dma_completed_read;
+}
+
+int common_hal_rp2pio_statemachine_get_pending_read(rp2pio_statemachine_obj_t *self) {
+    return self->pending_buffers_read;
+}
+
+int common_hal_rp2pio_statemachine_get_offset(rp2pio_statemachine_obj_t *self) {
+    uint8_t pio_index = pio_get_index(self->pio);
+    uint8_t sm = self->state_machine;
+    uint8_t offset = _current_program_offset[pio_index][sm];
+    return offset;
+}
+
+int common_hal_rp2pio_statemachine_get_pc(rp2pio_statemachine_obj_t *self) {
+    uint8_t pio_index = pio_get_index(self->pio);
+    PIO pio = pio_get_instance(pio_index);
+    uint8_t sm = self->state_machine;
+    return pio_sm_get_pc(pio, sm);
+}
+
+mp_obj_t common_hal_rp2pio_statemachine_get_rxfifo(rp2pio_statemachine_obj_t *self) {
+    #if PICO_PIO_VERSION > 0
+    if (self->rxfifo_obj.base.type) {
+        return MP_OBJ_FROM_PTR(&self->rxfifo_obj);
+    }
+    #endif
+    return mp_const_none;
+}
+
+mp_obj_t common_hal_rp2pio_statemachine_get_last_read(rp2pio_statemachine_obj_t *self) {
+    if (self->switched_read_buffers) {
+        self->switched_read_buffers = false;
+        return self->next_read_buf_1.obj;
+    }
+    return mp_const_empty_bytes;
+}
+
+mp_obj_t common_hal_rp2pio_statemachine_get_last_write(rp2pio_statemachine_obj_t *self) {
+    if (self->switched_write_buffers) {
+        self->switched_write_buffers = false;
+        return self->next_write_buf_1.obj;
+    }
+    return mp_const_empty_bytes;
+}
+
 
 // Use a compile-time constant for MP_REGISTER_POINTER so the preprocessor will
 // not split the expansion across multiple lines.
-MP_REGISTER_ROOT_POINTER(mp_obj_t background_pio[enum_NUM_DMA_CHANNELS]);
+MP_REGISTER_ROOT_POINTER(mp_obj_t background_pio_read[enum_NUM_DMA_CHANNELS]);
+MP_REGISTER_ROOT_POINTER(mp_obj_t background_pio_write[enum_NUM_DMA_CHANNELS]);

@@ -27,6 +27,7 @@
 #include "py/mpconfig.h"
 #if MICROPY_VFS && MICROPY_VFS_FAT
 
+// CIRCUITPY-CHANGE: more includes
 #include <stdio.h>
 #include <string.h>
 
@@ -61,12 +62,13 @@ const byte fresult_to_errno_table[20] = {
     [FR_INVALID_PARAMETER] = MP_EINVAL,
 };
 
-STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     (void)kind;
+    // CIRCUITPY-CHANGE
     mp_printf(print, "<io.%q %p>", mp_obj_get_type_qstr(self_in), MP_OBJ_TO_PTR(self_in));
 }
 
-STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
+static mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
     UINT sz_out;
     FRESULT res = f_read(&self->fp, buf, size, &sz_out);
@@ -77,7 +79,7 @@ STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int 
     return sz_out;
 }
 
-STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
+static mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
     UINT sz_out;
     FRESULT res = f_write(&self->fp, buf, size, &sz_out);
@@ -93,7 +95,7 @@ STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t siz
     return sz_out;
 }
 
-STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+static mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(o_in);
 
     if (request == MP_STREAM_SEEK) {
@@ -143,7 +145,7 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
 
 // TODO gc hook to close the file if not already closed
 
-STATIC const mp_rom_map_elem_t vfs_fat_rawfile_locals_dict_table[] = {
+static const mp_rom_map_elem_t vfs_fat_rawfile_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
     { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
     { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },
@@ -158,9 +160,9 @@ STATIC const mp_rom_map_elem_t vfs_fat_rawfile_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&mp_stream___exit___obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(vfs_fat_rawfile_locals_dict, vfs_fat_rawfile_locals_dict_table);
+static MP_DEFINE_CONST_DICT(vfs_fat_rawfile_locals_dict, vfs_fat_rawfile_locals_dict_table);
 
-STATIC const mp_stream_p_t vfs_fat_fileio_stream_p = {
+static const mp_stream_p_t vfs_fat_fileio_stream_p = {
     .read = file_obj_read,
     .write = file_obj_write,
     .ioctl = file_obj_ioctl,
@@ -175,7 +177,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &vfs_fat_rawfile_locals_dict
     );
 
-STATIC const mp_stream_p_t vfs_fat_textio_stream_p = {
+static const mp_stream_p_t vfs_fat_textio_stream_p = {
     .read = file_obj_read,
     .write = file_obj_write,
     .ioctl = file_obj_ioctl,
@@ -192,12 +194,13 @@ MP_DEFINE_CONST_OBJ_TYPE(
     );
 
 // Factory function for I/O stream classes
-STATIC mp_obj_t fat_vfs_open(mp_obj_t self_in, mp_obj_t path_in, mp_obj_t mode_in) {
+static mp_obj_t fat_vfs_open(mp_obj_t self_in, mp_obj_t path_in, mp_obj_t mode_in) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(self_in);
 
     const mp_obj_type_t *type = &mp_type_vfs_fat_textio;
     int mode = 0;
     const char *mode_s = mp_obj_str_get_str(mode_in);
+    // CIRCUITPY-CHANGE: validate mode
     uint32_t rwxa_count = 0;
     uint32_t bt_count = 0;
     uint32_t plus_count = 0;
@@ -248,8 +251,7 @@ STATIC mp_obj_t fat_vfs_open(mp_obj_t self_in, mp_obj_t path_in, mp_obj_t mode_i
     }
 
 
-    pyb_file_obj_t *o = m_new_obj_with_finaliser(pyb_file_obj_t);
-    o->base.type = type;
+    pyb_file_obj_t *o = mp_obj_malloc_with_finaliser(pyb_file_obj_t, type);
 
     const char *fname = mp_obj_str_get_str(path_in);
     FRESULT res = f_open(&self->fatfs, &o->fp, fname, mode);

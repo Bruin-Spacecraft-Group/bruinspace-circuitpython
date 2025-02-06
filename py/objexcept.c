@@ -31,6 +31,7 @@
 #include <stdio.h>
 
 #include "py/objlist.h"
+// CIRCUITPY-CHANGE
 #include "py/objnamedtuple.h"
 #include "py/objstr.h"
 #include "py/objtuple.h"
@@ -82,6 +83,8 @@ void mp_init_emergency_exception_buf(void) {
 #else
 #define mp_emergency_exception_buf_size MP_STATE_VM(mp_emergency_exception_buf_size)
 
+#include "py/mphal.h" // for MICROPY_BEGIN_ATOMIC_SECTION/MICROPY_END_ATOMIC_SECTION
+
 void mp_init_emergency_exception_buf(void) {
     mp_emergency_exception_buf_size = 0;
     MP_STATE_VM(mp_emergency_exception_buf) = NULL;
@@ -126,7 +129,7 @@ mp_obj_exception_t *mp_obj_exception_get_native(mp_obj_t self_in) {
     }
 }
 
-STATIC void decompress_error_text_maybe(mp_obj_exception_t *o) {
+static void decompress_error_text_maybe(mp_obj_exception_t *o) {
     #if MICROPY_ROM_TEXT_COMPRESSION
     if (o->args->len == 1 && mp_obj_is_exact_type(o->args->items[0], &mp_type_str)) {
         mp_obj_str_t *o_str = MP_OBJ_TO_PTR(o->args->items[0]);
@@ -233,7 +236,7 @@ mp_obj_t mp_obj_exception_make_new(const mp_obj_type_t *type, size_t n_args, siz
         o_tuple = (mp_obj_tuple_t *)&mp_const_empty_tuple_obj;
     } else {
         // Try to allocate memory for the tuple containing the args
-        o_tuple = m_new_obj_var_maybe(mp_obj_tuple_t, mp_obj_t, n_args);
+        o_tuple = m_new_obj_var_maybe(mp_obj_tuple_t, items, mp_obj_t, n_args);
 
         #if MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF
         // If we are called by mp_obj_new_exception_msg_varg then it will have
@@ -462,6 +465,7 @@ MP_DEFINE_EXCEPTION(DeepSleepRequest, BaseException)
     MP_DEFINE_EXCEPTION(RuntimeWarning, Warning)
     MP_DEFINE_EXCEPTION(SyntaxWarning, Warning)
     MP_DEFINE_EXCEPTION(UserWarning, Warning)
+    MP_DEFINE_EXCEPTION(FutureWarning, Warning)
     MP_DEFINE_EXCEPTION(ImportWarning, Warning)
     MP_DEFINE_EXCEPTION(UnicodeWarning, Warning)
     MP_DEFINE_EXCEPTION(BytesWarning, Warning)
@@ -481,8 +485,9 @@ mp_obj_t mp_obj_new_exception_args(const mp_obj_type_t *exc_type, size_t n_args,
 }
 
 #if MICROPY_ERROR_REPORTING != MICROPY_ERROR_REPORTING_NONE
+
 mp_obj_t mp_obj_new_exception_msg(const mp_obj_type_t *exc_type, mp_rom_error_text_t msg) {
-    // CIRCUITPY-CHANGE: is different here and for many lines below.
+    // CIRCUITPY-CHANGE
     return mp_obj_new_exception_msg_varg(exc_type, msg);
 }
 
@@ -497,7 +502,7 @@ struct _exc_printer_t {
     byte *buf;
 };
 
-STATIC void exc_add_strn(void *data, const char *str, size_t len) {
+static void exc_add_strn(void *data, const char *str, size_t len) {
     struct _exc_printer_t *pr = data;
     if (pr->len + len >= pr->alloc) {
         // Not enough room for data plus a null byte so try to grow the buffer
@@ -527,7 +532,7 @@ mp_obj_t mp_obj_new_exception_msg_varg(const mp_obj_type_t *exc_type, mp_rom_err
     return exc;
 }
 
-mp_obj_t mp_obj_new_exception_msg_vlist(const mp_obj_type_t *exc_type, mp_rom_error_text_t fmt, va_list ap) {
+mp_obj_t mp_obj_new_exception_msg_vlist(const mp_obj_type_t *exc_type, mp_rom_error_text_t fmt, va_list args) {
     assert(fmt != NULL);
 
     // Check that the given type is an exception type
@@ -535,6 +540,7 @@ mp_obj_t mp_obj_new_exception_msg_vlist(const mp_obj_type_t *exc_type, mp_rom_er
 
     // Try to allocate memory for the message
     mp_obj_str_t *o_str = m_new_obj_maybe(mp_obj_str_t);
+    // CIRCUITPY-CHANGE: here and more below
     size_t o_str_alloc = decompress_length(fmt);
     byte *o_str_buf = m_new_maybe(byte, o_str_alloc);
 
@@ -561,6 +567,7 @@ mp_obj_t mp_obj_new_exception_msg_vlist(const mp_obj_type_t *exc_type, mp_rom_er
     }
 
     if (o_str_buf == NULL) {
+        // CIRCUITPY-CHANGE: different way of building message
         // No memory for the string buffer: the string is compressed so don't add it.
         o_str->len = 0;
         o_str->data = NULL;
@@ -568,7 +575,7 @@ mp_obj_t mp_obj_new_exception_msg_vlist(const mp_obj_type_t *exc_type, mp_rom_er
         // We have some memory to format the string.
         struct _exc_printer_t exc_pr = {!used_emg_buf, o_str_alloc, 0, o_str_buf};
         mp_print_t print = {&exc_pr, exc_add_strn};
-        mp_vcprintf(&print, fmt, ap);
+        mp_vcprintf(&print, fmt, args);
         exc_pr.buf[exc_pr.len] = '\0';
         o_str->len = exc_pr.len;
         o_str->data = exc_pr.buf;
@@ -584,6 +591,7 @@ mp_obj_t mp_obj_new_exception_msg_vlist(const mp_obj_type_t *exc_type, mp_rom_er
     mp_obj_t arg = MP_OBJ_FROM_PTR(o_str);
     return mp_obj_exception_make_new(exc_type, 1, 0, &arg);
 }
+
 #endif
 
 // return true if the given object is an exception type
@@ -617,6 +625,7 @@ bool mp_obj_exception_match(mp_obj_t exc, mp_const_obj_t exc_type) {
 // traceback handling functions
 
 void mp_obj_exception_clear_traceback(mp_obj_t self_in) {
+    // CIRCUITPY-CHANGE
     mp_obj_exception_t *self = mp_obj_exception_get_native(self_in);
     // just set the traceback to the empty traceback object
     // we don't want to call any memory management functions here
@@ -629,6 +638,7 @@ void mp_obj_exception_clear_traceback(mp_obj_t self_in) {
     #endif
 }
 
+// CIRCUITPY-CHANGE: many changes for tracebacks
 void mp_obj_exception_add_traceback(mp_obj_t self_in, qstr file, size_t line, qstr block) {
     mp_obj_exception_t *self = mp_obj_exception_get_native(self_in);
 
@@ -716,9 +726,9 @@ void mp_obj_exception_get_traceback(mp_obj_t self_in, size_t *n, size_t **values
     }
 }
 
-// CIRCUITPY-CHANGE
+// CIRCUITPY-CHANGE: here until end
 #if MICROPY_PY_SYS_EXC_INFO
-STATIC const mp_obj_namedtuple_type_t code_type_obj = {
+static const mp_obj_namedtuple_type_t code_type_obj = {
     NAMEDTUPLE_TYPE_BASE_AND_SLOTS(MP_QSTR_code),
     .n_fields = 15,
     .fields = {
@@ -740,7 +750,7 @@ STATIC const mp_obj_namedtuple_type_t code_type_obj = {
     },
 };
 
-STATIC mp_obj_t code_make_new(qstr file, qstr block) {
+static mp_obj_t code_make_new(qstr file, qstr block) {
     mp_obj_t elems[15] = {
         mp_obj_new_int(0),             // co_argcount
         mp_obj_new_int(0),             // co_kwonlyargcount
@@ -762,7 +772,7 @@ STATIC mp_obj_t code_make_new(qstr file, qstr block) {
     return namedtuple_make_new((const mp_obj_type_t *)&code_type_obj, 15, 0, elems);
 }
 
-STATIC const mp_obj_namedtuple_type_t frame_type_obj = {
+static const mp_obj_namedtuple_type_t frame_type_obj = {
     NAMEDTUPLE_TYPE_BASE_AND_SLOTS(MP_QSTR_frame),
     .n_fields = 8,
     .fields = {
@@ -777,7 +787,7 @@ STATIC const mp_obj_namedtuple_type_t frame_type_obj = {
     },
 };
 
-STATIC mp_obj_t frame_make_new(mp_obj_t f_code, int f_lineno) {
+static mp_obj_t frame_make_new(mp_obj_t f_code, int f_lineno) {
     mp_obj_t elems[8] = {
         mp_const_none,             // f_back
         mp_obj_new_dict(0),        // f_builtins
@@ -792,7 +802,7 @@ STATIC mp_obj_t frame_make_new(mp_obj_t f_code, int f_lineno) {
     return namedtuple_make_new((const mp_obj_type_t *)&frame_type_obj, 8, 0, elems);
 }
 
-STATIC const mp_obj_namedtuple_type_t traceback_type_obj = {
+static const mp_obj_namedtuple_type_t traceback_type_obj = {
     NAMEDTUPLE_TYPE_BASE_AND_SLOTS(MP_QSTR_traceback),
     .n_fields = 4,
     .fields = {
@@ -803,7 +813,7 @@ STATIC const mp_obj_namedtuple_type_t traceback_type_obj = {
     },
 };
 
-STATIC mp_obj_t traceback_from_values(size_t *values, mp_obj_t tb_next) {
+static mp_obj_t traceback_from_values(size_t *values, mp_obj_t tb_next) {
     int lineno = values[1];
 
     mp_obj_t elems[4] = {

@@ -1,32 +1,13 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Dan Halbert for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Dan Halbert for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include <string.h>
 
 #include "py/gc.h"
+#include "py/mphal.h"
 #include "py/runtime.h"
 #include "shared-bindings/digitalio/DigitalInOut.h"
 #include "shared-bindings/keypad/EventQueue.h"
@@ -49,7 +30,7 @@ static mp_uint_t row_column_to_key_number(keypad_keymatrix_obj_t *self, mp_uint_
     return row * self->column_digitalinouts->len + column;
 }
 
-void common_hal_keypad_keymatrix_construct(keypad_keymatrix_obj_t *self, mp_uint_t num_row_pins, const mcu_pin_obj_t *row_pins[], mp_uint_t num_column_pins, const mcu_pin_obj_t *column_pins[], bool columns_to_anodes, mp_float_t interval, size_t max_events) {
+void common_hal_keypad_keymatrix_construct(keypad_keymatrix_obj_t *self, mp_uint_t num_row_pins, const mcu_pin_obj_t *row_pins[], mp_uint_t num_column_pins, const mcu_pin_obj_t *column_pins[], bool columns_to_anodes, mp_float_t interval, size_t max_events, uint8_t debounce_threshold) {
 
     mp_obj_t row_dios[num_row_pins];
     for (size_t row = 0; row < num_row_pins; row++) {
@@ -72,13 +53,10 @@ void common_hal_keypad_keymatrix_construct(keypad_keymatrix_obj_t *self, mp_uint
     }
     self->column_digitalinouts = mp_obj_new_tuple(num_column_pins, column_dios);
 
-    self->currently_pressed = (bool *)m_malloc(sizeof(bool) * num_row_pins * num_column_pins);
-    self->previously_pressed = (bool *)m_malloc(sizeof(bool) * num_row_pins * num_column_pins);
-
     self->columns_to_anodes = columns_to_anodes;
     self->funcs = &keymatrix_funcs;
 
-    keypad_construct_common((keypad_scanner_obj_t *)self, interval, max_events);
+    keypad_construct_common((keypad_scanner_obj_t *)self, interval, max_events, debounce_threshold);
 }
 
 void common_hal_keypad_keymatrix_deinit(keypad_keymatrix_obj_t *self) {
@@ -138,8 +116,6 @@ static void keymatrix_scan_now(void *self_in, mp_obj_t timestamp) {
 
         for (size_t column = 0; column < common_hal_keypad_keymatrix_get_column_count(self); column++) {
             mp_uint_t key_number = row_column_to_key_number(self, row, column);
-            const bool previous = self->currently_pressed[key_number];
-            self->previously_pressed[key_number] = previous;
 
             // Get the current state, by reading whether the column got pulled to the row value or not.
             // If low and columns_to_anodes is true, the key is pressed.
@@ -147,10 +123,9 @@ static void keymatrix_scan_now(void *self_in, mp_obj_t timestamp) {
             const bool current =
                 common_hal_digitalio_digitalinout_get_value(self->column_digitalinouts->items[column]) !=
                 self->columns_to_anodes;
-            self->currently_pressed[key_number] = current;
 
             // Record any transitions.
-            if (previous != current) {
+            if (keypad_debounce((keypad_scanner_obj_t *)self, key_number, current)) {
                 keypad_eventqueue_record(self->events, key_number, current, timestamp);
             }
         }
@@ -159,6 +134,10 @@ static void keymatrix_scan_now(void *self_in, mp_obj_t timestamp) {
         // to switch values. Just switching to an input with a (relatively weak) pullup/pulldown
         // causes a slight delay in the output changing, which can cause false readings.
         common_hal_digitalio_digitalinout_set_value(row_dio, self->columns_to_anodes);
+
+        // Wait a moment to let the columns settle.
+        mp_hal_delay_us(1);
+
         // Switch the row back to an input, pulled appropriately
         common_hal_digitalio_digitalinout_switch_to_input(
             row_dio, self->columns_to_anodes ? PULL_UP : PULL_DOWN);

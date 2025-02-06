@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2022 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2022 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/mdns/Server.h"
 
@@ -36,7 +16,7 @@
 // Track whether the underlying IDF mdns has been started so that we only
 // create a single inited MDNS object to CircuitPython. (After deinit, another
 // could be created.)
-STATIC mdns_server_obj_t *_active_object = NULL;
+static mdns_server_obj_t *_active_object = NULL;
 
 void mdns_server_construct(mdns_server_obj_t *self, bool workflow) {
     if (_active_object != NULL) {
@@ -53,10 +33,9 @@ void mdns_server_construct(mdns_server_obj_t *self, bool workflow) {
     }
     _active_object = self;
 
-    uint8_t mac[6];
-    esp_netif_get_mac(common_hal_wifi_radio_obj.netif, mac);
-    snprintf(self->default_hostname, sizeof(self->default_hostname), "cpy-%02x%02x%02x", mac[3], mac[4], mac[5]);
-    common_hal_mdns_server_set_hostname(self, self->default_hostname);
+    // Match the netif hostname set when `import wifi` was called.
+    esp_netif_get_hostname(common_hal_wifi_radio_obj.netif, &self->hostname);
+    common_hal_mdns_server_set_hostname(self, self->hostname);
 
     self->inited = true;
 

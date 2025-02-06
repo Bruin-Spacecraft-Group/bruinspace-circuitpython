@@ -88,7 +88,7 @@ const byte *mp_decode_uint_skip(const byte *ptr) {
     return ptr;
 }
 
-STATIC NORETURN void fun_pos_args_mismatch(mp_obj_fun_bc_t *f, size_t expected, size_t given) {
+static NORETURN void fun_pos_args_mismatch(mp_obj_fun_bc_t *f, size_t expected, size_t given) {
     #if MICROPY_ERROR_REPORTING <= MICROPY_ERROR_REPORTING_TERSE
     // generic message, used also for other argument issues
     (void)f;
@@ -97,9 +97,11 @@ STATIC NORETURN void fun_pos_args_mismatch(mp_obj_fun_bc_t *f, size_t expected, 
     mp_arg_error_terse_mismatch();
     #elif MICROPY_ERROR_REPORTING == MICROPY_ERROR_REPORTING_NORMAL
     (void)f;
+    // CIRCUITPY-CHANGE: more specific mp_raise routine
     mp_raise_TypeError_varg(
         MP_ERROR_TEXT("function takes %d positional arguments but %d were given"), expected, given);
     #elif MICROPY_ERROR_REPORTING == MICROPY_ERROR_REPORTING_DETAILED
+    // CIRCUITPY-CHANGE: more specific mp_raise routine
     mp_raise_TypeError_varg(
         MP_ERROR_TEXT("%q() takes %d positional arguments but %d were given"),
         mp_obj_fun_get_name(MP_OBJ_FROM_PTR(f)), expected, given);
@@ -107,7 +109,7 @@ STATIC NORETURN void fun_pos_args_mismatch(mp_obj_fun_bc_t *f, size_t expected, 
 }
 
 #if DEBUG_PRINT
-STATIC void dump_args(const mp_obj_t *a, size_t sz) {
+static void dump_args(const mp_obj_t *a, size_t sz) {
     DEBUG_printf("%p: ", a);
     for (size_t i = 0; i < sz; i++) {
         DEBUG_printf("%p ", a[i]);
@@ -124,7 +126,7 @@ STATIC void dump_args(const mp_obj_t *a, size_t sz) {
 //    - code_state->ip should contain a pointer to the beginning of the prelude
 //    - code_state->sp should be: &code_state->state[0] - 1
 //    - code_state->n_state should be the number of objects in the local state
-STATIC void mp_setup_code_state_helper(mp_code_state_t *code_state, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static void mp_setup_code_state_helper(mp_code_state_t *code_state, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // This function is pretty complicated.  It's main aim is to be efficient in speed and RAM
     // usage for the common case of positional only args.
 
@@ -281,6 +283,7 @@ STATIC void mp_setup_code_state_helper(mp_code_state_t *code_state, size_t n_arg
                 if (elem != NULL) {
                     code_state_state[n_state - 1 - n_pos_args - i] = elem->value;
                 } else {
+                    // CIRCUITPY-CHANGE: more specific mp_raise routine
                     mp_raise_TypeError_varg(
                         MP_ERROR_TEXT("function missing required keyword argument '%q'"),
                         MP_OBJ_QSTR_VALUE(arg_names[n_pos_args + i]));
@@ -337,9 +340,9 @@ void mp_setup_code_state(mp_code_state_t *code_state, size_t n_args, size_t n_kw
 // On entry code_state should be allocated somewhere (stack/heap) and
 // contain the following valid entries:
 //    - code_state->fun_bc should contain a pointer to the function object
-//    - code_state->ip should contain a pointer to the beginning of the prelude
 //    - code_state->n_state should be the number of objects in the local state
 void mp_setup_code_state_native(mp_code_state_native_t *code_state, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    code_state->ip = mp_obj_fun_native_get_prelude_ptr(code_state->fun_bc);
     code_state->sp = &code_state->state[0] - 1;
     mp_setup_code_state_helper((mp_code_state_t *)code_state, n_args, n_kw, args);
 }

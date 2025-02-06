@@ -11,7 +11,7 @@ TOP = pathlib.Path(__file__).parent.parent
 
 def _git_version():
     version_str = subprocess.check_output(["git", "--version"], encoding="ascii", errors="replace")
-    version_str = re.search("([0-9]\.*)*[0-9]", version_str).group(0)
+    version_str = re.search(r"([0-9]\.*)*[0-9]", version_str).group(0)
     return tuple(int(part) for part in version_str.split("."))
 
 
@@ -46,6 +46,12 @@ def matching_submodules(s):
 # Submodules needed by port builds outside of their ports directory.
 # Should we try and detect these?
 PORT_DEPS = {
+    "analog": [
+        "extmod/ulab/",
+        "lib/tlsf/",
+        "lib/tinyusb/",
+        "lib/protomatter",
+    ],
     "atmel-samd": [
         "extmod/ulab/",
         "lib/adafruit_floppy/",
@@ -68,7 +74,7 @@ PORT_DEPS = {
     ],
     "litex": ["extmod/ulab/", "lib/tinyusb/", "lib/tlsf"],
     "mimxrt10xx": ["extmod/ulab/", "lib/tinyusb/", "lib/tlsf", "data/nvm.toml/"],
-    "nrf": [
+    "nordic": [
         "extmod/ulab/",
         "lib/mp3/",
         "lib/protomatter/",
@@ -88,6 +94,7 @@ PORT_DEPS = {
         "lib/tlsf",
         "data/nvm.toml/",
     ],
+    "renode": ["lib/tlsf"],
     "silabs": ["extmod/ulab/", "data/nvm.toml/", "lib/tlsf"],
     "stm": [
         "extmod/ulab/",
@@ -176,7 +183,7 @@ def main(target):
         submodules = ["tools/"]  # for huffman
     elif target == "windows":
         # This builds one board from a number of ports so fill out a bunch of submodules
-        for port in ("atmel-samd", "nrf", "raspberrypi", "stm"):
+        for port in ("atmel-samd", "nordic", "raspberrypi", "stm"):
             submodules.append(f"ports/{port}")
             submodules.extend(PORT_DEPS[port])
         unique_submodules = set(submodules)

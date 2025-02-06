@@ -1,3 +1,4 @@
+# CIRCUITPY-CHANGE: micropython does not have this file
 import errno
 import os as os
 

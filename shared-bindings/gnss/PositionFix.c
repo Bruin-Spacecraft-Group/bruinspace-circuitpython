@@ -54,14 +54,14 @@ mp_obj_t gnss_positionfix_type_to_obj(gnss_positionfix_t posfix) {
     }
 }
 
-STATIC const mp_rom_map_elem_t gnss_positionfix_locals_dict_table[] = {
+static const mp_rom_map_elem_t gnss_positionfix_locals_dict_table[] = {
     {MP_ROM_QSTR(MP_QSTR_INVALID), MP_ROM_PTR(&gnss_positionfix_invalid_obj)},
     {MP_ROM_QSTR(MP_QSTR_FIX_2D), MP_ROM_PTR(&gnss_positionfix_fix2d_obj)},
     {MP_ROM_QSTR(MP_QSTR_FIX_3D), MP_ROM_PTR(&gnss_positionfix_fix3d_obj)},
 };
-STATIC MP_DEFINE_CONST_DICT(gnss_positionfix_locals_dict, gnss_positionfix_locals_dict_table);
+static MP_DEFINE_CONST_DICT(gnss_positionfix_locals_dict, gnss_positionfix_locals_dict_table);
 
-STATIC void gnss_positionfix_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void gnss_positionfix_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     qstr posfix = MP_QSTR_INVALID;
     if (MP_OBJ_TO_PTR(self_in) == MP_ROM_PTR(&gnss_positionfix_fix2d_obj)) {
         posfix = MP_QSTR_FIX_2D;

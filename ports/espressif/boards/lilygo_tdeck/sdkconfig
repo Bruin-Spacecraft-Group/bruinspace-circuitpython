@@ -7,7 +7,6 @@
 #
 # LWIP
 #
-CONFIG_LWIP_LOCAL_HOSTNAME="T-DECK"
 # end of LWIP
 
 # end of Component config

@@ -31,6 +31,7 @@
 
 #if MICROPY_PY_ASYNCIO
 
+// CIRCUITPY-CHANGE
 #if CIRCUITPY && !(defined(__unix__) || defined(__APPLE__))
 #include "shared-bindings/supervisor/__init__.h"
 #endif
@@ -59,10 +60,10 @@ typedef struct _mp_obj_task_queue_t {
     mp_obj_task_t *heap;
 } mp_obj_task_queue_t;
 
-STATIC const mp_obj_type_t task_queue_type;
-STATIC const mp_obj_type_t task_type;
+static const mp_obj_type_t task_queue_type;
+static const mp_obj_type_t task_type;
 
-STATIC mp_obj_t task_queue_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
+static mp_obj_t task_queue_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
 
 /******************************************************************************/
 // Ticks for task ordering in pairing heap
@@ -73,7 +74,7 @@ STATIC mp_obj_t task_queue_make_new(const mp_obj_type_t *type, size_t n_args, si
 #define _TICKS_HALFPERIOD (_TICKS_PERIOD >> 1)
 
 #if !CIRCUITPY || (defined(__unix__) || defined(__APPLE__))
-STATIC mp_obj_t ticks(void) {
+static mp_obj_t ticks(void) {
     return MP_OBJ_NEW_SMALL_INT(mp_hal_ticks_ms() & _TICKS_MAX);
 }
 #else
@@ -86,14 +87,14 @@ STATIC mp_obj_t ticks(void) {
 #endif
 
 // CIRCUITPY-CHANGE: ticks_diff must match adafruit_ticks
-STATIC mp_int_t ticks_diff(mp_obj_t t1_in, mp_obj_t t0_in) {
+static mp_int_t ticks_diff(mp_obj_t t1_in, mp_obj_t t0_in) {
     mp_uint_t t0 = MP_OBJ_SMALL_INT_VALUE(t0_in);
     mp_uint_t t1 = MP_OBJ_SMALL_INT_VALUE(t1_in);
     mp_int_t diff = ((t1 - t0 + _TICKS_HALFPERIOD) & _TICKS_MAX) - _TICKS_HALFPERIOD;
     return diff;
 }
 
-STATIC int task_lt(mp_pairheap_t *n1, mp_pairheap_t *n2) {
+static int task_lt(mp_pairheap_t *n1, mp_pairheap_t *n2) {
     mp_obj_task_t *t1 = (mp_obj_task_t *)n1;
     mp_obj_task_t *t2 = (mp_obj_task_t *)n2;
     return MP_OBJ_SMALL_INT_VALUE(ticks_diff(t1->ph_key, t2->ph_key)) < 0;
@@ -102,7 +103,7 @@ STATIC int task_lt(mp_pairheap_t *n1, mp_pairheap_t *n2) {
 /******************************************************************************/
 // TaskQueue class
 
-STATIC mp_obj_t task_queue_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t task_queue_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     (void)args;
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
     mp_obj_task_queue_t *self = mp_obj_malloc(mp_obj_task_queue_t, type);
@@ -110,7 +111,7 @@ STATIC mp_obj_t task_queue_make_new(const mp_obj_type_t *type, size_t n_args, si
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC mp_obj_t task_queue_peek(mp_obj_t self_in) {
+static mp_obj_t task_queue_peek(mp_obj_t self_in) {
     mp_obj_task_queue_t *self = MP_OBJ_TO_PTR(self_in);
     if (self->heap == NULL) {
         return mp_const_none;
@@ -118,9 +119,9 @@ STATIC mp_obj_t task_queue_peek(mp_obj_t self_in) {
         return MP_OBJ_FROM_PTR(self->heap);
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(task_queue_peek_obj, task_queue_peek);
+static MP_DEFINE_CONST_FUN_OBJ_1(task_queue_peek_obj, task_queue_peek);
 
-STATIC mp_obj_t task_queue_push(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t task_queue_push(size_t n_args, const mp_obj_t *args) {
     mp_obj_task_queue_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_obj_task_t *task = MP_OBJ_TO_PTR(args[1]);
     task->data = mp_const_none;
@@ -133,9 +134,9 @@ STATIC mp_obj_t task_queue_push(size_t n_args, const mp_obj_t *args) {
     self->heap = (mp_obj_task_t *)mp_pairheap_push(task_lt, TASK_PAIRHEAP(self->heap), TASK_PAIRHEAP(task));
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(task_queue_push_obj, 2, 3, task_queue_push);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(task_queue_push_obj, 2, 3, task_queue_push);
 
-STATIC mp_obj_t task_queue_pop(mp_obj_t self_in) {
+static mp_obj_t task_queue_pop(mp_obj_t self_in) {
     mp_obj_task_queue_t *self = MP_OBJ_TO_PTR(self_in);
     mp_obj_task_t *head = (mp_obj_task_t *)mp_pairheap_peek(task_lt, &self->heap->pairheap);
     if (head == NULL) {
@@ -144,17 +145,17 @@ STATIC mp_obj_t task_queue_pop(mp_obj_t self_in) {
     self->heap = (mp_obj_task_t *)mp_pairheap_pop(task_lt, &self->heap->pairheap);
     return MP_OBJ_FROM_PTR(head);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(task_queue_pop_obj, task_queue_pop);
+static MP_DEFINE_CONST_FUN_OBJ_1(task_queue_pop_obj, task_queue_pop);
 
-STATIC mp_obj_t task_queue_remove(mp_obj_t self_in, mp_obj_t task_in) {
+static mp_obj_t task_queue_remove(mp_obj_t self_in, mp_obj_t task_in) {
     mp_obj_task_queue_t *self = MP_OBJ_TO_PTR(self_in);
     mp_obj_task_t *task = MP_OBJ_TO_PTR(task_in);
     self->heap = (mp_obj_task_t *)mp_pairheap_delete(task_lt, &self->heap->pairheap, &task->pairheap);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(task_queue_remove_obj, task_queue_remove);
+static MP_DEFINE_CONST_FUN_OBJ_2(task_queue_remove_obj, task_queue_remove);
 
-STATIC const mp_rom_map_elem_t task_queue_locals_dict_table[] = {
+static const mp_rom_map_elem_t task_queue_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_peek), MP_ROM_PTR(&task_queue_peek_obj) },
     { MP_ROM_QSTR(MP_QSTR_push), MP_ROM_PTR(&task_queue_push_obj) },
     { MP_ROM_QSTR(MP_QSTR_pop), MP_ROM_PTR(&task_queue_pop_obj) },
@@ -165,9 +166,9 @@ STATIC const mp_rom_map_elem_t task_queue_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_push_sorted), MP_ROM_PTR(&task_queue_push_obj) },
     { MP_ROM_QSTR(MP_QSTR_pop_head), MP_ROM_PTR(&task_queue_pop_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(task_queue_locals_dict, task_queue_locals_dict_table);
+static MP_DEFINE_CONST_DICT(task_queue_locals_dict, task_queue_locals_dict_table);
 
-STATIC MP_DEFINE_CONST_OBJ_TYPE(
+static MP_DEFINE_CONST_OBJ_TYPE(
     task_queue_type,
     MP_QSTR_TaskQueue,
     MP_TYPE_FLAG_NONE,
@@ -179,9 +180,9 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
 // Task class
 
 // This is the core asyncio context with cur_task, _task_queue and CancelledError.
-STATIC mp_obj_t asyncio_context = MP_OBJ_NULL;
+mp_obj_t mp_asyncio_context = MP_OBJ_NULL;
 
-STATIC mp_obj_t task_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t task_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, 2, false);
     mp_obj_task_t *self = m_new_obj(mp_obj_task_t);
     self->pairheap.base.type = type;
@@ -191,25 +192,25 @@ STATIC mp_obj_t task_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     self->state = TASK_STATE_RUNNING_NOT_WAITED_ON;
     self->ph_key = MP_OBJ_NEW_SMALL_INT(0);
     if (n_args == 2) {
-        asyncio_context = args[1];
+        mp_asyncio_context = args[1];
     }
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC mp_obj_t task_done(mp_obj_t self_in) {
+static mp_obj_t task_done(mp_obj_t self_in) {
     mp_obj_task_t *self = MP_OBJ_TO_PTR(self_in);
     return mp_obj_new_bool(TASK_IS_DONE(self));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(task_done_obj, task_done);
+static MP_DEFINE_CONST_FUN_OBJ_1(task_done_obj, task_done);
 
-STATIC mp_obj_t task_cancel(mp_obj_t self_in) {
+static mp_obj_t task_cancel(mp_obj_t self_in) {
     mp_obj_task_t *self = MP_OBJ_TO_PTR(self_in);
     // Check if task is already finished.
     if (TASK_IS_DONE(self)) {
         return mp_const_false;
     }
     // Can't cancel self (not supported yet).
-    mp_obj_t cur_task = mp_obj_dict_get(asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR_cur_task));
+    mp_obj_t cur_task = mp_obj_dict_get(mp_asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR_cur_task));
     if (self_in == cur_task) {
         mp_raise_msg(&mp_type_RuntimeError, MP_ERROR_TEXT("can't cancel self"));
     }
@@ -218,7 +219,7 @@ STATIC mp_obj_t task_cancel(mp_obj_t self_in) {
         self = MP_OBJ_TO_PTR(self->data);
     }
 
-    mp_obj_t _task_queue = mp_obj_dict_get(asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR__task_queue));
+    mp_obj_t _task_queue = mp_obj_dict_get(mp_asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR__task_queue));
 
     // Reschedule Task as a cancelled task.
     mp_obj_t dest[3];
@@ -241,21 +242,21 @@ STATIC mp_obj_t task_cancel(mp_obj_t self_in) {
         task_queue_push(2, dest);
     }
 
-    self->data = mp_obj_dict_get(asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR_CancelledError));
+    self->data = mp_obj_dict_get(mp_asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR_CancelledError));
 
     return mp_const_true;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(task_cancel_obj, task_cancel);
+static MP_DEFINE_CONST_FUN_OBJ_1(task_cancel_obj, task_cancel);
 
 // CIRCUITPY-CHANGE: CircuitPython provides __await__().
-STATIC mp_obj_t task_getiter(mp_obj_t self_in, mp_obj_iter_buf_t *iter_buf);
+static mp_obj_t task_getiter(mp_obj_t self_in, mp_obj_iter_buf_t *iter_buf);
 
-STATIC mp_obj_t task_await(mp_obj_t self_in) {
+static mp_obj_t task_await(mp_obj_t self_in) {
     return task_getiter(self_in, NULL);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(task_await_obj, task_await);
+static MP_DEFINE_CONST_FUN_OBJ_1(task_await_obj, task_await);
 
-STATIC void task_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
+static void task_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     mp_obj_task_t *self = MP_OBJ_TO_PTR(self_in);
     if (dest[0] == MP_OBJ_NULL) {
         // Load
@@ -273,6 +274,7 @@ STATIC void task_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
             dest[1] = self_in;
         } else if (attr == MP_QSTR_ph_key) {
             dest[0] = self->ph_key;
+            // CIRCUITPY-CHANGE: await
         } else if (attr == MP_QSTR___await__) {
             dest[0] = MP_OBJ_FROM_PTR(&task_await_obj);
             dest[1] = self_in;
@@ -289,7 +291,7 @@ STATIC void task_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     }
 }
 
-STATIC mp_obj_t task_getiter(mp_obj_t self_in, mp_obj_iter_buf_t *iter_buf) {
+static mp_obj_t task_getiter(mp_obj_t self_in, mp_obj_iter_buf_t *iter_buf) {
     (void)iter_buf;
     mp_obj_task_t *self = MP_OBJ_TO_PTR(self_in);
     if (TASK_IS_DONE(self)) {
@@ -305,9 +307,10 @@ STATIC mp_obj_t task_getiter(mp_obj_t self_in, mp_obj_iter_buf_t *iter_buf) {
     return self_in;
 }
 
-STATIC mp_obj_t task_iternext(mp_obj_t self_in) {
+static mp_obj_t task_iternext(mp_obj_t self_in) {
     mp_obj_task_t *self = MP_OBJ_TO_PTR(self_in);
     if (TASK_IS_DONE(self)) {
+        // CIRCUITPY-CHANGE
         if (self->data == mp_const_none) {
             // Task finished but has already been sent to the loop's exception handler.
             mp_raise_StopIteration(MP_OBJ_NULL);
@@ -317,7 +320,7 @@ STATIC mp_obj_t task_iternext(mp_obj_t self_in) {
         }
     } else {
         // Put calling task on waiting queue.
-        mp_obj_t cur_task = mp_obj_dict_get(asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR_cur_task));
+        mp_obj_t cur_task = mp_obj_dict_get(mp_asyncio_context, MP_OBJ_NEW_QSTR(MP_QSTR_cur_task));
         mp_obj_t args[2] = { self->state, cur_task };
         task_queue_push(2, args);
         // Set calling task's data to this task that it waits on, to double-link it.
@@ -326,12 +329,12 @@ STATIC mp_obj_t task_iternext(mp_obj_t self_in) {
     return mp_const_none;
 }
 
-STATIC const mp_getiter_iternext_custom_t task_getiter_iternext = {
+static const mp_getiter_iternext_custom_t task_getiter_iternext = {
     .getiter = task_getiter,
     .iternext = task_iternext,
 };
 
-STATIC MP_DEFINE_CONST_OBJ_TYPE(
+static MP_DEFINE_CONST_OBJ_TYPE(
     task_type,
     MP_QSTR_Task,
     MP_TYPE_FLAG_ITER_IS_CUSTOM,
@@ -343,12 +346,12 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
 /******************************************************************************/
 // C-level asyncio module
 
-STATIC const mp_rom_map_elem_t mp_module_asyncio_globals_table[] = {
+static const mp_rom_map_elem_t mp_module_asyncio_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR__asyncio) },
     { MP_ROM_QSTR(MP_QSTR_TaskQueue), MP_ROM_PTR(&task_queue_type) },
     { MP_ROM_QSTR(MP_QSTR_Task), MP_ROM_PTR(&task_type) },
 };
-STATIC MP_DEFINE_CONST_DICT(mp_module_asyncio_globals, mp_module_asyncio_globals_table);
+static MP_DEFINE_CONST_DICT(mp_module_asyncio_globals, mp_module_asyncio_globals_table);
 
 const mp_obj_module_t mp_module_asyncio = {
     .base = { &mp_type_module },

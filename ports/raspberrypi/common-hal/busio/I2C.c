@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "py/mperrno.h"
 #include "py/mphal.h"
@@ -42,21 +22,14 @@
 // One second
 #define BUS_TIMEOUT_US 1000000
 
-STATIC bool never_reset_i2c[2];
-STATIC i2c_inst_t *i2c[2] = {i2c0, i2c1};
-
-void reset_i2c(void) {
-    for (size_t i = 0; i < 2; i++) {
-        if (never_reset_i2c[i]) {
-            continue;
-        }
-
-        i2c_deinit(i2c[i]);
-    }
-}
+static i2c_inst_t *i2c[2] = {i2c0, i2c1};
 
 void common_hal_busio_i2c_construct(busio_i2c_obj_t *self,
     const mcu_pin_obj_t *scl, const mcu_pin_obj_t *sda, uint32_t frequency, uint32_t timeout) {
+
+    // Ensure object starts in its deinit state.
+    common_hal_busio_i2c_mark_deinit(self);
+
     self->peripheral = NULL;
     // I2C pins have a regular pattern. SCL is always odd and SDA is even. They match up in pairs
     // so we can divide by two to get the instance. This pattern repeats.
@@ -135,14 +108,16 @@ void common_hal_busio_i2c_deinit(busio_i2c_obj_t *self) {
     if (common_hal_busio_i2c_deinited(self)) {
         return;
     }
-    never_reset_i2c[i2c_hw_index(self->peripheral)] = false;
 
     i2c_deinit(self->peripheral);
 
     reset_pin_number(self->sda_pin);
     reset_pin_number(self->scl_pin);
+    common_hal_busio_i2c_mark_deinit(self);
+}
+
+void common_hal_busio_i2c_mark_deinit(busio_i2c_obj_t *self) {
     self->sda_pin = NO_PIN;
-    self->scl_pin = NO_PIN;
 }
 
 bool common_hal_busio_i2c_probe(busio_i2c_obj_t *self, uint8_t addr) {
@@ -150,6 +125,9 @@ bool common_hal_busio_i2c_probe(busio_i2c_obj_t *self, uint8_t addr) {
 }
 
 bool common_hal_busio_i2c_try_lock(busio_i2c_obj_t *self) {
+    if (common_hal_busio_i2c_deinited(self)) {
+        return false;
+    }
     bool grabbed_lock = false;
     if (!self->has_lock) {
         grabbed_lock = true;
@@ -166,7 +144,7 @@ void common_hal_busio_i2c_unlock(busio_i2c_obj_t *self) {
     self->has_lock = false;
 }
 
-STATIC uint8_t _common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr,
+static uint8_t _common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr,
     const uint8_t *data, size_t len, bool transmit_stop_bit) {
     if (len == 0) {
         // The RP2040 I2C peripheral will not perform 0 byte writes.
@@ -236,8 +214,6 @@ uint8_t common_hal_busio_i2c_write_read(busio_i2c_obj_t *self, uint16_t addr,
 }
 
 void common_hal_busio_i2c_never_reset(busio_i2c_obj_t *self) {
-    never_reset_i2c[i2c_hw_index(self->peripheral)] = true;
-
     never_reset_pin_number(self->scl_pin);
     never_reset_pin_number(self->sda_pin);
 }

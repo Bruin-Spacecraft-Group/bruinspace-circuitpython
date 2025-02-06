@@ -376,7 +376,7 @@ uint32_t _common_hal_bleio_adapter_start_advertising(
 }
 
 // Check size of packet advertising to send
-STATIC void check_data_fit(size_t data_len, bool connectable) {
+static void check_data_fit(size_t data_len, bool connectable) {
     if (data_len > BLE_EXT_ADV_MAX_SIZE ||
         (connectable && data_len > BLE_EXT_ADV_MAX_SIZE)) {
         mp_raise_ValueError(
@@ -451,7 +451,7 @@ bool common_hal_bleio_adapter_get_advertising(bleio_adapter_obj_t *self) {
 }
 
 // Convert mac address of remote device to connect
-STATIC void _convert_address(const bleio_address_obj_t *address,
+static void _convert_address(const bleio_address_obj_t *address,
     bd_addr *sd_address, uint8_t *addr_type) {
     mp_buffer_info_t address_buf_info;
     *addr_type = address->type;

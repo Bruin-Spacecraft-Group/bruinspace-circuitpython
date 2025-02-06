@@ -1,3 +1,4 @@
+# CIRCUITPY-CHANGE: micropython does not have this file
 import json
 
 # Test that json can load from any object with readinto

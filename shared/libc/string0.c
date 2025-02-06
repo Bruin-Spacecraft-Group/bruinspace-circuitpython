@@ -26,10 +26,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
 
+// CIRCUITPY-CHANGE: additional includes
+#include <string.h>
 #include "py/mpconfig.h"
 
+// CIRCUITPY-CHANGE: ifndef
 #ifndef likely
 #define likely(x) __builtin_expect((x), 1)
 #endif
@@ -38,6 +40,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
 void *memcpy(void *dst, const void *src, size_t n) {
+// CIRCUITPY-CHANGE: fancier copy only for full build
 #if CIRCUITPY_FULL_BUILD
     if (likely(!(((uintptr_t)dst) & 3) && !(((uintptr_t)src) & 3))) {
         // pointers aligned
@@ -100,6 +103,7 @@ void *memmove(void *dest, const void *src, size_t n) {
 }
 
 void *memset(void *s, int c, size_t n) {
+// CIRCUITPY-CHANGE: fancier copy only for full build
 #if CIRCUITPY_FULL_BUILD
     if (c == 0 && ((uintptr_t)s & 3) == 0) {
         // aligned store of 0
@@ -125,6 +129,7 @@ void *memset(void *s, int c, size_t n) {
     return s;
 }
 
+// CIRCUITPY-CHANGE
 #pragma GCC diagnostic pop
 
 int memcmp(const void *s1, const void *s2, size_t n) {
@@ -172,7 +177,7 @@ int strcmp(const char *s1, const char *s2) {
 }
 
 int strncmp(const char *s1, const char *s2, size_t n) {
-    while (*s1 && *s2 && n > 0) {
+    while (n > 0 && *s1 && *s2) {
         char c1 = *s1++; // XXX UTF8 get char, next char
         char c2 = *s2++; // XXX UTF8 get char, next char
         n--;

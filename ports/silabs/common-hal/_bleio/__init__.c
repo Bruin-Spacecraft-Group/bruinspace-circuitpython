@@ -38,7 +38,7 @@
 #include "supervisor/shared/bluetooth/bluetooth.h"
 #include "common-hal/_bleio/__init__.h"
 
-STATIC conn_state_t conn_state;
+static conn_state_t conn_state;
 osMutexId_t bluetooth_connection_mutex_id;
 bleio_adapter_obj_t common_hal_bleio_adapter_obj;
 uint8_t ble_bonding_handle = 0xFF;
@@ -50,6 +50,9 @@ const osMutexAttr_t bluetooth_connection_mutex_attr = {
     .cb_mem = bluetooth_connection_mutex_cb,
     .cb_size = osMutexCbSize
 };
+
+void common_hal_bleio_init(void) {
+}
 
 void bleio_user_reset() {
     // Stop any user scanning or advertising.
@@ -109,8 +112,8 @@ void common_hal_bleio_check_connected(uint16_t conn_handle) {
 void sl_bt_on_event(sl_bt_msg_t *evt) {
     bd_addr address;
     uint8_t address_type = 0;
-    STATIC uint8_t serv_idx = 0;
-    STATIC uint8_t device_name[16];
+    static uint8_t serv_idx = 0;
+    static uint8_t device_name[16];
 
     bleio_connection_internal_t *connection;
     bleio_service_obj_t *service;

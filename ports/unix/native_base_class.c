@@ -14,7 +14,7 @@ typedef struct {
 
 const mp_obj_type_t native_base_class_type;
 
-STATIC mp_obj_t native_base_class_make_new(const mp_obj_type_t *type, size_t n_args,
+static mp_obj_t native_base_class_make_new(const mp_obj_type_t *type, size_t n_args,
     size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_test };
     static const mp_arg_t allowed_args[] = {
@@ -35,13 +35,13 @@ static native_base_class_obj_t *native_base(mp_obj_t unknown_obj) {
     return MP_OBJ_TO_PTR(native_obj);
 }
 
-STATIC mp_obj_t native_base_class_obj_get_test(mp_obj_t self_in) {
+static mp_obj_t native_base_class_obj_get_test(mp_obj_t self_in) {
     native_base_class_obj_t *self = native_base(self_in);
     return self->test;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(native_base_class_get_test_obj, native_base_class_obj_get_test);
 
-STATIC mp_obj_t native_base_class_obj_set_test(mp_obj_t self_in, mp_obj_t value) {
+static mp_obj_t native_base_class_obj_set_test(mp_obj_t self_in, mp_obj_t value) {
     mp_printf(&mp_plat_print, "native base class .test set to: ");
     mp_obj_print_helper(&mp_plat_print, value, PRINT_REPR);
     mp_printf(&mp_plat_print, "\n");
@@ -55,7 +55,7 @@ MP_PROPERTY_GETSET(native_base_class_test_obj,
     (mp_obj_t)&native_base_class_get_test_obj,
     (mp_obj_t)&native_base_class_set_test_obj);
 
-STATIC mp_obj_t native_base_class_obj_print_subclass_attr(mp_obj_t self_in, mp_obj_t attr_name_obj) {
+static mp_obj_t native_base_class_obj_print_subclass_attr(mp_obj_t self_in, mp_obj_t attr_name_obj) {
     if (!mp_obj_is_str(attr_name_obj)) {
         mp_raise_TypeError(NULL);
     }
@@ -68,15 +68,15 @@ STATIC mp_obj_t native_base_class_obj_print_subclass_attr(mp_obj_t self_in, mp_o
 }
 MP_DEFINE_CONST_FUN_OBJ_2(native_base_class_print_subclass_attr_obj, native_base_class_obj_print_subclass_attr);
 
-STATIC const mp_rom_map_elem_t native_base_class_locals_dict_table[] = {
+static const mp_rom_map_elem_t native_base_class_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_test), MP_ROM_PTR(&native_base_class_test_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_print_subclass_attr), MP_ROM_PTR(&native_base_class_print_subclass_attr_obj) },
 
 };
-STATIC MP_DEFINE_CONST_DICT(native_base_class_locals_dict, native_base_class_locals_dict_table);
+static MP_DEFINE_CONST_DICT(native_base_class_locals_dict, native_base_class_locals_dict_table);
 
-STATIC mp_obj_t native_base_class_subscr(mp_obj_t self_in, mp_obj_t index_in, mp_obj_t value) {
+static mp_obj_t native_base_class_subscr(mp_obj_t self_in, mp_obj_t index_in, mp_obj_t value) {
     mp_obj_t attribute_value = mp_load_attr(self_in, MP_QSTR_new_attribute);
     mp_printf(&mp_plat_print, "native base class subscr .new_attribute set to: ");
     mp_obj_print_helper(&mp_plat_print, attribute_value, PRINT_REPR);

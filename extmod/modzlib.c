@@ -1,3 +1,5 @@
+// CIRCUITPY-CHANGE: This module was removed from MicroPython but CircuitPython still uses it.
+
 /*
  * This file is part of the MicroPython project, http://micropython.org/
  *
@@ -49,7 +51,7 @@ typedef struct _mp_obj_decompio_t {
     bool eof;
 } mp_obj_decompio_t;
 
-STATIC int read_src_stream(TINF_DATA *data) {
+static int read_src_stream(TINF_DATA *data) {
     byte *p = (void *)data;
     p -= offsetof(mp_obj_decompio_t, decomp);
     mp_obj_decompio_t *self = (mp_obj_decompio_t *)p;
@@ -67,7 +69,7 @@ STATIC int read_src_stream(TINF_DATA *data) {
     return c;
 }
 
-STATIC mp_obj_t decompio_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t decompio_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, 2, false);
     mp_get_stream_raise(args[0], MP_STREAM_OP_READ);
     mp_obj_decompio_t *o = mp_obj_malloc(mp_obj_decompio_t, type);
@@ -106,7 +108,7 @@ STATIC mp_obj_t decompio_make_new(const mp_obj_type_t *type, size_t n_args, size
     return MP_OBJ_FROM_PTR(o);
 }
 
-STATIC mp_uint_t decompio_read(mp_obj_t o_in, void *buf, mp_uint_t size, int *errcode) {
+static mp_uint_t decompio_read(mp_obj_t o_in, void *buf, mp_uint_t size, int *errcode) {
     mp_obj_decompio_t *o = MP_OBJ_TO_PTR(o_in);
     if (o->eof) {
         return 0;
@@ -127,21 +129,21 @@ STATIC mp_uint_t decompio_read(mp_obj_t o_in, void *buf, mp_uint_t size, int *er
 }
 
 #if !MICROPY_ENABLE_DYNRUNTIME
-STATIC const mp_rom_map_elem_t decompio_locals_dict_table[] = {
+static const mp_rom_map_elem_t decompio_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
     { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
     { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(decompio_locals_dict, decompio_locals_dict_table);
+static MP_DEFINE_CONST_DICT(decompio_locals_dict, decompio_locals_dict_table);
 #endif
 
-STATIC const mp_stream_p_t decompio_stream_p = {
+static const mp_stream_p_t decompio_stream_p = {
     .read = decompio_read,
 };
 
 #if !MICROPY_ENABLE_DYNRUNTIME
-STATIC MP_DEFINE_CONST_OBJ_TYPE(
+static MP_DEFINE_CONST_OBJ_TYPE(
     decompio_type,
     MP_QSTR_DecompIO,
     MP_TYPE_FLAG_NONE,
@@ -151,7 +153,7 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
     );
 #endif
 
-STATIC mp_obj_t mod_uzlib_decompress(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t mod_uzlib_decompress(size_t n_args, const mp_obj_t *args) {
     mp_obj_t data = args[0];
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(data, &bufinfo, MP_BUFFER_READ);
@@ -213,16 +215,16 @@ STATIC mp_obj_t mod_uzlib_decompress(size_t n_args, const mp_obj_t *args) {
 error:
     mp_raise_type_arg(&mp_type_ValueError, MP_OBJ_NEW_SMALL_INT(st));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_uzlib_decompress_obj, 1, 3, mod_uzlib_decompress);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_uzlib_decompress_obj, 1, 3, mod_uzlib_decompress);
 
 #if !MICROPY_ENABLE_DYNRUNTIME
-STATIC const mp_rom_map_elem_t mp_module_uzlib_globals_table[] = {
+static const mp_rom_map_elem_t mp_module_uzlib_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_uzlib) },
     { MP_ROM_QSTR(MP_QSTR_decompress), MP_ROM_PTR(&mod_uzlib_decompress_obj) },
     { MP_ROM_QSTR(MP_QSTR_DecompIO), MP_ROM_PTR(&decompio_type) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(mp_module_uzlib_globals, mp_module_uzlib_globals_table);
+static MP_DEFINE_CONST_DICT(mp_module_uzlib_globals, mp_module_uzlib_globals_table);
 
 const mp_obj_module_t mp_module_uzlib = {
     .base = { &mp_type_module },

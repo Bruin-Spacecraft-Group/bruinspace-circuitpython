@@ -1,13 +1,8 @@
 try:
-    import errno
-    import os
-except ImportError:
-    print("SKIP")
-    raise SystemExit
+    import errno, os, vfs
 
-try:
-    os.VfsFat
-except AttributeError:
+    vfs.VfsFat
+except (ImportError, AttributeError):
     print("SKIP")
     raise SystemExit
 
@@ -22,12 +17,14 @@ class RAMFS_OLD:
         # print("readblocks(%s, %x(%d))" % (n, id(buf), len(buf)))
         for i in range(len(buf)):
             buf[i] = self.data[n * self.SEC_SIZE + i]
+        # CIRCUITPY-CHANGE
         return 0
 
     def writeblocks(self, n, buf):
         # print("writeblocks(%s, %x)" % (n, id(buf)))
         for i in range(len(buf)):
             self.data[n * self.SEC_SIZE + i] = buf[i]
+        # CIRCUITPY-CHANGE
         return 0
 
     def sync(self):
@@ -43,18 +40,18 @@ except MemoryError:
     print("SKIP")
     raise SystemExit
 
-os.VfsFat.mkfs(bdev)
-vfs = os.VfsFat(bdev)
-os.mount(vfs, "/ramdisk")
+vfs.VfsFat.mkfs(bdev)
+fs = vfs.VfsFat(bdev)
+vfs.mount(fs, "/ramdisk")
 
 # file io
-with vfs.open("file.txt", "w") as f:
+with fs.open("file.txt", "w") as f:
     f.write("hello!")
 
-print(list(vfs.ilistdir()))
+print(list(fs.ilistdir()))
 
-with vfs.open("file.txt", "r") as f:
+with fs.open("file.txt", "r") as f:
     print(f.read())
 
-vfs.remove("file.txt")
-print(list(vfs.ilistdir()))
+fs.remove("file.txt")
+print(list(fs.ilistdir()))

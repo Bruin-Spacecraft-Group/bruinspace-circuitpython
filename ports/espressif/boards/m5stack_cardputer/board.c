@@ -1,39 +1,22 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2020 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
-#include "supervisor/board.h"
 #include "mpconfigboard.h"
+#include "supervisor/board.h"
+#include "supervisor/shared/serial.h"
 #include "shared-bindings/busio/SPI.h"
 #include "shared-bindings/fourwire/FourWire.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-module/displayio/__init__.h"
 #include "shared-module/displayio/mipi_constants.h"
 #include "shared-bindings/board/__init__.h"
+#include "py/runtime.h"
+#include "py/ringbuf.h"
+#include "shared/runtime/interrupt_char.h"
 
-fourwire_fourwire_obj_t board_display_obj;
 
 #define DELAY 0x80
 
@@ -57,6 +40,7 @@ uint8_t display_init_sequence[] = {
 };
 
 
+// Overrides the weakly linked function from supervisor/shared/board.c
 void board_init(void) {
     busio_spi_obj_t *spi = common_hal_board_create_spi(0);
     fourwire_fourwire_obj_t *bus = &allocate_display_bus()->fourwire_bus;
@@ -107,8 +91,5 @@ void board_init(void) {
         350             // backlight pwm frequency
         );
 }
-
-
-// Use the MP_WEAK supervisor/shared/board.c versions of routines not defined here.
 
 // TODO: Should we turn off the display when asleep, in board_deinit() ?

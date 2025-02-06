@@ -1,3 +1,4 @@
+# CIRCUITPY-CHANGE: micropython does not have this test file
 try:
     memoryview(b'a').cast
 except:

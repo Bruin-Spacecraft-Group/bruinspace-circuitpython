@@ -27,15 +27,13 @@
 
 #if CIRCUITPY_SSL_MBEDTLS
 
+#include "py/runtime.h"
 #include "mbedtls_config.h"
 #include "mbedtls/entropy_poll.h"
 
-#include "hardware/rtc.h"
 #include "shared/timeutils/timeutils.h"
 #include "shared-bindings/os/__init__.h"
-
-#include "hardware/rtc.h"
-#include "shared/timeutils/timeutils.h"
+#include "shared-bindings/time/__init__.h"
 
 extern uint8_t rosc_random_u8(size_t cycles);
 
@@ -46,9 +44,10 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
 }
 
 time_t rp2_rtctime_seconds(time_t *timer) {
-    datetime_t t;
-    rtc_get_datetime(&t);
-    return timeutils_seconds_since_epoch(t.year, t.month, t.day, t.hour, t.min, t.sec);
+    mp_obj_t datetime = mp_load_attr(MP_STATE_VM(rtc_time_source), MP_QSTR_datetime);
+    timeutils_struct_time_t tm;
+    struct_time_to_tm(datetime, &tm);
+    return timeutils_seconds_since_epoch(tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 #endif

@@ -53,7 +53,7 @@ def make_mcu_dict_entry2(pin):
 
 def make_mcu_dict(pins):
     """Create the mcu dictionary"""
-    decl = "\n\nSTATIC const mp_rom_map_elem_t board_module_globals_table[] = {\n"
+    decl = "\n\nstatic const mp_rom_map_elem_t board_module_globals_table[] = {\n"
     decl += "\tCIRCUITPYTHON_BOARD_DICT_STANDARD_ITEMS\n"
     for pin in pins.values():
         decl += "\t" + make_mcu_dict_entry(pin) + "\n"

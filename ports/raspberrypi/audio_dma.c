@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "audio_dma.h"
 
@@ -36,6 +16,8 @@
 #include "py/runtime.h"
 
 #include "src/rp2_common/hardware_irq/include/hardware/irq.h"
+#include "hardware/regs/intctrl.h" // For isr_ macro.
+
 
 #if CIRCUITPY_AUDIOCORE
 
@@ -50,7 +32,7 @@ void audio_dma_reset(void) {
 }
 
 
-STATIC size_t audio_dma_convert_samples(audio_dma_t *dma, uint8_t *input, uint32_t input_length, uint8_t *output, uint32_t output_length) {
+static size_t audio_dma_convert_samples(audio_dma_t *dma, uint8_t *input, uint32_t input_length, uint8_t *output, uint32_t output_length) {
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wcast-align"
 
@@ -135,7 +117,8 @@ STATIC size_t audio_dma_convert_samples(audio_dma_t *dma, uint8_t *input, uint32
 }
 
 // buffer_idx is 0 or 1.
-STATIC void audio_dma_load_next_block(audio_dma_t *dma, size_t buffer_idx) {
+static void audio_dma_load_next_block(audio_dma_t *dma, size_t buffer_idx) {
+    assert(dma->channel[buffer_idx] < NUM_DMA_CHANNELS);
     size_t dma_channel = dma->channel[buffer_idx];
 
     audioio_get_buffer_result_t get_buffer_result;
@@ -146,6 +129,7 @@ STATIC void audio_dma_load_next_block(audio_dma_t *dma, size_t buffer_idx) {
 
     if (get_buffer_result == GET_BUFFER_ERROR) {
         audio_dma_stop(dma);
+        dma->dma_result = AUDIO_DMA_SOURCE_ERROR;
         return;
     }
 
@@ -175,10 +159,10 @@ STATIC void audio_dma_load_next_block(audio_dma_t *dma, size_t buffer_idx) {
                 !dma_channel_is_busy(dma->channel[1])) {
                 // No data has been read, and both DMA channels have now finished, so it's safe to stop.
                 audio_dma_stop(dma);
-                dma->playing_in_progress = false;
             }
         }
     }
+    dma->dma_result = AUDIO_DMA_OK;
 }
 
 // Playback should be shutdown before calling this.
@@ -297,8 +281,14 @@ audio_dma_result audio_dma_setup_playback(
 
     // Load the first two blocks up front.
     audio_dma_load_next_block(dma, 0);
+    if (dma->dma_result != AUDIO_DMA_OK) {
+        return dma->dma_result;
+    }
     if (!single_buffer) {
         audio_dma_load_next_block(dma, 1);
+        if (dma->dma_result != AUDIO_DMA_OK) {
+            return dma->dma_result;
+        }
     }
 
     // Special case the DMA for a single buffer. It's commonly used for a single wave length of sound
@@ -452,7 +442,7 @@ bool audio_dma_get_playing(audio_dma_t *dma) {
 // background tasks such as this and causes a stack overflow.
 // NOTE(dhalbert): I successfully printed from here while debugging.
 // So it's possible, but be careful.
-STATIC void dma_callback_fun(void *arg) {
+static void dma_callback_fun(void *arg) {
     audio_dma_t *dma = arg;
     if (dma == NULL) {
         return;
@@ -479,10 +469,10 @@ STATIC void dma_callback_fun(void *arg) {
     }
 }
 
-void isr_dma_0(void) {
+void __not_in_flash_func(isr_dma_0)(void) {
     for (size_t i = 0; i < NUM_DMA_CHANNELS; i++) {
         uint32_t mask = 1 << i;
-        if ((dma_hw->intr & mask) == 0) {
+        if ((dma_hw->ints0 & mask) == 0) {
             continue;
         }
         // acknowledge interrupt early. Doing so late means that you could lose an
@@ -496,9 +486,13 @@ void isr_dma_0(void) {
             dma->channels_to_load_mask |= mask;
             background_callback_add(&dma->callback, dma_callback_fun, (void *)dma);
         }
-        if (MP_STATE_PORT(background_pio)[i] != NULL) {
-            rp2pio_statemachine_obj_t *pio = MP_STATE_PORT(background_pio)[i];
-            rp2pio_statemachine_dma_complete(pio, i);
+        if (MP_STATE_PORT(background_pio_read)[i] != NULL) {
+            rp2pio_statemachine_obj_t *pio = MP_STATE_PORT(background_pio_read)[i];
+            rp2pio_statemachine_dma_complete_read(pio, i);
+        }
+        if (MP_STATE_PORT(background_pio_write)[i] != NULL) {
+            rp2pio_statemachine_obj_t *pio = MP_STATE_PORT(background_pio_write)[i];
+            rp2pio_statemachine_dma_complete_write(pio, i);
         }
     }
 }

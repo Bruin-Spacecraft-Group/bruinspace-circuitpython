@@ -110,6 +110,13 @@ autoapi_template_dir = 'docs/autoapi/templates'
 autoapi_python_class_content = "both"
 autoapi_python_use_implicit_namespaces = True
 autoapi_root = "shared-bindings"
+autoapi_file_patterns = ["*.pyi"]
+
+# Suppress cache warnings to prevent "unpickable" [sic] warning
+# about autoapi_prepare_jinja_env() from sphinx >= 7.3.0.
+# See https://github.com/sphinx-doc/sphinx/issues/12300
+suppress_warnings = ["config.cache"]
+
 def autoapi_prepare_jinja_env(jinja_env):
     jinja_env.globals['support_matrix_reverse'] = modules_support_matrix_reverse
 
@@ -167,72 +174,22 @@ version = release = final_version
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["**/build*",
-                    ".git",
-                    ".github",
-                    ".env",
-                    ".venv",
-                    ".direnv",
-                    ".devcontainer/Readme.md",
-                    "data",
-                    "docs/autoapi",
-                    "docs/README.md",
-                    "drivers",
-                    "examples",
-                    "extmod",
-                    "frozen",
-                    "lib",
-                    "main.c",
-                    "mpy-cross",
-                    "ports/*/*.c",
-                    "ports/*/*.h",
-                    "ports/*/boards",
-                    "ports/*/common-hal",
-                    "ports/*/supervisor",
-                    "ports/atmel-samd/asf4",
-                    "ports/atmel-samd/asf4_conf",
-                    "ports/atmel-samd/external_flash",
-                    "ports/atmel-samd/freetouch",
-                    "ports/atmel-samd/peripherals",
-                    "ports/atmel-samd/QTouch",
-                    "ports/atmel-samd/tools",
-                    "ports/broadcom/firmware",
-                    "ports/broadcom/peripherals",
-                    "ports/cxd56/mkspk",
-                    "ports/cxd56/spresense-exported-sdk",
-                    "ports/espressif/certificates",
-                    "ports/espressif/esp-idf",
-                    "ports/espressif/esp-camera",
-                    "ports/espressif/esp-protocols",
-                    "ports/espressif/.idf_tools",
-                    "ports/espressif/peripherals",
-                    "ports/litex/hw",
-                    "ports/minimal",
-                    "ports/mimxrt10xx/peripherals",
-                    "ports/mimxrt10xx/sdk",
-                    "ports/nrf/device",
-                    "ports/nrf/bluetooth",
-                    "ports/nrf/modules",
-                    "ports/nrf/nrfx",
-                    "ports/nrf/peripherals",
-                    "ports/nrf/usb",
-                    "ports/raspberrypi/sdk",
-                    "ports/raspberrypi/lib",
-                    "ports/silabs/gecko_sdk",
-                    "ports/silabs/tools",
-                    "ports/stm/st_driver",
-                    "ports/stm/packages",
-                    "ports/stm/peripherals",
-                    "ports/stm/ref",
-                    "py",
-                    "shared/*",
-                    "shared-bindings/util.*",
-                    "shared-module",
-                    "supervisor",
-                    "tests",
-                    "test-stubs",
-                    "tools",
-                    "circuitpython-stubs/README.rst"]
+include_patterns = [
+    # Top directory documentation
+    "*.rst",
+    "*.md",
+
+    # Docs inherited from microypython (but not templates or README.md, see below)
+    "docs/**",
+
+    # Module documentation
+    "shared-bindings/**",
+    "ports/*/bindings/**",
+
+    # Port READMEs in various formats
+    "ports/*/README*",
+]
+exclude_patterns = ["docs/autoapi/templates/**", "docs/README.md"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -269,7 +226,6 @@ rst_epilog = """
 
 import sphinx_rtd_theme
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path(), '.']
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

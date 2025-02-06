@@ -5,6 +5,7 @@ import pathlib
 import click
 import copy
 import kconfiglib
+import kconfiglib.core
 import os
 
 OPT_SETTINGS = [
@@ -56,6 +57,7 @@ TARGET_SETTINGS = [
     "CONFIG_BT_CTRL_PINNED_TO_CORE",
     "CONFIG_SPIRAM_SPEED_2",
     "CONFIG_SPIRAM_BANKSWITCH_ENABLE",  # For ESP32
+    "CONFIG_ESP_WIFI_RX_IRAM_OPT",
 ]
 
 BOARD_SETTINGS = [
@@ -74,9 +76,7 @@ FLASH_MODE_SETTINGS = [
     "CONFIG_ESPTOOLPY_FLASH_SAMBLE_MODE_",
 ]
 
-FLASH_FREQ_SETTINGS = [
-    "CONFIG_ESPTOOLPY_FLASHFREQ_",
-]
+FLASH_FREQ_SETTINGS = ["CONFIG_ESPTOOLPY_FLASHFREQ_", "CONFIG_SPI_FLASH_UNDER_HIGH_FREQ"]
 
 PSRAM_SETTINGS = ["CONFIG_SPIRAM"]
 
@@ -126,7 +126,7 @@ def sym_default(sym):
     # Skip symbols that cannot be changed. Only check
     # non-choice symbols, as selects don't affect choice
     # symbols.
-    if not sym.choice and sym.visibility <= kconfiglib.expr_value(sym.rev_dep):
+    if not sym.choice and sym.visibility <= kconfiglib.core.expr_value(sym.rev_dep):
         return True
 
     # Skip symbols whose value matches their default
@@ -139,10 +139,9 @@ def sym_default(sym):
     # to n or the symbol to m in those cases).
     if (
         sym.choice
-        and not sym.choice.is_optional
         and sym.choice._selection_from_defaults() is sym
-        and sym.orig_type is kconfiglib.BOOL
-        and sym.tri_value == 2
+        and sym.orig_type == kconfiglib.core.BOOL
+        and sym.bool_value == 2
     ):
         return True
 
@@ -175,12 +174,9 @@ def update(debug, board, update_all):
         if key == "IDF_TARGET":
             target = value
             if uf2_bootloader is None:
-                uf2_bootloader = target not in ("esp32", "esp32c3", "esp32c6", "esp32h2")
+                uf2_bootloader = target in ("esp32s2", "esp32s3")
             if ble_enabled is None:
-                ble_enabled = target not in (
-                    "esp32",
-                    "esp32s2",
-                )  # ESP32 is disabled by us. S2 doesn't support it.
+                ble_enabled = target not in ("esp32s2",)  # S2 doesn't support it.
         elif key == "CIRCUITPY_ESP_FLASH_SIZE":
             flash_size = value
         elif key == "CIRCUITPY_ESP_FLASH_MODE":
@@ -290,7 +286,7 @@ def update(debug, board, update_all):
             current_group.pop()
             continue
 
-        if node.item is kconfiglib.MENU:
+        if node.item is kconfiglib.core.MENU:
             if node.prompt:
                 print("  " * len(current_group), i, node.prompt[0])
         i += 1
@@ -302,7 +298,7 @@ def update(debug, board, update_all):
 
         # We have a configuration item.
         item = node.item
-        if isinstance(item, kconfiglib.Symbol):
+        if isinstance(item, kconfiglib.core.Symbol):
             if item._visited:
                 continue
             item._visited = True
@@ -359,6 +355,11 @@ def update(debug, board, update_all):
                         first = False
                     target_kconfig_snippets.add(loc)
                     target_symbols = target_symbols.union(differing_keys)
+
+            # We treat SPIRAM differently so make sure it isn't a target related
+            # symbol (even though some targets don't support SPIRAM).
+            if "SPIRAM" in target_symbols:
+                target_symbols.remove("SPIRAM")
 
             # kconfig settings can be set by others. item.referenced doesn't
             # know this. So we collect all things that reference this using
@@ -428,7 +429,9 @@ def update(debug, board, update_all):
                     # Always document the above settings. Settings below should
                     # be non-default.
                     pass
-                elif matches_group(config_string, PSRAM_SETTINGS) or psram_reference:
+                elif matches_group(config_string, PSRAM_SETTINGS) or (
+                    psram_reference and not target_setting
+                ):
                     print("  " * (len(current_group) + 1), "psram shared")
                     last_psram_group = add_group(psram_settings, last_psram_group, current_group)
                     psram_settings.append(config_string)
@@ -454,14 +457,14 @@ def update(debug, board, update_all):
                     default_settings.append(config_string)
 
         else:
-            if item is kconfiglib.COMMENT:
+            if item is kconfiglib.core.COMMENT:
                 print("comment", repr(item))
-            elif item is kconfiglib.MENU:
+            elif item is kconfiglib.core.MENU:
                 if node.list:
                     current_group.append(node.prompt[0])
                     pending_nodes.append(None)
                     pending_nodes.append(node.list)
-            elif isinstance(item, kconfiglib.Choice):
+            elif isinstance(item, kconfiglib.core.Choice):
                 # Choices are made up of individual symbols that we need to check.
                 pending_nodes.append(node.list)
             else:

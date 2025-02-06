@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   pre-commit:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
     - name: Set up repository
       uses: actions/checkout@v4
@@ -22,6 +22,7 @@ jobs:
         submodules: false
         show-progress: false
         fetch-depth: 1
+        persist-credentials: false
     - name: Set up python
       uses: actions/setup-python@v5
       with:
@@ -33,7 +34,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gettext uncrustify
+        sudo apt-get install -y gettext
     - name: Run pre-commit
       uses: pre-commit/action@v3.0.1
     - name: Make patch

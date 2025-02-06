@@ -33,7 +33,7 @@
 #include "nvm3_default_config.h"
 
 uint8_t nvm_array[NVM_BYTEARRAY_BUFFER_SIZE];
-STATIC bool isInitialized = false;
+static bool isInitialized = false;
 #define NVM_KEY 98
 
 // Get length of nvm bytearray

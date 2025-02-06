@@ -12,9 +12,11 @@ except ImportError:
 async def foo():
     return 42
 
-
 try:
-    foo().__await__
+    fooc = foo()
+    fooc.__await__
+    # Avoid "coroutine was never awaited" warning
+    asyncio.run(fooc)
 except AttributeError:
     print("SKIP")
     raise SystemExit

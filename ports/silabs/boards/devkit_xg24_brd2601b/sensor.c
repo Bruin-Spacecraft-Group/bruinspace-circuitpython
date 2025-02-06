@@ -36,7 +36,7 @@
 #include "sl_sensor_hall.h"
 #include "sl_sensor_pressure.h"
 
-STATIC mp_obj_t sensor_init(mp_obj_t i2c_in) {
+static mp_obj_t sensor_init(mp_obj_t i2c_in) {
     // busio_i2c_obj_t *i2c = MP_OBJ_TO_PTR(i2c_in);
     sl_status_t sc;
 
@@ -75,7 +75,7 @@ STATIC mp_obj_t sensor_init(mp_obj_t i2c_in) {
     return mp_const_true;
 }
 
-STATIC mp_obj_t sensor_deinit() {
+static mp_obj_t sensor_deinit() {
 
     sl_sensor_hall_deinit();
     sl_sensor_lux_deinit();
@@ -87,7 +87,7 @@ STATIC mp_obj_t sensor_deinit() {
     return mp_const_true;
 }
 
-STATIC mp_obj_t sensor_get_temperature(void) {
+static mp_obj_t sensor_get_temperature(void) {
     sl_status_t sc;
     uint32_t rh;
     int32_t t;
@@ -100,7 +100,7 @@ STATIC mp_obj_t sensor_get_temperature(void) {
     return mp_obj_new_float((float)t / 1000.0f);
 }
 
-STATIC mp_obj_t sensor_get_humidity(void) {
+static mp_obj_t sensor_get_humidity(void) {
     sl_status_t sc;
     uint32_t rh;
     int32_t t;
@@ -112,7 +112,7 @@ STATIC mp_obj_t sensor_get_humidity(void) {
     return mp_obj_new_float((float)rh / 1000.0f);
 }
 
-STATIC mp_obj_t sensor_get_lux(void) {
+static mp_obj_t sensor_get_lux(void) {
     sl_status_t sc;
     float lux;
     sc = sl_sensor_lux_get(&lux);
@@ -123,7 +123,7 @@ STATIC mp_obj_t sensor_get_lux(void) {
     return mp_obj_new_float(lux);
 }
 
-STATIC mp_obj_t sensor_get_hall(void) {
+static mp_obj_t sensor_get_hall(void) {
     sl_status_t sc;
     float field_strength;
     bool alert;
@@ -136,7 +136,7 @@ STATIC mp_obj_t sensor_get_hall(void) {
     return mp_obj_new_float(field_strength);
 }
 
-STATIC mp_obj_t sensor_get_pressure(void) {
+static mp_obj_t sensor_get_pressure(void) {
     sl_status_t sc;
     float pressure;
     sc = sl_sensor_pressure_get(&pressure);
@@ -147,7 +147,7 @@ STATIC mp_obj_t sensor_get_pressure(void) {
     return mp_obj_new_float(pressure);
 }
 
-STATIC mp_obj_t sensor_imu_get(void) {
+static mp_obj_t sensor_imu_get(void) {
     sl_status_t sc;
     int16_t ovec[3];
     int16_t avec[3];
@@ -172,7 +172,7 @@ STATIC mp_obj_t sensor_imu_get(void) {
     return mp_obj_new_tuple(2, ret);
 }
 
-STATIC mp_obj_t sensor_imu_calibrate(void) {
+static mp_obj_t sensor_imu_calibrate(void) {
     sl_status_t sc;
     sc = sl_sensor_imu_calibrate();
     if (sc != SL_STATUS_OK) {
@@ -181,18 +181,18 @@ STATIC mp_obj_t sensor_imu_calibrate(void) {
     return mp_const_true;
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sensor_init_obj, sensor_init);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_deinit_obj, sensor_deinit);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_temperature_obj, sensor_get_temperature);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_humidity_obj, sensor_get_humidity);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_lux_obj, sensor_get_lux);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_hall_obj, sensor_get_hall);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_pressure_obj, sensor_get_pressure);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_imu_get_obj, sensor_imu_get);
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(sensor_imu_calibrate_obj, sensor_imu_calibrate);
+static MP_DEFINE_CONST_FUN_OBJ_1(sensor_init_obj, sensor_init);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_deinit_obj, sensor_deinit);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_temperature_obj, sensor_get_temperature);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_humidity_obj, sensor_get_humidity);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_lux_obj, sensor_get_lux);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_hall_obj, sensor_get_hall);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_pressure_obj, sensor_get_pressure);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_imu_get_obj, sensor_imu_get);
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_imu_calibrate_obj, sensor_imu_calibrate);
 
 
-STATIC const mp_rom_map_elem_t sensor_globals_table[] = {
+static const mp_rom_map_elem_t sensor_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_sensor) },
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&sensor_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&sensor_deinit_obj) },
@@ -204,7 +204,7 @@ STATIC const mp_rom_map_elem_t sensor_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_imu), MP_ROM_PTR(&sensor_imu_get_obj) },
     { MP_ROM_QSTR(MP_QSTR_imu_calibrate), MP_ROM_PTR(&sensor_imu_calibrate_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(sensor_module_globals, sensor_globals_table);
+static MP_DEFINE_CONST_DICT(sensor_module_globals, sensor_globals_table);
 
 const mp_obj_module_t sensor_module = {
     .base = { &mp_type_module },

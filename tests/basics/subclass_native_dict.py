@@ -1,3 +1,4 @@
+# CIRCUITPY-CHANGE: micropython does not have this test file
 class a:
     def __init__(self):
         self.d = {}

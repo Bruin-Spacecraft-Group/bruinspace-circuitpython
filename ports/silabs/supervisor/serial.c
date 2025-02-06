@@ -27,7 +27,7 @@
 #include "py/mphal.h"
 #include "py/ringbuf.h"
 #include "supervisor/port.h"
-#include "supervisor/serial.h"
+#include "supervisor/shared/serial.h"
 #include "shared/readline/readline.h"
 #include "shared/runtime/interrupt_char.h"
 #include "shared-bindings/microcontroller/Pin.h"
@@ -48,9 +48,9 @@
 #define EUSART_VCOM_RX_PORT gpioPortA
 #define EUSART_VCOM_RX_PIN 6
 
-STATIC ringbuf_t con_uart_rx_ringbuf;
-STATIC byte con_uart_rx_buf[CONSOLE_RCV_BUFFER_SIZE];
-STATIC volatile uint8_t received_data;
+static ringbuf_t con_uart_rx_ringbuf;
+static byte con_uart_rx_buf[CONSOLE_RCV_BUFFER_SIZE];
+static volatile uint8_t received_data;
 
 // USART0 RX interrupt handler , put characters to ring buffer one by one
 void EUSART0_RX_IRQHandler(void) {
@@ -141,9 +141,8 @@ char port_serial_read(void) {
     return (char)data;
 }
 
-// Checking ring buffer haves bytes available or not
-bool port_serial_bytes_available(void) {
-    return ringbuf_num_filled(&con_uart_rx_ringbuf) > 0 ? true : false;
+uint32_t port_serial_bytes_available(void) {
+    return ringbuf_num_filled(&con_uart_rx_ringbuf);
 }
 
 // Send n bytes data to serial by EUSART0

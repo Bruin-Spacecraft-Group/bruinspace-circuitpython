@@ -136,6 +136,9 @@ Behavior
 -  Adds a safe mode that does not run user code after a hard crash or brown out. This makes it
    possible to fix code that causes nasty crashes by making it available through mass storage after
    the crash. A reset (the button) is needed after it's fixed to get back into normal mode.
+-  A 1 second delay is added to the boot process during which time the status LED will flash, and
+   resetting the device or pressing the boot button will force the device into safe mode. This delay
+   can be removed by a compile time option (``CIRCUITPY_SKIP_SAFE_MODE_WAIT``).
 -  Safe mode may be handled programmatically by providing a ``safemode.py``.
    ``safemode.py`` is run if the board has reset due to entering safe mode, unless the safe mode
    initiated by the user by pressing button(s).
@@ -223,24 +226,10 @@ Ports
 
 Ports include the code unique to a microcontroller line.
 
-================  ============================================================
-Supported         Support status
-================  ============================================================
-atmel-samd        ``SAMD21`` stable | ``SAMD51`` stable
-cxd56             stable
-espressif         ``ESP32`` beta | ``ESP32-C3`` beta | ``ESP32-S2`` stable | ``ESP32-S3`` beta
-litex             alpha
-mimxrt10xx        alpha
-nrf               stable
-raspberrypi       stable
-silabs (efr32)    alpha
-stm               ``F4`` stable | ``others`` beta
-unix              alpha
-================  ============================================================
+The following ports are available: ``atmel-samd``, ``cxd56``, ``espressif``, ``litex``, ``mimxrt10xx``, ``nordic``, ``raspberrypi``, ``renode``, ``silabs`` (``efr32``), ``stm``, ``unix``.
 
--  ``stable`` Highly unlikely to have bugs or missing functionality.
--  ``beta``   Being actively improved but may be missing functionality and have bugs.
--  ``alpha``  Will have bugs and missing functionality.
+However, not all ports are fully functional. Some have limited functionality and known serious bugs.
+For details, refer to the **Port status** section in the `latest release <https://github.com/adafruit/circuitpython/releases/latest>`__ notes.
 
 Boards
 ~~~~~~

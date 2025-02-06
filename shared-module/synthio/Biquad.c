@@ -1,31 +1,12 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2023 Jeff Epler for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2023 Jeff Epler for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include <math.h>
 #include "shared-bindings/synthio/Biquad.h"
+#include "shared-bindings/synthio/BlockBiquad.h"
 #include "shared-module/synthio/Biquad.h"
 
 mp_obj_t common_hal_synthio_new_lpf(mp_float_t w0, mp_float_t Q) {
@@ -94,20 +75,27 @@ mp_obj_t common_hal_synthio_new_bpf(mp_float_t w0, mp_float_t Q) {
     return namedtuple_make_new((const mp_obj_type_t *)&synthio_biquad_type_obj, MP_ARRAY_SIZE(out_args), 0, out_args);
 }
 
-#define BIQUAD_SHIFT (15)
-STATIC int32_t biquad_scale_arg_obj(mp_obj_t arg) {
+static int32_t biquad_scale_arg_obj(mp_obj_t arg) {
     return (int32_t)MICROPY_FLOAT_C_FUN(round)(MICROPY_FLOAT_C_FUN(ldexp)(mp_obj_get_float(arg), BIQUAD_SHIFT));
 }
 void synthio_biquad_filter_assign(biquad_filter_state *st, mp_obj_t biquad_obj) {
-    if (biquad_obj != mp_const_none) {
-        mp_arg_validate_type(biquad_obj, (const mp_obj_type_t *)&synthio_biquad_type_obj, MP_QSTR_filter);
+    if (biquad_obj == mp_const_none) {
+        return;
+    }
+    if (mp_obj_is_type(biquad_obj, &synthio_block_biquad_type_obj)) {
+        return;
+    }
+    if (mp_obj_is_type(biquad_obj, (const mp_obj_type_t *)&synthio_biquad_type_obj)) {
         mp_obj_tuple_t *biquad = (mp_obj_tuple_t *)MP_OBJ_TO_PTR(biquad_obj);
         st->a1 = biquad_scale_arg_obj(biquad->items[0]);
         st->a2 = biquad_scale_arg_obj(biquad->items[1]);
         st->b0 = biquad_scale_arg_obj(biquad->items[2]);
         st->b1 = biquad_scale_arg_obj(biquad->items[3]);
         st->b2 = biquad_scale_arg_obj(biquad->items[4]);
+        return;
     }
+    mp_raise_TypeError_varg(MP_ERROR_TEXT("%q must be of type %q or %q, not %q"), MP_QSTR_filter, MP_QSTR_Biquad, MP_QSTR_BlockBiquad, mp_obj_get_type(biquad_obj)->name);
+
 }
 
 void synthio_biquad_filter_reset(biquad_filter_state *st) {

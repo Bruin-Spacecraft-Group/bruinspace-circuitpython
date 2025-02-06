@@ -42,6 +42,7 @@
 #include "extmod/vfs_lfs.h"
 #endif
 
+// CIRCUITPY-CHANGE: handle undefined without a warning
 #if defined(MICROPY_VFS_POSIX) && MICROPY_VFS_POSIX
 #include "extmod/vfs_posix.h"
 #endif
@@ -93,7 +94,7 @@ mp_vfs_mount_t *mp_vfs_lookup_path(const char *path, const char **path_out) {
 }
 
 // Version of mp_vfs_lookup_path that takes and returns uPy string objects.
-STATIC mp_vfs_mount_t *lookup_path(mp_obj_t path_in, mp_obj_t *path_out) {
+static mp_vfs_mount_t *lookup_path(mp_obj_t path_in, mp_obj_t *path_out) {
     const char *path = mp_obj_str_get_str(path_in);
     const char *p_out;
     mp_vfs_mount_t *vfs = mp_vfs_lookup_path(path, &p_out);
@@ -106,7 +107,7 @@ STATIC mp_vfs_mount_t *lookup_path(mp_obj_t path_in, mp_obj_t *path_out) {
     return vfs;
 }
 
-STATIC mp_obj_t mp_vfs_proxy_call(mp_vfs_mount_t *vfs, qstr meth_name, size_t n_args, const mp_obj_t *args) {
+static mp_obj_t mp_vfs_proxy_call(mp_vfs_mount_t *vfs, qstr meth_name, size_t n_args, const mp_obj_t *args) {
     assert(n_args <= PROXY_MAX_ARGS);
     if (vfs == MP_VFS_NONE) {
         // mount point not found
@@ -159,7 +160,7 @@ mp_import_stat_t mp_vfs_import_stat(const char *path) {
     }
 }
 
-STATIC mp_obj_t mp_vfs_autodetect(mp_obj_t bdev_obj) {
+static mp_obj_t mp_vfs_autodetect(mp_obj_t bdev_obj) {
     #if MICROPY_VFS_LFS1 || MICROPY_VFS_LFS2
     nlr_buf_t nlr;
     if (nlr_push(&nlr) == 0) {
@@ -310,6 +311,7 @@ mp_obj_t mp_vfs_open(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args)
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
+    // CIRCUITPY-CHANGE: handle undefined without a warning
     #if defined(MICROPY_VFS_POSIX) && MICROPY_VFS_POSIX
     // If the file is an integer then delegate straight to the POSIX handler
     if (mp_obj_is_small_int(args[ARG_file].u_obj)) {
@@ -434,6 +436,7 @@ mp_obj_t mp_vfs_listdir(size_t n_args, const mp_obj_t *args) {
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mp_vfs_listdir_obj, 0, 1, mp_vfs_listdir);
 
 mp_obj_t mp_vfs_mkdir(mp_obj_t path_in) {
+    // CIRCUITPY-CHANGE: initialize
     mp_obj_t path_out = mp_const_none;
     mp_vfs_mount_t *vfs = lookup_path(path_in, &path_out);
     if (vfs == MP_VFS_ROOT || (vfs != MP_VFS_NONE && !strcmp(mp_obj_str_get_str(path_out), "/"))) {

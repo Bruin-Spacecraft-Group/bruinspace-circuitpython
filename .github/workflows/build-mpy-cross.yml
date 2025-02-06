@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -33,6 +33,7 @@ jobs:
         submodules: false
         show-progress: false
         fetch-depth: 1
+        persist-credentials: false
     - name: Set up python
       uses: actions/setup-python@v5
       with:
@@ -57,9 +58,12 @@ jobs:
       run: make -C mpy-cross -j4 -f Makefile.${{ matrix.mpy-cross }}
 
     - name: Set output
+      env:
+        EX: ${{ env[format('EX_{0}', matrix.mpy-cross)] || matrix.mpy-cross }}
+        OS: ${{ env[format('OS_{0}', matrix.mpy-cross)] }}"
       run: |
-        echo >> $GITHUB_ENV "EX=${{ env[format('EX_{0}', matrix.mpy-cross)] || matrix.mpy-cross }}"
-        echo >> $GITHUB_ENV "OS=${{ env[format('OS_{0}', matrix.mpy-cross)] }}"
+        echo >> $GITHUB_ENV "EX=$EX"
+        echo >> $GITHUB_ENV "OS=$OS"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

@@ -33,8 +33,8 @@
 #include "shared-bindings/_bleio/Service.h"
 #include "shared-bindings/_bleio/__init__.h"
 #include "shared/runtime/interrupt_char.h"
+#include "supervisor/shared/serial.h"
 #include "supervisor/shared/tick.h"
-#include "supervisor/serial.h"
 
 EventGroupHandle_t xcharacteristic_event;
 
@@ -76,7 +76,7 @@ bool set_characteristic_value_on_ble_evt(uint8_t conn_handle,
 }
 
 // Get the characteristic data object
-STATIC bool get_characteristic_value(uint8_t conn_handle,
+static bool get_characteristic_value(uint8_t conn_handle,
     uint16_t char_handle,
     uint8_t *data,
     size_t *data_len) {
@@ -153,6 +153,13 @@ void common_hal_bleio_characteristic_construct(
             initial_value_bufinfo->len,
             (uint8_t *)initial_value_bufinfo->buf);
     }
+}
+
+bool common_hal_bleio_characteristic_deinited(bleio_characteristic_obj_t *self) {
+    return false;
+}
+
+void common_hal_bleio_characteristic_deinit(bleio_characteristic_obj_t *self) {
 }
 
 // A tuple of Descriptor that describe this characteristic

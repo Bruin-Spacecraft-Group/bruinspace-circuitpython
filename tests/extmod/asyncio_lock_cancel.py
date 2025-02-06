@@ -1,7 +1,7 @@
 # Test that locks work when cancelling multiple waiters on the lock
 
 try:
-    import uasyncio as asyncio
+    import asyncio
 except ImportError:
     print("SKIP")
     raise SystemExit
@@ -13,7 +13,10 @@ async def foo():
 
 
 try:
-    foo().__await__
+    fooc = foo()
+    fooc.__await__
+    # Avoid "coroutine was never awaited" warning
+    asyncio.run(fooc)
 except AttributeError:
     print("SKIP")
     raise SystemExit

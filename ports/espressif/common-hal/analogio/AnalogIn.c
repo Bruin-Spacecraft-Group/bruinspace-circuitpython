@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Lucian Copeland for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2020 Lucian Copeland for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "common-hal/analogio/AnalogIn.h"
 
@@ -46,9 +26,13 @@
 #define ATTENUATION         ADC_ATTEN_DB_11
 #if defined(CONFIG_IDF_TARGET_ESP32)
 #define DATA_WIDTH          ADC_BITWIDTH_12
+#elif defined(CONFIG_IDF_TARGET_ESP32C2)
+#define DATA_WIDTH          ADC_BITWIDTH_12
 #elif defined(CONFIG_IDF_TARGET_ESP32C3)
 #define DATA_WIDTH          ADC_BITWIDTH_12
 #elif defined(CONFIG_IDF_TARGET_ESP32C6)
+#define DATA_WIDTH          ADC_BITWIDTH_12
+#elif defined(CONFIG_IDF_TARGET_ESP32P4)
 #define DATA_WIDTH          ADC_BITWIDTH_12
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
 #define DATA_WIDTH          ADC_BITWIDTH_13
@@ -91,7 +75,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
         .unit_id = self->pin->adc_index,
         .ulp_mode = ADC_ULP_MODE_DISABLE
     };
-    cp_check_esp_error(adc_oneshot_new_unit(&adc_config, &adc_handle));
+    CHECK_ESP_RESULT(adc_oneshot_new_unit(&adc_config, &adc_handle));
 
     adc_oneshot_chan_cfg_t channel_config = {
         .atten = ATTENUATION,
@@ -102,9 +86,10 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     adc_cali_scheme_ver_t supported_schemes;
     adc_cali_check_scheme(&supported_schemes);
+    #ifndef CONFIG_IDF_TARGET_ESP32P4
     adc_cali_scheme_ver_t calibration_scheme = 0;
     adc_cali_handle_t calibration;
-
+    #endif
     #if defined(ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED) && ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
     adc_cali_curve_fitting_config_t config = {
         .unit_id = self->pin->adc_index,
@@ -152,8 +137,11 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     // This corrects non-linear regions of the ADC range with a LUT, so it's a better reading than raw
     int voltage;
+    #ifdef CONFIG_IDF_TARGET_ESP32P4
+    voltage = 0;
+    #else
     adc_cali_raw_to_voltage(calibration, adc_reading, &voltage);
-
+    #endif
 
     #if defined(ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED) && ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
     if (calibration_scheme == ADC_CALI_SCHEME_VER_CURVE_FITTING) {

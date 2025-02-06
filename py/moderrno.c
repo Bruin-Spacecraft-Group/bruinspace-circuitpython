@@ -35,6 +35,7 @@
 // This list can be defined per port in mpconfigport.h to tailor it to a
 // specific port's needs.  If it's not defined then we provide a default.
 #ifndef MICROPY_PY_ERRNO_LIST
+// CIRCUITPY-CHANGE: add ENOSPC and EROFS, because they are in mp_common_errno_to_str().
 #define MICROPY_PY_ERRNO_LIST \
     X(EPERM) \
     X(ENOENT) \
@@ -47,6 +48,8 @@
     X(ENODEV) \
     X(EISDIR) \
     X(EINVAL) \
+    X(ENOSPC) \
+    X(EROFS) \
     X(EOPNOTSUPP) \
     X(EADDRINUSE) \
     X(ECONNABORTED) \
@@ -62,13 +65,13 @@
 #endif
 
 #if MICROPY_PY_ERRNO_ERRORCODE
-STATIC const mp_rom_map_elem_t errorcode_table[] = {
+static const mp_rom_map_elem_t errorcode_table[] = {
     #define X(e) { MP_ROM_INT(MP_##e), MP_ROM_QSTR(MP_QSTR_##e) },
     MICROPY_PY_ERRNO_LIST
 #undef X
 };
 
-STATIC const mp_obj_dict_t errorcode_dict = {
+static const mp_obj_dict_t errorcode_dict = {
     .base = {&mp_type_dict},
     .map = {
         .all_keys_are_qstrs = 0, // keys are integers
@@ -81,7 +84,7 @@ STATIC const mp_obj_dict_t errorcode_dict = {
 };
 #endif
 
-STATIC const mp_rom_map_elem_t mp_module_errno_globals_table[] = {
+static const mp_rom_map_elem_t mp_module_errno_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_errno) },
     #if MICROPY_PY_ERRNO_ERRORCODE
     { MP_ROM_QSTR(MP_QSTR_errorcode), MP_ROM_PTR(&errorcode_dict) },
@@ -92,7 +95,7 @@ STATIC const mp_rom_map_elem_t mp_module_errno_globals_table[] = {
 #undef X
 };
 
-STATIC MP_DEFINE_CONST_DICT(mp_module_errno_globals, mp_module_errno_globals_table);
+static MP_DEFINE_CONST_DICT(mp_module_errno_globals, mp_module_errno_globals_table);
 
 const mp_obj_module_t mp_module_errno = {
     .base = { &mp_type_module },
@@ -121,6 +124,7 @@ qstr mp_errno_to_str(mp_obj_t errno_val) {
     #endif
 }
 
+// CIRCUITPY-CHANGE
 // For commonly encountered errors, return human readable strings, otherwise try errno name
 const char *mp_common_errno_to_str(mp_obj_t errno_val, char *buf, size_t len) {
     if (!mp_obj_is_small_int(errno_val)) {

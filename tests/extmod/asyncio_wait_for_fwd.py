@@ -13,7 +13,10 @@ async def foo():
 
 
 try:
-    foo().__await__
+    fooc = foo()
+    fooc.__await__
+    # Avoid "coroutine was never awaited" warning
+    asyncio.run(fooc)
 except AttributeError:
     print("SKIP")
     raise SystemExit

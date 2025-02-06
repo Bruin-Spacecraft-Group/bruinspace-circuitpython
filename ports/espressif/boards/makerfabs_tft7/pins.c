@@ -1,7 +1,14 @@
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2020 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
+
 #include "py/objtuple.h"
 #include "shared-bindings/board/__init__.h"
+#include "shared-module/displayio/__init__.h"
 
-STATIC const mp_rom_obj_tuple_t tft_r_pins = {
+static const mp_rom_obj_tuple_t tft_r_pins = {
     {&mp_type_tuple},
     5,
     {
@@ -13,7 +20,7 @@ STATIC const mp_rom_obj_tuple_t tft_r_pins = {
     }
 };
 
-STATIC const mp_rom_obj_tuple_t tft_g_pins = {
+static const mp_rom_obj_tuple_t tft_g_pins = {
     {&mp_type_tuple},
     6,
     {
@@ -26,7 +33,7 @@ STATIC const mp_rom_obj_tuple_t tft_g_pins = {
     }
 };
 
-STATIC const mp_rom_obj_tuple_t tft_b_pins = {
+static const mp_rom_obj_tuple_t tft_b_pins = {
     {&mp_type_tuple},
     5,
     {
@@ -38,7 +45,7 @@ STATIC const mp_rom_obj_tuple_t tft_b_pins = {
     }
 };
 
-STATIC const mp_rom_map_elem_t tft_pins_table[] = {
+static const mp_rom_map_elem_t tft_pins_table[] = {
     { MP_ROM_QSTR(MP_QSTR_de), MP_ROM_PTR(&pin_GPIO40) },
     { MP_ROM_QSTR(MP_QSTR_vsync), MP_ROM_PTR(&pin_GPIO41) },
     { MP_ROM_QSTR(MP_QSTR_hsync), MP_ROM_PTR(&pin_GPIO39) },
@@ -49,7 +56,7 @@ STATIC const mp_rom_map_elem_t tft_pins_table[] = {
 };
 MP_DEFINE_CONST_DICT(tft_pins_dict, tft_pins_table);
 
-STATIC const mp_rom_map_elem_t timings800_table[] = {
+static const mp_rom_map_elem_t timings800_table[] = {
     { MP_ROM_QSTR(MP_QSTR_frequency), MP_ROM_INT(6500000) }, // nominal 16MHz, but display is unstable/tears at that frequency
     { MP_ROM_QSTR(MP_QSTR_width), MP_ROM_INT(800) },
     { MP_ROM_QSTR(MP_QSTR_height), MP_ROM_INT(480) },
@@ -67,7 +74,7 @@ STATIC const mp_rom_map_elem_t timings800_table[] = {
 };
 MP_DEFINE_CONST_DICT(timings800_dict, timings800_table);
 
-STATIC const mp_rom_map_elem_t timings1024_table[] = {
+static const mp_rom_map_elem_t timings1024_table[] = {
     { MP_ROM_QSTR(MP_QSTR_frequency), MP_ROM_INT(10000000) }, // nominal 16MHz, but display is unstable/tears at that frequency
     { MP_ROM_QSTR(MP_QSTR_width), MP_ROM_INT(1024) },
     { MP_ROM_QSTR(MP_QSTR_height), MP_ROM_INT(600) },
@@ -85,7 +92,7 @@ STATIC const mp_rom_map_elem_t timings1024_table[] = {
 };
 MP_DEFINE_CONST_DICT(timings1024_dict, timings1024_table);
 
-STATIC const mp_rom_map_elem_t board_module_globals_table[] = {
+static const mp_rom_map_elem_t board_module_globals_table[] = {
     CIRCUITPYTHON_BOARD_DICT_STANDARD_ITEMS
 
     { MP_ROM_QSTR(MP_QSTR_TFT_PINS), MP_ROM_PTR(&tft_pins_dict) },
@@ -99,7 +106,7 @@ STATIC const mp_rom_map_elem_t board_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_GPIO19), MP_ROM_PTR(&pin_GPIO19) },
 
     // I2S pins are shared with USB D+/D-, these are only useful if USB is disabled
-    #if CIRCUITPY_USB == 0
+    #if CIRCUITPY_USB_DEVICE == 0
     { MP_ROM_QSTR(MP_QSTR_I2S_BIT_CLOCK), MP_ROM_PTR(&pin_GPIO20) },
     { MP_ROM_QSTR(MP_QSTR_I2S_WORD_SELECT), MP_ROM_PTR(&pin_GPIO2) },
     { MP_ROM_QSTR(MP_QSTR_I2S_DATA), MP_ROM_PTR(&pin_GPIO19) },
@@ -114,10 +121,11 @@ STATIC const mp_rom_map_elem_t board_module_globals_table[] = {
 
     // IO10 <> SD_CS is cut at factory (non-placed resistor position R34) and pulled up.
     // Permanent SDIO 1-bit mode?
-    // Until SDIO 1-bit mode is support on Espressif ports these pins aren't useful
-    // { MP_ROM_QSTR(MP_QSTR_SDIO_CMD), MP_ROM_PTR(&pin_GPIO11) },
-    // { MP_ROM_QSTR(MP_QSTR_SDIO_D0), MP_ROM_PTR(&pin_GPIO13) },
-    // { MP_ROM_QSTR(MP_QSTR_SDIO_CLK), MP_ROM_PTR(&pin_GPIO12) },
+    { MP_ROM_QSTR(MP_QSTR_SDIO_CLK), MP_ROM_PTR(&pin_GPIO12) },
+    { MP_ROM_QSTR(MP_QSTR_SDIO_CMD), MP_ROM_PTR(&pin_GPIO11) },
+    { MP_ROM_QSTR(MP_QSTR_SDIO_D0), MP_ROM_PTR(&pin_GPIO13) },
+
+    { MP_ROM_QSTR(MP_QSTR_DISPLAY), MP_ROM_PTR(&displays[0].display) },
 
     // boot mode button can be used in SW as well
     { MP_ROM_QSTR(MP_QSTR_BUTTON), MP_ROM_PTR(&pin_GPIO1) },

@@ -1,4 +1,5 @@
 import sys
+import re
 import pathlib
 import xml.etree.ElementTree as ET
 
@@ -8,6 +9,7 @@ SIGNALS = {
     "LPUART": ["RX", "TX", "RTS", "CTS"],
     "I2S": ["RX_DATA0", "RX_SYNC", "TX_BCLK", "TX_DATA0", "TX_SYNC", "MCLK"],
     "MQS": ["LEFT", "RIGHT"],
+    "CAN": ["RX", "TX"],
 }
 
 SIGNAL_RENAME = {
@@ -21,6 +23,23 @@ SIGNAL_RENAME = {
     "RX_DATA": "RX_DATA0",
 }
 
+INSTANCE_RENAME = {"FLEXCAN": "CAN"}
+
+INSTANCE_RE = re.compile("([a-zA-Z0-9]+?)([0-9]+)$")
+
+
+def rename_instance(instance: str) -> str:
+    instance_match = INSTANCE_RE.match(instance)
+    if instance_match is None:
+        return instance
+    instance_res = instance_match.groups()
+    if len(instance_res) < 2:
+        return instance
+    instance_name = str(instance_res[0])
+    instance_id = str(instance_res[1])
+    return INSTANCE_RENAME.get(instance_name, instance_name) + instance_id
+
+
 SKIP_LPSR = True
 
 svd_folder = pathlib.Path(sys.argv[1])
@@ -31,33 +50,15 @@ devices = sys.argv[3:]
 
 peripherals_dir = pathlib.Path("peripherals/mimxrt10xx")
 
-copyright = """/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Lucian Copeland for Adafruit Industries
- * Copyright (c) 2019 Artur Pacholec
- * Copyright (c) 2023 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+copyright = """\
+// This file is part of the CircuitPython project, https://circuitpython.org/
+//
+// SPDX-FileCopyrightText: Copyright (c) 2019 Lucian Copeland for Adafruit Industries
+// SPDX-FileCopyrightText: Copyright (c) 2019 Artur Pacholec
+// SPDX-FileCopyrightText: Copyright (c) 2023 Scott Shawcroft for Adafruit Industries
+// SPDX-FileCopyrightText: Copyright (c) 2023 qutefox
+//
+// SPDX-License-Identifier: MIT
 """
 
 autogen_warning_template = """/*
@@ -73,6 +74,7 @@ for device in devices:
     print(device)
     autogen_warning = autogen_warning_template.format(device)
     svd_fn = svd_folder / device / (device + ".xml")
+
     if not svd_fn.exists():
         svd_fn = svd_folder / device / (device + "_cm7.xml")
 
@@ -163,8 +165,10 @@ for device in devices:
         if name.endswith("SELECT_INPUT"):
             name_split = name.split("_")
             instance = name_split[0]
+            instance = rename_instance(instance)
             signal = "_".join(name_split[1:-2])
             signal = SIGNAL_RENAME.get(signal, signal)
+
             if instance not in peripheral_inputs:
                 peripheral_inputs[instance] = {}
             if signal not in peripheral_inputs[instance]:
@@ -251,6 +255,7 @@ for device in devices:
                         print("skipping", pin_name, connection)
                         continue
                     instance, signal = connection.split("_", maxsplit=1)
+                    instance = rename_instance(instance)
                     signal = SIGNAL_RENAME.get(signal, signal)
                     if instance not in peripheral_inputs:
                         peripheral_inputs[instance] = {}
@@ -307,6 +312,7 @@ for device in devices:
         short_name = ptype.lower()
         if short_name.startswith("lp"):
             short_name = short_name[2:]
+
         # Only one MQS exists and it is related to SAI3
         if ptype != "MQS":
             periph_h.append(

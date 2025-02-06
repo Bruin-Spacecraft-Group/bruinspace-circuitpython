@@ -42,10 +42,10 @@
 DEFINE_BUF_QUEUE(UARTDRV_USART_BUFFER_SIZE, uartdrv_usart_rx_buffer);
 DEFINE_BUF_QUEUE(UARTDRV_USART_BUFFER_SIZE, uartdrv_usart_tx_buffer);
 
-STATIC UARTDRV_HandleData_t uartdrv_usart_handle;
-STATIC UARTDRV_InitUart_t uartdrv_usart_init;
-STATIC bool in_used = false;
-STATIC bool never_reset = false;
+static UARTDRV_HandleData_t uartdrv_usart_handle;
+static UARTDRV_InitUart_t uartdrv_usart_init;
+static bool in_used = false;
+static bool never_reset = false;
 busio_uart_obj_t *context;
 volatile Ecode_t errflag; // Used to restart read halts
 

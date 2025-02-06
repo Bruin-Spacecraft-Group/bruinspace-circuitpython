@@ -191,7 +191,17 @@ async function mkdir(e) {
     }
 }
 
+const beforeUnloadHandler = function(event){
+    // Recommended
+    event.preventDefault();
+
+    // Included for legacy support, e.g. Chrome/Edge < 119
+    event.returnValue = true;
+}
+
 async function upload(e) {
+    const upload_path = current_path;
+    window.addEventListener("beforeunload",  beforeUnloadHandler);
     set_upload_enabled(false);
     let progress = document.querySelector("#progress");
     let made_dirs = new Set();
@@ -213,7 +223,7 @@ async function upload(e) {
                 made_dirs.add(parent_dir);
             }
         }
-        let file_path = new URL("/fs" + current_path + file_name, url_base);
+        let file_path = new URL("/fs" + upload_path + file_name, url_base);
         const response = await fetch(file_path,
             {
                 method: "PUT",
@@ -242,6 +252,7 @@ async function upload(e) {
     files.value = "";
     dirs.value = "";
     set_upload_enabled(true);
+    window.removeEventListener("beforeunload",  beforeUnloadHandler);
 }
 
 async function del(e) {

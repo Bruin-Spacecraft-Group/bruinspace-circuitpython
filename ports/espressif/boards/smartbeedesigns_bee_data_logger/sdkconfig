@@ -7,7 +7,6 @@
 #
 # LWIP
 #
-CONFIG_LWIP_LOCAL_HOSTNAME="smartbeedesigns_bee_data_logger"
 # end of LWIP
 
 # end of Component config

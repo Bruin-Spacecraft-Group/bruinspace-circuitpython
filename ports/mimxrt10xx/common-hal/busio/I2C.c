@@ -1,29 +1,9 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2016 Scott Shawcroft
- * Copyright (c) 2019 Artur Pacholec
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2016 Scott Shawcroft
+// SPDX-FileCopyrightText: Copyright (c) 2019 Artur Pacholec
+//
+// SPDX-License-Identifier: MIT
 
 #include <stdio.h>
 
@@ -46,17 +26,7 @@
 #define IOMUXC_SW_MUX_CTL_PAD_MUX_MODE_ALT5 5U
 
 // arrays use 0 based numbering: I2C1 is stored at index 0
-STATIC bool reserved_i2c[MP_ARRAY_SIZE(mcu_i2c_banks)];
-STATIC bool never_reset_i2c[MP_ARRAY_SIZE(mcu_i2c_banks)];
-
-void i2c_reset(void) {
-    for (uint i = 0; i < MP_ARRAY_SIZE(mcu_i2c_banks); i++) {
-        if (!never_reset_i2c[i]) {
-            reserved_i2c[i] = false;
-            LPI2C_MasterDeinit(mcu_i2c_banks[i]);
-        }
-    }
-}
+static bool reserved_i2c[MP_ARRAY_SIZE(mcu_i2c_banks)];
 
 static void config_periph_pin(const mcu_periph_obj_t *periph) {
     IOMUXC_SetPinMux(
@@ -95,6 +65,9 @@ static void i2c_check_pin_config(const mcu_pin_obj_t *pin, uint32_t pull) {
 
 void common_hal_busio_i2c_construct(busio_i2c_obj_t *self,
     const mcu_pin_obj_t *scl, const mcu_pin_obj_t *sda, uint32_t frequency, uint32_t timeout) {
+
+    // Ensure the object starts in its deinit state.
+    common_hal_busio_i2c_mark_deinit(self);
 
     #if CIRCUITPY_REQUIRE_I2C_PULLUPS
     // Test that the pins are in a high state. (Hopefully indicating they are pulled up.)
@@ -173,8 +146,6 @@ void common_hal_busio_i2c_construct(busio_i2c_obj_t *self,
 }
 
 void common_hal_busio_i2c_never_reset(busio_i2c_obj_t *self) {
-    never_reset_i2c[self->sda->bank_idx - 1] = true;
-
     common_hal_never_reset_pin(self->sda->pin);
     common_hal_never_reset_pin(self->scl->pin);
 }
@@ -188,15 +159,17 @@ void common_hal_busio_i2c_deinit(busio_i2c_obj_t *self) {
         return;
     }
     reserved_i2c[self->sda->bank_idx - 1] = false;
-    never_reset_i2c[self->sda->bank_idx - 1] = false;
 
     LPI2C_MasterDeinit(self->i2c);
 
     common_hal_reset_pin(self->sda->pin);
     common_hal_reset_pin(self->scl->pin);
 
+    common_hal_busio_i2c_mark_deinit(self);
+}
+
+void common_hal_busio_i2c_mark_deinit(busio_i2c_obj_t *self) {
     self->sda = NULL;
-    self->scl = NULL;
 }
 
 bool common_hal_busio_i2c_probe(busio_i2c_obj_t *self, uint8_t addr) {
@@ -207,6 +180,9 @@ bool common_hal_busio_i2c_probe(busio_i2c_obj_t *self, uint8_t addr) {
 }
 
 bool common_hal_busio_i2c_try_lock(busio_i2c_obj_t *self) {
+    if (common_hal_busio_i2c_deinited(self)) {
+        return false;
+    }
     bool grabbed_lock = false;
 //    CRITICAL_SECTION_ENTER()
     if (!self->has_lock) {
@@ -225,7 +201,7 @@ void common_hal_busio_i2c_unlock(busio_i2c_obj_t *self) {
     self->has_lock = false;
 }
 
-STATIC uint8_t _common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr,
+static uint8_t _common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr,
     const uint8_t *data, size_t len, bool transmit_stop_bit) {
 
     lpi2c_master_transfer_t xfer = { 0 };

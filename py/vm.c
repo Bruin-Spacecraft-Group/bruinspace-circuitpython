@@ -196,7 +196,7 @@
 #endif // MICROPY_PY_SYS_SETTRACE
 
 // CIRCUITPY-CHANGE
-STATIC mp_obj_t get_active_exception(mp_exc_stack_t *exc_sp, mp_exc_stack_t *exc_stack) {
+static mp_obj_t get_active_exception(mp_exc_stack_t *exc_sp, mp_exc_stack_t *exc_stack) {
     for (mp_exc_stack_t *e = exc_sp; e >= exc_stack; --e) {
         if (e->prev_exc != NULL) {
             return MP_OBJ_FROM_PTR(e->prev_exc);
@@ -235,6 +235,7 @@ mp_vm_return_kind_t MICROPY_WRAP_MP_EXECUTE_BYTECODE(mp_execute_bytecode)(mp_cod
 // about to be dispatched.
 #define MARK_EXC_IP_GLOBAL() { code_state->ip = ip; }
 #endif
+
 #if MICROPY_OPT_COMPUTED_GOTO
     #include "py/vmentrytable.h"
     // CIRCUITPY-CHANGE
@@ -914,7 +915,7 @@ unwind_jump:;
 
                 ENTRY(MP_BC_MAKE_FUNCTION): {
                     DECODE_PTR;
-                    PUSH(mp_make_function_from_raw_code(ptr, code_state->fun_bc->context, NULL));
+                    PUSH(mp_make_function_from_proto_fun(ptr, code_state->fun_bc->context, NULL));
                     DISPATCH();
                 }
 
@@ -922,7 +923,7 @@ unwind_jump:;
                     DECODE_PTR;
                     // Stack layout: def_tuple def_dict <- TOS
                     sp -= 1;
-                    SET_TOP(mp_make_function_from_raw_code(ptr, code_state->fun_bc->context, sp));
+                    SET_TOP(mp_make_function_from_proto_fun(ptr, code_state->fun_bc->context, sp));
                     DISPATCH();
                 }
 
@@ -931,7 +932,7 @@ unwind_jump:;
                     size_t n_closed_over = *ip++;
                     // Stack layout: closed_overs <- TOS
                     sp -= n_closed_over - 1;
-                    SET_TOP(mp_make_closure_from_raw_code(ptr, code_state->fun_bc->context, n_closed_over, sp));
+                    SET_TOP(mp_make_closure_from_proto_fun(ptr, code_state->fun_bc->context, n_closed_over, sp));
                     DISPATCH();
                 }
 
@@ -940,7 +941,7 @@ unwind_jump:;
                     size_t n_closed_over = *ip++;
                     // Stack layout: def_tuple def_dict closed_overs <- TOS
                     sp -= 2 + n_closed_over - 1;
-                    SET_TOP(mp_make_closure_from_raw_code(ptr, code_state->fun_bc->context, 0x100 | n_closed_over, sp));
+                    SET_TOP(mp_make_closure_from_proto_fun(ptr, code_state->fun_bc->context, 0x100 | n_closed_over, sp));
                     DISPATCH();
                 }
 
@@ -1444,8 +1445,8 @@ unwind_loop:
             // - constant GeneratorExit object, because it's const
             // - exceptions re-raised by END_FINALLY
             // - exceptions re-raised explicitly by "raise"
+            // CIRCUITPY-CHANGE: MICROPY_CONST_GENERATOREXIT_OBJ check; true just helps formatting.
             if ( true
-                // CIRCUITPY-CHANGE
                 #if MICROPY_CONST_GENERATOREXIT_OBJ
                 && nlr.ret_val != &mp_const_GeneratorExit_obj
                 #endif
@@ -1488,20 +1489,20 @@ unwind_loop:
                 // catch exception and pass to byte code
                 code_state->ip = exc_sp->handler;
                 mp_obj_t *sp = MP_TAGPTR_PTR(exc_sp->val_sp);
-                //CIRCUITPY
+                // CIRCUITPY-CHANGE
                 #if MICROPY_CPYTHON_EXCEPTION_CHAIN
                 mp_obj_t active_exception = get_active_exception(exc_sp, exc_stack);
                 #endif
                 // save this exception in the stack so it can be used in a reraise, if needed
                 exc_sp->prev_exc = nlr.ret_val;
-                mp_obj_t obj = MP_OBJ_FROM_PTR(nlr.ret_val);
+                mp_obj_t ret_val_obj = MP_OBJ_FROM_PTR(nlr.ret_val);
                 #if MICROPY_CPYTHON_EXCEPTION_CHAIN
-                if (active_exception != MP_OBJ_NULL && active_exception != obj) {
-                    mp_store_attr(obj, MP_QSTR___context__, active_exception);
+                if (active_exception != MP_OBJ_NULL && active_exception != ret_val_obj) {
+                    mp_store_attr(ret_val_obj, MP_QSTR___context__, active_exception);
                 }
                 #endif
                 // push exception object so it can be handled by bytecode
-                PUSH(obj);
+                PUSH(MP_OBJ_FROM_PTR(ret_val_obj));
                 code_state->sp = sp;
 
             #if MICROPY_STACKLESS

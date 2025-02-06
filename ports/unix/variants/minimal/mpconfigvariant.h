@@ -47,6 +47,7 @@
 #define MICROPY_COMP_CONST_LITERAL (1)
 #define MICROPY_COMP_CONST_TUPLE (1)
 #define MICROPY_COMP_DOUBLE_TUPLE_ASSIGN (1)
+#define MICROPY_ENABLE_COMPILER (1)
 #define MICROPY_ENABLE_EXTERNAL_IMPORT (1)
 #define MICROPY_FULL_CHECKS (1)
 #define MICROPY_HELPER_REPL (1)
@@ -63,6 +64,3 @@
 // Enable just the sys and os built-in modules.
 #define MICROPY_PY_SYS (1)
 #define MICROPY_PY_OS (1)
-
-// The minimum sets this to 1 to save flash.
-#define MICROPY_QSTR_BYTES_IN_HASH (2)

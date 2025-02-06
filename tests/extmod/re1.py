@@ -25,6 +25,7 @@ try:
 except IndexError:
     print("IndexError")
 
+# CIRCUITPY-CHANGE: line-ending tests
 r = re.compile(r"\n")
 m = r.match("\n")
 print(m.group(0))

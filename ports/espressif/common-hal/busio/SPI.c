@@ -1,31 +1,12 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 microDev
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 microDev
+//
+// SPDX-License-Identifier: MIT
 
 #include <string.h>
 
+#include "freertos/projdefs.h"
 #include "py/runtime.h"
 #include "shared-bindings/busio/SPI.h"
 #include "shared-bindings/microcontroller/Pin.h"
@@ -37,6 +18,7 @@
 
 static bool spi_never_reset[SOC_SPI_PERIPH_NUM];
 static spi_device_handle_t spi_handle[SOC_SPI_PERIPH_NUM];
+static StaticSemaphore_t spi_mutex[SOC_SPI_PERIPH_NUM];
 
 static bool spi_bus_is_free(spi_host_device_t host_id) {
     return spi_bus_get_attr(host_id) == NULL;
@@ -76,7 +58,8 @@ static void set_spi_config(busio_spi_obj_t *self,
 }
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
-    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi, const mcu_pin_obj_t *miso, bool half_duplex) {
+    const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
+    const mcu_pin_obj_t *miso, bool half_duplex) {
 
     const spi_bus_config_t bus_config = {
         .mosi_io_num = mosi != NULL ? mosi->number : -1,
@@ -120,6 +103,8 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         claim_pin(miso);
     }
     claim_pin(clock);
+
+    self->mutex = xSemaphoreCreateMutexStatic(&spi_mutex[self->host_id]);
 }
 
 void common_hal_busio_spi_never_reset(busio_spi_obj_t *self) {
@@ -142,14 +127,26 @@ void common_hal_busio_spi_deinit(busio_spi_obj_t *self) {
         return;
     }
 
+    // Wait for any other users of this to finish.
+    while (!common_hal_busio_spi_try_lock(self)) {
+        RUN_BACKGROUND_TASKS;
+    }
+
+    // Mark us as deinit early in case we are used in an interrupt.
+    common_hal_reset_pin(self->clock);
+    self->clock = NULL;
+
     spi_never_reset[self->host_id] = false;
     spi_bus_remove_device(spi_handle[self->host_id]);
     spi_bus_free(self->host_id);
 
+    // Release the mutex before we delete it. Otherwise FreeRTOS gets unhappy.
+    xSemaphoreGive(self->mutex);
+    vSemaphoreDelete(self->mutex);
+    self->mutex = NULL;
+
     common_hal_reset_pin(self->MOSI);
     common_hal_reset_pin(self->MISO);
-    common_hal_reset_pin(self->clock);
-    self->clock = NULL;
 }
 
 bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
@@ -166,20 +163,18 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
 }
 
 bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self) {
-    bool grabbed_lock = false;
-    if (!self->has_lock) {
-        grabbed_lock = true;
-        self->has_lock = true;
+    if (common_hal_busio_spi_deinited(self)) {
+        return false;
     }
-    return grabbed_lock;
+    return xSemaphoreTake(self->mutex, 1) == pdTRUE;
 }
 
 bool common_hal_busio_spi_has_lock(busio_spi_obj_t *self) {
-    return self->has_lock;
+    return self->mutex != NULL && xSemaphoreGetMutexHolder(self->mutex) == xTaskGetCurrentTaskHandle();
 }
 
 void common_hal_busio_spi_unlock(busio_spi_obj_t *self) {
-    self->has_lock = false;
+    xSemaphoreGive(self->mutex);
 }
 
 bool common_hal_busio_spi_write(busio_spi_obj_t *self,
@@ -228,7 +223,10 @@ bool common_hal_busio_spi_transfer(busio_spi_obj_t *self,
 
         transactions[0].flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
         transactions[0].length = bits_to_send;
-        spi_device_transmit(spi_handle[self->host_id], &transactions[0]);
+        esp_err_t result = spi_device_transmit(spi_handle[self->host_id], &transactions[0]);
+        if (result != ESP_OK) {
+            return false;
+        }
 
         if (data_in != NULL) {
             memcpy(data_in, &transactions[0].rx_data, len);

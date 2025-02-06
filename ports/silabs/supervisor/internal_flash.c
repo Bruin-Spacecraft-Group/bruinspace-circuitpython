@@ -51,7 +51,7 @@
 uint8_t _flash_cache[FLASH_PAGE_SIZE] __attribute__((aligned(4)));
 uint32_t _flash_page_addr = NO_CACHE;
 
-STATIC inline uint32_t lba2addr(uint32_t block) {
+static inline uint32_t lba2addr(uint32_t block) {
     return CIRCUITPY_INTERNAL_FLASH_FILESYSTEM_START_ADDR + block * FILESYSTEM_BLOCK_SIZE;
 }
 

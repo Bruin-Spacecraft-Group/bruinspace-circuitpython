@@ -74,7 +74,7 @@ options. For example, to build the SSL module, `MICROPY_PY_SSL` should be
 set to 1.
 
 Debug Symbols
--------------
+=============
 
 By default, builds are stripped of symbols and debug information to save size.
 

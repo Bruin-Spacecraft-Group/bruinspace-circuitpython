@@ -33,7 +33,6 @@
 #include "shared-bindings/microcontroller/__init__.h"
 
 #if CIRCUITPY_BUSIO
-#include "common-hal/busio/I2C.h"
 #include "common-hal/busio/SPI.h"
 #include "common-hal/busio/UART.h"
 #endif
@@ -88,20 +87,20 @@ uint32_t _ebss;
 uint32_t *heap;
 uint32_t heap_size;
 
-STATIC sl_sleeptimer_timer_handle_t _tick_timer;
-STATIC sl_sleeptimer_timer_handle_t _sleep_timer;
+static sl_sleeptimer_timer_handle_t _tick_timer;
+static sl_sleeptimer_timer_handle_t _sleep_timer;
 
 // CircuitPython stack thread
-STATIC void circuitpython_thread(void *p_arg);
-STATIC osThreadId_t tid_thread_circuitpython;
+static void circuitpython_thread(void *p_arg);
+static osThreadId_t tid_thread_circuitpython;
 __ALIGNED(8)
-STATIC uint8_t thread_circuitpython_stk[(CIRCUITPY_DEFAULT_STACK_SIZE +
+static uint8_t thread_circuitpython_stk[(CIRCUITPY_DEFAULT_STACK_SIZE +
     SL_CIRCUITPYTHON_TASK_STACK_EXTRA_SIZE) &
                                         0xFFFFFFF8u];
 __ALIGNED(4)
-STATIC uint8_t thread_circuitpython_cb[osThreadCbSize];
+static uint8_t thread_circuitpython_cb[osThreadCbSize];
 
-STATIC const osThreadAttr_t thread_circuitpython_attr = {
+static const osThreadAttr_t thread_circuitpython_attr = {
     .name = "CircuitPython stack",
     .stack_mem = thread_circuitpython_stk,
     .stack_size = sizeof(thread_circuitpython_stk),
@@ -110,7 +109,7 @@ STATIC const osThreadAttr_t thread_circuitpython_attr = {
     .priority = (osPriority_t)SL_CIRCUITPYTHON_TASK_PRIORITY
 };
 
-STATIC bool isSchedulerStarted = false;
+static bool isSchedulerStarted = false;
 
 safe_mode_t port_init(void) {
     #if defined(SL_CATALOG_KERNEL_PRESENT)
@@ -160,7 +159,6 @@ void reset_port(void) {
     reset_all_pins();
 
     #if CIRCUITPY_BUSIO
-    i2c_reset();
     spi_reset();
     uart_reset();
     #endif
@@ -223,7 +221,7 @@ uint64_t port_get_raw_ticks(uint8_t *subticks) {
 }
 
 // Periodic tick timer callback
-STATIC void on_tick_timer_timeout(sl_sleeptimer_timer_handle_t *handle,
+static void on_tick_timer_timeout(sl_sleeptimer_timer_handle_t *handle,
     void *data) {
     (void)&handle;
     (void)&data;
@@ -255,7 +253,7 @@ void port_wake_main_task(void) {
     osThreadFlagsSet(tid_thread_circuitpython, 0x0001);
 }
 
-STATIC void on_sleep_timer_timeout(sl_sleeptimer_timer_handle_t *handle,
+static void on_sleep_timer_timeout(sl_sleeptimer_timer_handle_t *handle,
     void *data) {
     port_wake_main_task();
 }

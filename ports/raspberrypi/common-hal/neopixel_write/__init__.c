@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/neopixel_write/__init__.h"
 
@@ -60,17 +40,17 @@ void common_hal_neopixel_write(const digitalio_digitalinout_obj_t *digitalinout,
 
     // TODO: Cache the state machine after we create it once. We'll need a way to
     // change the pins then though.
-    uint32_t pins_we_use = 1 << digitalinout->pin->number;
+    pio_pinmask_t pins_we_use = PIO_PINMASK_FROM_PIN(digitalinout->pin->number);
     bool ok = rp2pio_statemachine_construct(&state_machine,
-        neopixel_program, sizeof(neopixel_program) / sizeof(neopixel_program[0]),
+        neopixel_program, MP_ARRAY_SIZE(neopixel_program),
         12800000, // 12.8MHz, to get appropriate sub-bit times in PIO program.
         NULL, 0, // init program
         NULL, 1, // out
         NULL, 1, // in
-        0, 0, // in pulls
+        PIO_PINMASK_NONE, PIO_PINMASK_NONE, // gpio pulls
         NULL, 1, // set
-        digitalinout->pin, 1, // sideset
-        0, pins_we_use, // initial pin state
+        digitalinout->pin, 1, false, // sideset
+        PIO_PINMASK_NONE, pins_we_use, // initial pin state
         NULL, // jump pin
         pins_we_use, true, false,
         true, 8, false, // TX, auto pull every 8 bits. shift left to output msb first
@@ -80,8 +60,9 @@ void common_hal_neopixel_write(const digitalio_digitalinout_obj_t *digitalinout,
         false, // Not user-interruptible.
         false, // No sideset enable
         0, -1, // wrap
-        PIO_ANY_OFFSET  // offset
-        );
+        PIO_ANY_OFFSET,  // offset
+        PIO_FIFO_TYPE_DEFAULT,
+        PIO_MOV_STATUS_DEFAULT, PIO_MOV_N_DEFAULT);
     if (!ok) {
         // Do nothing. Maybe bitbang?
         return;

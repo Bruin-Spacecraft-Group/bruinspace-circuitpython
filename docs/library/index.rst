@@ -17,7 +17,7 @@ limited flash memory:
 ``binascii``, ``errno``, ``json``, ``re``.
 
 These libraries are not currently enabled in any CircuitPython build, but may be in the future:
-``ctypes``, ``platform``
+``platform``
 
 .. toctree::
    :maxdepth: 1
@@ -34,7 +34,6 @@ These libraries are not currently enabled in any CircuitPython build, but may be
    platform.rst
    re.rst
    sys.rst
-   ctypes.rst
    select.rst
 
 Omitted ``string`` functions

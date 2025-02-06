@@ -1,27 +1,9 @@
-# This file is part of the MicroPython project, http://micropython.org/
-#
-# The MIT License (MIT)
+# This file is part of the CircuitPython project: https://circuitpython.org
 #
 # SPDX-FileCopyrightText: Copyright (c) 2019 Dan Halbert for Adafruit Industries
 # SPDX-FileCopyrightText: Copyright (c) 2019 Lucian Copeland for Adafruit Industries
 #
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+# SPDX-License-Identifier: MIT
 
 include ../../py/circuitpy_mkenv.mk
 
@@ -66,8 +48,8 @@ CFLAGS += $(OPTIMIZATION_FLAGS)
 # Add -ftree-vrp optimization and checking to all builds. It's not enabled for -Os by default.
 CFLAGS += -ftree-vrp
 
-# MCU Series is defined by the HAL package and doesn't need to be specified here
-C_DEFS = -D$(MCU_PACKAGE) -DUSE_HAL_DRIVER -DUSE_FULL_LL_DRIVER -D$(MCU_VARIANT)
+# STM32 MCU series must be defined. See supervisor/linker.h
+C_DEFS = -D$(MCU_PACKAGE) -DUSE_HAL_DRIVER -DUSE_FULL_LL_DRIVER -D$(MCU_VARIANT) -DSTM32$(MCU_SERIES)
 
 CFLAGS += $(INC) -Werror -Wall -std=gnu11 -fshort-enums $(BASE_CFLAGS) $(C_DEFS) $(CFLAGS_MOD) $(COPT) -nostdlib -nostartfiles
 
@@ -215,7 +197,9 @@ ifneq ($(CIRCUITPY_AUDIOBUSIO_PDMIN),0)
 endif
 
 ifneq ($(CIRCUITPY_USB),0)
-SRC_C += lib/tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c
+SRC_C += \
+	lib/tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c \
+	lib/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c
 endif
 
 SRC_S = \

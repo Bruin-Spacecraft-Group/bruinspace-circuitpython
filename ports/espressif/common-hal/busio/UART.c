@@ -1,34 +1,14 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Scott Shawcroft for Adafruit Industries LLC
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2020 Scott Shawcroft for Adafruit Industries LLC
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/busio/UART.h"
 
-#include "components/driver/uart/include/driver/uart.h"
+#include "driver/uart.h"
 
 #include "mpconfigport.h"
 #include "shared/readline/readline.h"
@@ -76,7 +56,7 @@ void uart_reset(void) {
     for (uart_port_t num = 0; num < UART_NUM_MAX; num++) {
         #ifdef CONFIG_ESP_CONSOLE_UART_NUM
         // Do not reset the UART used by the IDF for logging.
-        if (num == CONFIG_ESP_CONSOLE_UART_NUM) {
+        if ((int)num == CONFIG_ESP_CONSOLE_UART_NUM) {
             continue;
         }
         #endif
@@ -126,9 +106,22 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
     self->timeout_ms = timeout * 1000;
 
     self->uart_num = UART_NUM_MAX;
-    for (uart_port_t num = 0; num < UART_NUM_MAX; num++) {
+
+    // ESP32-C6 and ESP32-P4 both have a single LP (low power) UART, which is
+    // limited in what it can do and which pins it can use. Ignore it for now.
+    // Its UART number is higher than the numbers for the regular ("HP", high-power) UARTs.
+
+    // SOC_UART_LP_NUM is not defined for chips without an LP UART.
+    #if defined(SOC_UART_LP_NUM) && (SOC_UART_LP_NUM >= 1)
+    #define UART_LIMIT LP_UART_NUM_0
+    #else
+    #define UART_LIMIT UART_NUM_MAX
+    #endif
+
+    for (uart_port_t num = 0; num < UART_LIMIT; num++) {
         if (!uart_is_driver_installed(num)) {
             self->uart_num = num;
+            break;
         }
     }
     if (self->uart_num == UART_NUM_MAX) {
@@ -151,11 +144,11 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
         uart_config.flow_ctrl = UART_HW_FLOWCTRL_CTS;
     }
 
-    if (receiver_buffer_size <= UART_FIFO_LEN) {
-        receiver_buffer_size = UART_FIFO_LEN + 8;
+    if (receiver_buffer_size <= UART_HW_FIFO_LEN(self->uart_num)) {
+        receiver_buffer_size = UART_HW_FIFO_LEN(self->uart_num) + 8;
     }
 
-    uart_config.rx_flow_ctrl_thresh = UART_FIFO_LEN - 8;
+    uart_config.rx_flow_ctrl_thresh = UART_HW_FIFO_LEN(self->uart_num) - 8;
     // Install the driver before we change the settings.
     if (uart_driver_install(self->uart_num, receiver_buffer_size, 0, 20, &self->event_queue, 0) != ESP_OK ||
         uart_set_mode(self->uart_num, mode) != ESP_OK) {
@@ -244,6 +237,7 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
     int rx_num = -1;
     int rts_num = -1;
     int cts_num = -1;
+
     if (have_tx) {
         claim_pin(tx);
         self->tx_pin = tx;
@@ -274,8 +268,19 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
         self->rts_pin = rs485_dir;
         rts_num = rs485_dir->number;
     }
+
     if (uart_set_pin(self->uart_num, tx_num, rx_num, rts_num, cts_num) != ESP_OK) {
+        // Uninstall driver and clean up.
+        common_hal_busio_uart_deinit(self);
         raise_ValueError_invalid_pins();
+    }
+
+    if (have_rx) {
+        // On ESP32-C3 and ESP32-S3 (at least),  a junk byte with zero or more consecutive 1's can be
+        // generated, even if the pin is pulled high (normal UART resting state) to begin with.
+        // Wait one byte time, but at least 1 msec, and clear the input buffer to discard it.
+        mp_hal_delay_ms(1 + (1000 * (bits + stop)) / baudrate);
+        common_hal_busio_uart_clear_rx_buffer(self);
     }
 }
 

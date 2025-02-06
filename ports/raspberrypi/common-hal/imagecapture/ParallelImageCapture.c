@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Jeff Epler for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Jeff Epler for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "py/obj.h"
 #include "py/runtime.h"
@@ -68,7 +48,7 @@
         /* .wrap */ \
     }
 
-STATIC mcu_pin_obj_t *pin_from_number(uint8_t number) {
+static mcu_pin_obj_t *pin_from_number(uint8_t number) {
     const mp_map_t *mcu_map = &mcu_pin_globals.map;
     for (uint8_t i = 0; i < mcu_map->alloc; i++) {
         mp_obj_t val = mcu_map->table[i].value;
@@ -103,25 +83,28 @@ void common_hal_imagecapture_parallelimagecapture_construct(imagecapture_paralle
         common_hal_mcu_processor_get_frequency(), // full speed (4 instructions per loop -> max pclk 30MHz @ 120MHz)
         0, 0, // init
         NULL, 0, // may_exec
-        NULL, 0, 0, 0, // out pins
+        NULL, 0, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // out pins
         pin_from_number(data_pins[0]), data_count, // in pins
-        0, 0, // in pulls
-        NULL, 0, 0, 0, // set pins
+        PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // in pulls
+        NULL, 0, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // set pins
         #if DEBUG_STATE_MACHINE
-        &pin_GPIO26, 3, 7, 7, // sideset pins
+        &pin_GPIO26, 3, PIO_PINMASK32_FROM_VALUE(7), PIO_PINMASK32_FROM_VALUE(7), // sideset pins
         #else
-        NULL, 0, 0, 0, // sideset pins
+        NULL, 0, false, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // sideset pins
         #endif
         false, // No sideset enable
         NULL, PULL_NONE, // jump pin
-        (1 << vertical_sync->number) | (1 << horizontal_reference->number) | (1 << data_clock->number), // wait gpio pins
+        PIO_PINMASK_OR3(PIO_PINMASK_FROM_PIN(vertical_sync->number), PIO_PINMASK_FROM_PIN(horizontal_reference->number), PIO_PINMASK_FROM_PIN(data_clock->number)),
+        // wait gpio pins
         true, // exclusive pin use
         false, 32, false, // out settings
         false, // wait for txstall
         true, 32, true,  // in settings
         false, // Not user-interruptible.
         2, 5, // wrap settings
-        PIO_ANY_OFFSET);
+        PIO_ANY_OFFSET,
+        PIO_FIFO_TYPE_DEFAULT,
+        PIO_MOV_STATUS_DEFAULT, PIO_MOV_N_DEFAULT);
 }
 
 void common_hal_imagecapture_parallelimagecapture_deinit(imagecapture_parallelimagecapture_obj_t *self) {
