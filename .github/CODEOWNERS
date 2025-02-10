@@ -1,0 +1,12 @@
+# RAPID-0 Policy: Each application is owned by the subteam lead of
+# the team in charge of that application and up to one other person
+# designated by the former. All software not included in a specific
+# application is owned by the PM, CE, and any subteam leads who are
+# considered qualified to manage software project-wide by the former.
+
+* @Touwfoo @Randall-Scharpf @anniexiang01
+
+# Any subteam-specific application which does NOT contain the name
+# of the subsystem owning the application should be specially cleared
+# by someone who is also an owner of software not specific to any
+# application, and then be listed below.
