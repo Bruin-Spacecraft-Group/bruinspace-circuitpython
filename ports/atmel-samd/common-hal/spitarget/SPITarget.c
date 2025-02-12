@@ -154,6 +154,8 @@ void common_hal_spitarget_spi_target_construct(spitarget_spi_target_obj_t *self,
     claim_pin(ss);
 
     self->running_dma.failure = 1; // not started
+    self->mosi_packet = NULL;
+    self->miso_packet = NULL;
 
     spi_m_sync_enable(&self->spi_desc);
 }
@@ -185,6 +187,10 @@ void common_hal_spitarget_spi_target_transfer_start(spitarget_spi_target_obj_t *
     if (self->running_dma.failure != 1) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
     }
+
+    self->mosi_packet = mosi_packet;
+    self->miso_packet = miso_packet;
+
     Sercom* sercom = self->spi_desc.dev.prvt;
     self->running_dma = shared_dma_transfer_start(sercom, miso_packet, &sercom->SPI.DATA.reg, &sercom->SPI.DATA.reg, mosi_packet, len, 0);
 
@@ -231,5 +237,9 @@ int common_hal_spitarget_spi_target_transfer_close(spitarget_spi_target_obj_t *s
     }
     int res = shared_dma_transfer_close(self->running_dma);
     self->running_dma.failure = 1;
+
+    self->mosi_packet = NULL;
+    self->miso_packet = NULL;
+
     return res;
 }

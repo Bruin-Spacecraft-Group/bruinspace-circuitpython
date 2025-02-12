@@ -85,6 +85,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(spitarget_spi_target___exit___obj, 4,
 //|         If a packet has already been queued for this SPI bus but has not yet been transferred, an error will be raised.
 //|
 //|         :param bytearray miso_packet: Packet data to be sent from secondary to main on next request."""
+//|         :param bytearray mosi_packet: Packet to be filled with data from main on next request."""
 //|
 STATIC mp_obj_t spitarget_spi_target_load_packet(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     mp_check_self(mp_obj_is_type(pos_args[0], &spitarget_spi_target_type));
@@ -115,14 +116,14 @@ STATIC mp_obj_t spitarget_spi_target_load_packet(size_t n_args, const mp_obj_t *
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_load_packet_obj, 1, spitarget_spi_target_load_packet);
 
-//|     def try_transfer(self, *, timeout: float = -1) -> bool:
+//|     def wait_transfer(self, *, timeout: float = -1) -> bool:
 //|         """Wait for an SPI transfer from the main device.
 //|
 //|         :param float timeout: Timeout in seconds. Zero means wait forever, a negative value means check once
 //|         :return: True if the transfer is complete, or False if no response received before the timeout
 //|         :rtype: ~bool"""
 //|
-STATIC mp_obj_t spitarget_spi_target_try_transfer(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t spitarget_spi_target_wait_transfer(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     mp_check_self(mp_obj_is_type(pos_args[0], &spitarget_spi_target_type));
     spitarget_spi_target_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     if (common_hal_spitarget_spi_target_deinited(self)) {
@@ -160,14 +161,14 @@ STATIC mp_obj_t spitarget_spi_target_try_transfer(size_t n_args, const mp_obj_t 
 
     return mp_const_false;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_try_transfer_obj, 1, spitarget_spi_target_try_transfer);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_wait_transfer_obj, 1, spitarget_spi_target_wait_transfer);
 
 STATIC const mp_rom_map_elem_t spitarget_spi_target_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&spitarget_spi_target_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
     { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&spitarget_spi_target___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_load_packet), MP_ROM_PTR(&spitarget_spi_target_load_packet_obj) },
-    { MP_ROM_QSTR(MP_QSTR_try_transfer), MP_ROM_PTR(&spitarget_spi_target_try_transfer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wait_transfer), MP_ROM_PTR(&spitarget_spi_target_wait_transfer_obj) },
 
 };
 
