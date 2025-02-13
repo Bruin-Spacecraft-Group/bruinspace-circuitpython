@@ -42,6 +42,8 @@ jobs:
       with:
         cp-version: ${{ steps.set-up-submodules.outputs.version }}
         download: false
+    - name: Pre-build setup on submodules
+      run: make submodules
     - name: Build boards
       run: make -j4 -C ports/atmel-samd BOARD=${{ matrix.board }}
     - name: Upload artifacts
