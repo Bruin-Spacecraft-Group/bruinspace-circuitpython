@@ -28,9 +28,6 @@ jobs:
     - name: Set up submodules
       id: set-up-submodules
       uses: ./.github/actions/deps/submodules
-      with:
-        action: cache
-        version: true
     - name: Set up external
       uses: ./.github/actions/deps/external
       with:
@@ -42,8 +39,6 @@ jobs:
       with:
         cp-version: ${{ steps.set-up-submodules.outputs.version }}
         download: false
-    - name: Pre-build setup on submodules
-      run: make -C ports/atmel-samd submodules
     - name: Build boards
       run: make -j4 -C ports/atmel-samd BOARD=${{ matrix.board }}
     - name: Upload artifacts
