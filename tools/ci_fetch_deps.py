@@ -53,6 +53,7 @@ PORT_DEPS = {
         "lib/tinyusb/",
         "lib/tlsf",
         "data/nvm.toml/",
+        "lib/micropython-lib/"
     ],
     "broadcom": ["extmod/ulab/", "lib/tlsf", "lib/tinyusb/"],
     "cxd56": ["extmod/ulab/", "lib/tlsf", "lib/tinyusb/"],

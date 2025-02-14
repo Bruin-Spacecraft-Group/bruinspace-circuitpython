@@ -43,7 +43,7 @@ jobs:
         cp-version: ${{ steps.set-up-submodules.outputs.version }}
         download: false
     - name: Pre-build debug
-      run: ls lib
+      run: ls lib/micropython-lib
     - name: Build boards
       run: make -j4 -C ports/atmel-samd BOARD=${{ matrix.board }}
     - name: Upload artifacts
