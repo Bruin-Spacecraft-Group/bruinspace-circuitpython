@@ -28,6 +28,9 @@ jobs:
     - name: Set up submodules
       id: set-up-submodules
       uses: ./.github/actions/deps/submodules
+      with:
+        action: cache
+        version: true
     - name: Set up external
       uses: ./.github/actions/deps/external
       with:
