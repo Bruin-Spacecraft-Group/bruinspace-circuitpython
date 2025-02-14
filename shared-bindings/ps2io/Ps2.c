@@ -92,13 +92,7 @@ static void check_for_deinit(ps2io_ps2_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t ps2io_ps2_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    mp_check_self(mp_obj_is_type(args[0], &ps2io_ps2_type));
-    ps2io_ps2_obj_t *self = MP_OBJ_TO_PTR(args[0]);
-    common_hal_ps2io_ps2_deinit(self);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(ps2io_ps2___exit___obj, 4, 4, ps2io_ps2_obj___exit__);
+//  Provided by context manager helper.
 
 //|     def popleft(self) -> int:
 //|         """Removes and returns the oldest received byte. When buffer
@@ -205,7 +199,7 @@ static const mp_rom_map_elem_t ps2io_ps2_locals_dict_table[] = {
     // Methods
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&ps2io_ps2_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&ps2io_ps2___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_popleft), MP_ROM_PTR(&ps2io_ps2_popleft_obj) },
     { MP_ROM_QSTR(MP_QSTR_sendcmd), MP_ROM_PTR(&ps2io_ps2_sendcmd_obj) },
     { MP_ROM_QSTR(MP_QSTR_clear_errors), MP_ROM_PTR(&ps2io_ps2_clear_errors_obj) },

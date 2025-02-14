@@ -149,12 +149,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(keypad_demux_demuxkeymatrix_deinit_obj, keypad_demux_d
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t keypad_demux_demuxkeymatrix___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_keypad_demux_demuxkeymatrix_deinit(args[0]);
-    return MP_ROM_NONE;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(keypad_demux_demuxkeymatrix___exit___obj, 4, 4, keypad_demux_demuxkeymatrix___exit__);
+//  Provided by context manager helper.
 
 static void check_for_deinit(keypad_demux_demuxkeymatrix_obj_t *self) {
     if (common_hal_keypad_deinited(self)) {
@@ -239,7 +234,7 @@ MP_DEFINE_CONST_FUN_OBJ_3(keypad_demux_demuxkeymatrix_row_column_to_key_number_o
 static const mp_rom_map_elem_t keypad_demux_demuxkeymatrix_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit),                   MP_ROM_PTR(&keypad_demux_demuxkeymatrix_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__),                MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),                 MP_ROM_PTR(&keypad_demux_demuxkeymatrix___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),                 MP_ROM_PTR(&default___exit___obj) },
 
     { MP_ROM_QSTR(MP_QSTR_events),                   MP_ROM_PTR(&keypad_generic_events_obj) },
     { MP_ROM_QSTR(MP_QSTR_key_count),                MP_ROM_PTR(&keypad_generic_key_count_obj) },

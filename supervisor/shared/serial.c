@@ -524,3 +524,15 @@ void print_hexdump(const mp_print_t *printer, const char *prefix, const uint8_t 
         mp_printf(printer, "\n");
     }
 }
+
+int console_uart_printf(const char *fmt, ...) {
+    #if CIRCUITPY_CONSOLE_UART
+    va_list args;
+    va_start(args, fmt);
+    int ret = mp_vprintf(&console_uart_print, fmt, args);
+    va_end(args);
+    return ret;
+    #else
+    return 0;
+    #endif
+}

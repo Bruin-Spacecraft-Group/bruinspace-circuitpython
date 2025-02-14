@@ -194,12 +194,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(keypad_shiftregisterkeys_deinit_obj, keypad_shiftregis
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t keypad_shiftregisterkeys___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_keypad_shiftregisterkeys_deinit(args[0]);
-    return MP_ROM_NONE;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(keypad_shiftregisterkeys___exit___obj, 4, 4, keypad_shiftregisterkeys___exit__);
+//  Provided by context manager helper.
 
 //|     def reset(self) -> None:
 //|         """Reset the internal state of the scanner to assume that all keys are now released.
@@ -225,7 +220,7 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(keypad_shiftregisterkeys___exit___obj
 static const mp_rom_map_elem_t keypad_shiftregisterkeys_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit),       MP_ROM_PTR(&keypad_shiftregisterkeys_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__),    MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),     MP_ROM_PTR(&keypad_shiftregisterkeys___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),     MP_ROM_PTR(&default___exit___obj) },
 
     { MP_ROM_QSTR(MP_QSTR_events),       MP_ROM_PTR(&keypad_generic_events_obj) },
     { MP_ROM_QSTR(MP_QSTR_key_count),    MP_ROM_PTR(&keypad_generic_key_count_obj) },

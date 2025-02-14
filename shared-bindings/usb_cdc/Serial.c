@@ -239,22 +239,22 @@ MP_PROPERTY_GETSET(usb_cdc_serial_write_timeout_obj,
 static const mp_rom_map_elem_t usb_cdc_serial_locals_dict_table[] = {
     // Standard stream methods.
     { MP_ROM_QSTR(MP_QSTR_flush),        MP_ROM_PTR(&mp_stream_flush_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read),     MP_ROM_PTR(&mp_stream_read_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read),     MP_ROM_PTR(&mp_stream_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
     { MP_ROM_QSTR(MP_QSTR_readline),     MP_ROM_PTR(&mp_stream_unbuffered_readline_obj)},
     { MP_ROM_QSTR(MP_QSTR_readlines),    MP_ROM_PTR(&mp_stream_unbuffered_readlines_obj)},
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
 
     // Other pyserial-inspired attributes.
-    { MP_OBJ_NEW_QSTR(MP_QSTR_in_waiting),          MP_ROM_PTR(&usb_cdc_serial_in_waiting_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_out_waiting),         MP_ROM_PTR(&usb_cdc_serial_out_waiting_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset_input_buffer),  MP_ROM_PTR(&usb_cdc_serial_reset_input_buffer_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset_output_buffer), MP_ROM_PTR(&usb_cdc_serial_reset_output_buffer_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_timeout),             MP_ROM_PTR(&usb_cdc_serial_timeout_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write_timeout),       MP_ROM_PTR(&usb_cdc_serial_write_timeout_obj) },
+    { MP_ROM_QSTR(MP_QSTR_in_waiting),          MP_ROM_PTR(&usb_cdc_serial_in_waiting_obj) },
+    { MP_ROM_QSTR(MP_QSTR_out_waiting),         MP_ROM_PTR(&usb_cdc_serial_out_waiting_obj) },
+    { MP_ROM_QSTR(MP_QSTR_reset_input_buffer),  MP_ROM_PTR(&usb_cdc_serial_reset_input_buffer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_reset_output_buffer), MP_ROM_PTR(&usb_cdc_serial_reset_output_buffer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_timeout),             MP_ROM_PTR(&usb_cdc_serial_timeout_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write_timeout),       MP_ROM_PTR(&usb_cdc_serial_write_timeout_obj) },
 
     // Not in pyserial protocol.
-    { MP_OBJ_NEW_QSTR(MP_QSTR_connected),     MP_ROM_PTR(&usb_cdc_serial_connected_obj) },
+    { MP_ROM_QSTR(MP_QSTR_connected),     MP_ROM_PTR(&usb_cdc_serial_connected_obj) },
 
 
 

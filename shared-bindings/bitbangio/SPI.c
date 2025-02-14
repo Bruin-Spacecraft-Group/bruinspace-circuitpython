@@ -102,12 +102,7 @@ static void check_for_deinit(bitbangio_spi_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t bitbangio_spi_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    shared_module_bitbangio_spi_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bitbangio_spi_obj___exit___obj, 4, 4, bitbangio_spi_obj___exit__);
+//  Provided by context manager helper.
 
 
 static void check_lock(bitbangio_spi_obj_t *self) {
@@ -391,7 +386,7 @@ MP_DEFINE_CONST_FUN_OBJ_KW(bitbangio_spi_write_readinto_obj, 1, bitbangio_spi_wr
 static const mp_rom_map_elem_t bitbangio_spi_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&bitbangio_spi_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&bitbangio_spi_obj___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
 
     { MP_ROM_QSTR(MP_QSTR_configure), MP_ROM_PTR(&bitbangio_spi_configure_obj) },
     { MP_ROM_QSTR(MP_QSTR_try_lock), MP_ROM_PTR(&bitbangio_spi_try_lock_obj) },

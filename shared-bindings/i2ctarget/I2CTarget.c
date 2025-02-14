@@ -110,12 +110,7 @@ static void check_for_deinit(i2ctarget_i2c_target_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t i2ctarget_i2c_target_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    i2ctarget_i2c_target_obj_t *self = MP_OBJ_TO_PTR(args[0]);
-    common_hal_i2ctarget_i2c_target_deinit(self);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(i2ctarget_i2c_target___exit___obj, 4, 4, i2ctarget_i2c_target_obj___exit__);
+//  Provided by context manager helper.
 
 //|     def request(self, *, timeout: float = -1) -> I2CTargetRequest:
 //|         """Wait for an I2C request.
@@ -195,7 +190,7 @@ static const mp_rom_map_elem_t i2ctarget_i2c_target_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&i2ctarget_i2c_target_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&i2ctarget_i2c_target_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&i2ctarget_i2c_target___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_request), MP_ROM_PTR(&i2ctarget_i2c_target_request_obj) },
 
 };
@@ -237,14 +232,7 @@ static mp_obj_t i2ctarget_i2c_target_request_make_new(const mp_obj_type_t *type,
 //|         """Close the request."""
 //|         ...
 //|
-static mp_obj_t i2ctarget_i2c_target_request_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    i2ctarget_i2c_target_request_obj_t *self = MP_OBJ_TO_PTR(args[0]);
-    check_for_deinit(self->target);
-
-    common_hal_i2ctarget_i2c_target_close(self->target);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(i2ctarget_i2c_target_request___exit___obj, 4, 4, i2ctarget_i2c_target_request_obj___exit__);
+//  Provided by context manager helper.
 
 //|     address: int
 //|     """The I2C address of the request."""
@@ -406,7 +394,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(i2ctarget_i2c_target_request_close_obj, i2ctarg
 
 static const mp_rom_map_elem_t i2ctarget_i2c_target_request_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&i2ctarget_i2c_target_request___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_address), MP_ROM_PTR(&i2ctarget_i2c_target_request_address_obj) },
     { MP_ROM_QSTR(MP_QSTR_is_read), MP_ROM_PTR(&i2ctarget_i2c_target_request_is_read_obj) },
     { MP_ROM_QSTR(MP_QSTR_is_restart), MP_ROM_PTR(&i2ctarget_i2c_target_request_is_restart_obj) },

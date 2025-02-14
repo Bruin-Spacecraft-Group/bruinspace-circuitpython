@@ -99,12 +99,7 @@ static void check_for_deinit(frequencyio_frequencyin_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t frequencyio_frequencyin_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_frequencyio_frequencyin_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(frequencyio_frequencyin___exit___obj, 4, 4, frequencyio_frequencyin_obj___exit__);
+//  Provided by context manager helper.
 
 //|     def pause(self) -> None:
 //|         """Pause frequency capture."""
@@ -197,7 +192,7 @@ static const mp_rom_map_elem_t frequencyio_frequencyin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&frequencyio_frequencyin_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&frequencyio_frequencyin_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&frequencyio_frequencyin___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&frequencyio_frequencyin_value_obj) },
     { MP_ROM_QSTR(MP_QSTR_pause), MP_ROM_PTR(&frequencyio_frequencyin_pause_obj) },
     { MP_ROM_QSTR(MP_QSTR_resume), MP_ROM_PTR(&frequencyio_frequencyin_resume_obj) },

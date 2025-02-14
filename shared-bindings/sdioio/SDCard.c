@@ -234,17 +234,12 @@ MP_DEFINE_CONST_FUN_OBJ_1(sdioio_sdcard_deinit_obj, sdioio_sdcard_obj_deinit);
 //|         ...
 //|
 //|
-static mp_obj_t sdioio_sdcard_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_sdioio_sdcard_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sdioio_sdcard_obj___exit___obj, 4, 4, sdioio_sdcard_obj___exit__);
+//  Provided by context manager helper.
 
 static const mp_rom_map_elem_t sdioio_sdcard_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&sdioio_sdcard_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&sdioio_sdcard_obj___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
 
     { MP_ROM_QSTR(MP_QSTR_configure), MP_ROM_PTR(&sdioio_sdcard_configure_obj) },
     { MP_ROM_QSTR(MP_QSTR_frequency), MP_ROM_PTR(&sdioio_sdcard_frequency_obj) },

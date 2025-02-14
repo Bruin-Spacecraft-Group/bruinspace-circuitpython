@@ -772,6 +772,9 @@ static bool __attribute__((noinline)) run_code_py(safe_mode_t safe_mode, bool *s
     #if CIRCUITPY_ALARM
     if (fake_sleeping) {
         board_init();
+        #if CIRCUITPY_DISPLAYIO
+        common_hal_displayio_auto_primary_display();
+        #endif
         // Pretend that the next run is the first run, as if we were reset.
         *simulate_reset = true;
     }
@@ -1052,6 +1055,10 @@ int __attribute__((used)) main(void) {
 
     // displays init after filesystem, since they could share the flash SPI
     board_init();
+
+    #if CIRCUITPY_DISPLAYIO
+    common_hal_displayio_auto_primary_display();
+    #endif
 
     mp_hal_stdout_tx_str(line_clear);
 

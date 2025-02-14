@@ -154,19 +154,13 @@ static MP_DEFINE_CONST_FUN_OBJ_1(imagecapture_parallelimagecapture_deinit_obj, i
 //|         ...
 //|
 //|
-static mp_obj_t imagecapture_parallelimagecapture___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_imagecapture_parallelimagecapture_deinit(args[0]);
-    return mp_const_none;
-}
-
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(imagecapture_parallelimagecapture___exit___obj, 4, 4, imagecapture_parallelimagecapture___exit__);
+//  Provided by context manager helper.
 
 
 static const mp_rom_map_elem_t imagecapture_parallelimagecapture_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&imagecapture_parallelimagecapture_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&imagecapture_parallelimagecapture___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
 
     { MP_ROM_QSTR(MP_QSTR_capture), MP_ROM_PTR(&imagecapture_parallelimagecapture_capture_obj) },
     { MP_ROM_QSTR(MP_QSTR_continuous_capture_start), MP_ROM_PTR(&imagecapture_parallelimagecapture_continuous_capture_start_obj) },

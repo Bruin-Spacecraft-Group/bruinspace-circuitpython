@@ -76,12 +76,7 @@ static void check_for_deinit(onewireio_onewire_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t onewireio_onewire_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_onewireio_onewire_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(onewireio_onewire___exit___obj, 4, 4, onewireio_onewire_obj___exit__);
+//  Provided by context manager helper.
 
 //|     def reset(self) -> bool:
 //|         """Reset the OneWire bus and read presence
@@ -131,7 +126,7 @@ static const mp_rom_map_elem_t onewireio_onewire_locals_dict_table[] = {
     // Methods
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&onewireio_onewire_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&onewireio_onewire___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&onewireio_onewire_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_bit), MP_ROM_PTR(&onewireio_onewire_read_bit_obj) },
     { MP_ROM_QSTR(MP_QSTR_write_bit), MP_ROM_PTR(&onewireio_onewire_write_bit_obj) },

@@ -185,12 +185,7 @@ static void check_for_deinit(pwmio_pwmout_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t pwmio_pwmout_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_pwmio_pwmout_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pwmio_pwmout___exit___obj, 4, 4, pwmio_pwmout_obj___exit__);
+//  Provided by context manager helper.
 
 //|     duty_cycle: int
 //|     """16 bit value that dictates how much of one cycle is high (1) versus low
@@ -267,7 +262,7 @@ static const mp_rom_map_elem_t pwmio_pwmout_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&pwmio_pwmout_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&pwmio_pwmout_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&pwmio_pwmout___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
 
     // Properties
     { MP_ROM_QSTR(MP_QSTR_duty_cycle), MP_ROM_PTR(&pwmio_pwmout_duty_cycle_obj) },

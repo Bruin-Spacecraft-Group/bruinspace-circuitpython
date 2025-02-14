@@ -12,6 +12,7 @@
 #include "py/stream.h"
 
 #include "shared-bindings/util.h"
+#include "shared/runtime/context_manager_helpers.h"
 
 #include "bindings/espnow/ESPNow.h"
 #include "bindings/espnow/Peer.h"
@@ -92,11 +93,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(espnow_deinit_obj, espnow_deinit);
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t espnow_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    return espnow_deinit(args[0]);
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow___exit___obj, 4, 4, espnow_obj___exit__);
+//  Provided by context manager helper.
 
 // --- Send and Read messages ---
 
@@ -270,8 +267,8 @@ MP_PROPERTY_GETTER(espnow_peers_obj,
 
 static const mp_rom_map_elem_t espnow_locals_dict_table[] = {
     // Context managers
-    { MP_ROM_QSTR(MP_QSTR___enter__),    MP_ROM_PTR(&mp_identity_obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),     MP_ROM_PTR(&espnow___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___enter__),    MP_ROM_PTR(&default___enter___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),     MP_ROM_PTR(&default___exit___obj) },
 
     // Deinit the object
     { MP_ROM_QSTR(MP_QSTR_deinit),       MP_ROM_PTR(&espnow_deinit_obj) },

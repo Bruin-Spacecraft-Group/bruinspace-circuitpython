@@ -150,11 +150,11 @@ MP_DEFINE_CONST_FUN_OBJ_3(is31fl3741_IS31FL3741_write_obj, is31fl3741_IS31FL3741
 
 static const mp_rom_map_elem_t is31fl3741_IS31FL3741_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&is31fl3741_IS31FL3741_deinit_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write), (mp_obj_t)&is31fl3741_IS31FL3741_write_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset), (mp_obj_t)&is31fl3741_IS31FL3741_reset_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_enable), (mp_obj_t)&is31fl3741_IS31FL3741_enable_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_set_global_current), (mp_obj_t)&is31fl3741_IS31FL3741_set_global_current_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_set_led), (mp_obj_t)&is31fl3741_IS31FL3741_set_led_obj },
+    { MP_ROM_QSTR(MP_QSTR_write), (mp_obj_t)&is31fl3741_IS31FL3741_write_obj },
+    { MP_ROM_QSTR(MP_QSTR_reset), (mp_obj_t)&is31fl3741_IS31FL3741_reset_obj },
+    { MP_ROM_QSTR(MP_QSTR_enable), (mp_obj_t)&is31fl3741_IS31FL3741_enable_obj },
+    { MP_ROM_QSTR(MP_QSTR_set_global_current), (mp_obj_t)&is31fl3741_IS31FL3741_set_global_current_obj },
+    { MP_ROM_QSTR(MP_QSTR_set_led), (mp_obj_t)&is31fl3741_IS31FL3741_set_led_obj },
 };
 static MP_DEFINE_CONST_DICT(is31fl3741_IS31FL3741_locals_dict, is31fl3741_IS31FL3741_locals_dict_table);
 

@@ -85,12 +85,7 @@ static void check_for_deinit(zephyr_serial_uart_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t _zephyr_serial_uart_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    zephyr_serial_uart_deinit(MP_OBJ_TO_PTR(args[0]));
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(_zephyr_serial_uart___exit___obj, 4, 4, _zephyr_serial_uart_obj___exit__);
+//  Provided by context manager helper.
 
 // These are standard stream methods. Code is in py/stream.c.
 //
@@ -259,15 +254,15 @@ static const mp_rom_map_elem_t _zephyr_serial_uart_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___del__),      MP_ROM_PTR(&_zephyr_serial_uart_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit),       MP_ROM_PTR(&_zephyr_serial_uart_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__),    MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),     MP_ROM_PTR(&_zephyr_serial_uart___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),     MP_ROM_PTR(&default___exit___obj) },
 
     // Standard stream methods.
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read),     MP_ROM_PTR(&mp_stream_read_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj)},
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read),     MP_ROM_PTR(&mp_stream_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj)},
+    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset_input_buffer), MP_ROM_PTR(&_zephyr_serial_uart_reset_input_buffer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_reset_input_buffer), MP_ROM_PTR(&_zephyr_serial_uart_reset_input_buffer_obj) },
 
     // Properties
     { MP_ROM_QSTR(MP_QSTR_baudrate),     MP_ROM_PTR(&_zephyr_serial_uart_baudrate_obj) },

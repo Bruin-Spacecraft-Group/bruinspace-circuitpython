@@ -60,7 +60,7 @@ static mp_uint_t usb_midi_portout_ioctl(mp_obj_t self_in, mp_uint_t request, mp_
 
 static const mp_rom_map_elem_t usb_midi_portout_locals_dict_table[] = {
     // Standard stream methods.
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
 };
 static MP_DEFINE_CONST_DICT(usb_midi_portout_locals_dict, usb_midi_portout_locals_dict_table);
 

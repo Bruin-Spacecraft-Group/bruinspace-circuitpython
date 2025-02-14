@@ -73,12 +73,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(analogio_analogout_deinit_obj, analogio_analogo
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t analogio_analogout___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_analogio_analogout_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(analogio_analogout___exit___obj, 4, 4, analogio_analogout___exit__);
+//  Provided by context manager helper.
 
 //|     value: int
 //|     """The value on the analog pin between 0 and 65535 inclusive (16-bit). (write-only)
@@ -105,12 +100,12 @@ MP_PROPERTY_GETSET(analogio_analogout_value_obj,
 
 static const mp_rom_map_elem_t analogio_analogout_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&analogio_analogout_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&analogio_analogout_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__),  MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),   MP_ROM_PTR(&analogio_analogout___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),   MP_ROM_PTR(&default___exit___obj) },
 
     // Properties
-    { MP_OBJ_NEW_QSTR(MP_QSTR_value), (mp_obj_t)&analogio_analogout_value_obj },
+    { MP_ROM_QSTR(MP_QSTR_value), (mp_obj_t)&analogio_analogout_value_obj },
 };
 
 static MP_DEFINE_CONST_DICT(analogio_analogout_locals_dict, analogio_analogout_locals_dict_table);

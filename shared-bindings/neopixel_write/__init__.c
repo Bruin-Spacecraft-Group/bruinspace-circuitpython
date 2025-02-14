@@ -110,8 +110,8 @@ static mp_obj_t neopixel_write_neopixel_write_(mp_obj_t digitalinout_obj, mp_obj
 static MP_DEFINE_CONST_FUN_OBJ_2(neopixel_write_neopixel_write_obj, neopixel_write_neopixel_write_);
 
 static const mp_rom_map_elem_t neopixel_write_module_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_neopixel_write) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_neopixel_write), (mp_obj_t)&neopixel_write_neopixel_write_obj },
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_neopixel_write) },
+    { MP_ROM_QSTR(MP_QSTR_neopixel_write), (mp_obj_t)&neopixel_write_neopixel_write_obj },
 };
 
 static MP_DEFINE_CONST_DICT(neopixel_write_module_globals, neopixel_write_module_globals_table);

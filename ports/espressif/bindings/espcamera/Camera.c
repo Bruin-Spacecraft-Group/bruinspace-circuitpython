@@ -18,6 +18,7 @@
 #include "shared-bindings/displayio/Bitmap.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/util.h"
+#include "shared/runtime/context_manager_helpers.h"
 #include "esp_camera.h"
 #include "sensor.h"
 
@@ -169,11 +170,7 @@ static void check_for_deinit(espcamera_camera_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t espcamera_camera_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    return espcamera_camera_deinit(args[0]);
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espcamera_camera___exit___obj, 4, 4, espcamera_camera_obj___exit__);
+//  Provided by context manager helper.
 
 //|     frame_available: bool
 //|     """True if a frame is available, False otherwise"""
@@ -947,8 +944,8 @@ static const mp_rom_map_elem_t espcamera_camera_locals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_denoise), MP_ROM_PTR(&espcamera_camera_denoise_obj) },
     { MP_ROM_QSTR(MP_QSTR_framebuffer_count), MP_ROM_PTR(&espcamera_camera_framebuffer_count_obj) },
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&espcamera_camera_deinit_obj) },
-    { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&mp_identity_obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&espcamera_camera___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_exposure_ctrl), MP_ROM_PTR(&espcamera_camera_exposure_ctrl_obj) },
     { MP_ROM_QSTR(MP_QSTR_frame_available), MP_ROM_PTR(&espcamera_camera_frame_available_obj) },
     { MP_ROM_QSTR(MP_QSTR_frame_size), MP_ROM_PTR(&espcamera_camera_frame_size_obj) },

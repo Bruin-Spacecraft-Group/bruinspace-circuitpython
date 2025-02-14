@@ -6,6 +6,7 @@
 
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/util.h"
+#include "shared/runtime/context_manager_helpers.h"
 #include "bindings/espulp/ULP.h"
 
 #include "py/enum.h"
@@ -69,11 +70,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(espulp_ulp_deinit_obj, espulp_ulp_deinit);
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t espulp_ulp_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    return espulp_ulp_deinit(args[0]);
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espulp_ulp___exit___obj, 4, 4, espulp_ulp_obj___exit__);
+//  Provided by context manager helper.
 
 //|     def set_wakeup_period(self, period_index: int, period_us: int) -> None:
 //|         """Sets the wakeup period for the ULP.
@@ -188,8 +185,8 @@ MP_PROPERTY_GETTER(espulp_ulp_arch_obj,
 
 static const mp_rom_map_elem_t espulp_ulp_locals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit),              MP_ROM_PTR(&espulp_ulp_deinit_obj) },
-    { MP_ROM_QSTR(MP_QSTR___enter__),           MP_ROM_PTR(&mp_identity_obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),            MP_ROM_PTR(&espulp_ulp___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___enter__),           MP_ROM_PTR(&default___enter___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),            MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_set_wakeup_period),   MP_ROM_PTR(&espulp_ulp_set_wakeup_period_obj) },
     { MP_ROM_QSTR(MP_QSTR_run),                 MP_ROM_PTR(&espulp_ulp_run_obj) },
     { MP_ROM_QSTR(MP_QSTR_halt),                MP_ROM_PTR(&espulp_ulp_halt_obj) },

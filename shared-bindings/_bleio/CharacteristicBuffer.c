@@ -186,13 +186,13 @@ static const mp_rom_map_elem_t bleio_characteristic_buffer_locals_dict_table[] =
     { MP_ROM_QSTR(MP_QSTR_deinit),        MP_ROM_PTR(&bleio_characteristic_buffer_deinit_obj) },
 
     // Standard stream methods.
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read),     MP_ROM_PTR(&mp_stream_read_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj)},
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read),     MP_ROM_PTR(&mp_stream_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj)},
+    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
     // CharacteristicBuffer is currently read-only.
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
+    // { MP_ROM_QSTR(MP_QSTR_write),    MP_ROM_PTR(&mp_stream_write_obj) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset_input_buffer), MP_ROM_PTR(&bleio_characteristic_buffer_reset_input_buffer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_reset_input_buffer), MP_ROM_PTR(&bleio_characteristic_buffer_reset_input_buffer_obj) },
     // Properties
     { MP_ROM_QSTR(MP_QSTR_in_waiting), MP_ROM_PTR(&bleio_characteristic_buffer_in_waiting_obj) },
 

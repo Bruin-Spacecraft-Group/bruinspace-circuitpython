@@ -109,12 +109,7 @@ static void check_for_deinit(synthio_miditrack_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t synthio_miditrack_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_synthio_miditrack_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(synthio_miditrack___exit___obj, 4, 4, synthio_miditrack_obj___exit__);
+//  Provided by context manager helper.
 
 //|     sample_rate: int
 //|     """32 bit value that tells how quickly samples are played in Hertz (cycles per second)."""
@@ -142,7 +137,7 @@ static const mp_rom_map_elem_t synthio_miditrack_locals_dict_table[] = {
     // Methods
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&synthio_miditrack_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&synthio_miditrack___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
 
     // Properties
     { MP_ROM_QSTR(MP_QSTR_error_location), MP_ROM_PTR(&synthio_miditrack_error_location_obj) },

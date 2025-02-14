@@ -91,12 +91,7 @@ static void check_for_deinit(analogbufio_bufferedin_obj_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t analogbufio_bufferedin___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_analogbufio_bufferedin_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(analogbufio_bufferedin___exit___obj, 4, 4, analogbufio_bufferedin___exit__);
+//  Provided by context manager helper.
 
 //|     def readinto(self, buffer: WriteableBuffer, loop: bool = False) -> int:
 //|         """Fills the provided buffer with ADC voltage values.
@@ -144,7 +139,7 @@ static const mp_rom_map_elem_t analogbufio_bufferedin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___del__),    MP_ROM_PTR(&analogbufio_bufferedin_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit),     MP_ROM_PTR(&analogbufio_bufferedin_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__),  MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__),   MP_ROM_PTR(&analogbufio_bufferedin___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__),   MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_readinto),   MP_ROM_PTR(&analogbufio_bufferedin_readinto_obj)},
 };
 

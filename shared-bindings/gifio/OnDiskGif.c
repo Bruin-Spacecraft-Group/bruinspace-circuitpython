@@ -144,12 +144,7 @@ static void check_for_deinit(gifio_ondiskgif_t *self) {
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
 //|
-static mp_obj_t gifio_ondiskgif_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_gifio_ondiskgif_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(gifio_ondiskgif___exit___obj, 4, 4, gifio_ondiskgif_obj___exit__);
+//  Provided by context manager helper.
 
 //|     width: int
 //|     """Width of the gif. (read only)"""
@@ -293,7 +288,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(gifio_ondiskgif_deinit_obj, gifio_ondiskgif_obj_deinit
 static const mp_rom_map_elem_t gifio_ondiskgif_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&gifio_ondiskgif_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&gifio_ondiskgif___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_height), MP_ROM_PTR(&gifio_ondiskgif_height_obj) },
     { MP_ROM_QSTR(MP_QSTR_bitmap), MP_ROM_PTR(&gifio_ondiskgif_bitmap_obj) },
     { MP_ROM_QSTR(MP_QSTR_palette), MP_ROM_PTR(&gifio_ondiskgif_palette_obj) },
