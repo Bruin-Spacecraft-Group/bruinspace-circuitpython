@@ -73,24 +73,15 @@ static void audio_dma_convert_samples(
         }
 
         uint32_t out_i = 0;
-        if (dma->bytes_per_sample == 1) {
-            for (uint32_t i = 0; i < input_length; i += dma->spacing) {
-                if (dma->signed_to_unsigned) {
-                    ((uint8_t *)*output)[out_i] = ((int8_t *)input)[i] + 0x80;
-                } else {
-                    ((int8_t *)*output)[out_i] = ((uint8_t *)input)[i] - 0x80;
-                }
-                out_i += 1;
+        uint32_t samples = (dma->bytes_per_sample == 1) ? (input_length) : (input_length / 2);
+        uint32_t msb_mask = (dma->bytes_per_sample == 1) ? 0x80 : 0x8000;
+        for (uint32_t i = 0; i < samples; i += dma->spacing) {
+            if (dma->signed_to_unsigned) {
+                ((uint8_t *)*output)[out_i] = ((int8_t *)input)[i] + msb_mask;
+            } else {
+                ((int8_t *)*output)[out_i] = ((uint8_t *)input)[i] - msb_mask;
             }
-        } else if (dma->bytes_per_sample == 2) {
-            for (uint32_t i = 0; i < input_length / 2; i += dma->spacing) {
-                if (dma->signed_to_unsigned) {
-                    ((uint16_t *)*output)[out_i] = ((int16_t *)input)[i] + 0x8000;
-                } else {
-                    ((int16_t *)*output)[out_i] = ((uint16_t *)input)[i] - 0x8000;
-                }
-                out_i += 1;
-            }
+            out_i += 1;
         }
     } else {
         *output = input;
