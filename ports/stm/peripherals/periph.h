@@ -125,7 +125,7 @@ typedef struct {
 // Single Core
 
 #ifdef STM32H743xx
-#define HAS_DAC 0
+#define HAS_DAC 1
 #define HAS_TRNG 0
 #define HAS_BASIC_TIM 0
 #include "stm32h7/stm32h743xx/periph.h"
