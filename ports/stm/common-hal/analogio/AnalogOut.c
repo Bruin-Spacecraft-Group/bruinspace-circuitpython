@@ -41,14 +41,14 @@ void common_hal_analogio_analogout_construct(analogio_analogout_obj_t *self,
     #if !(HAS_DAC)
     mp_raise_ValueError(MP_ERROR_TEXT("No DAC on chip"));
     #else
-    if (pin == &pin_PA04) {
-        self->channel = DAC_CHANNEL_1;
-        self->dac_index = 0;
-        DACx = DAC1;
-    } else if (pin == &pin_PA05) {
+    // if (pin == &pin_PA04) {
+    //     self->channel = DAC_CHANNEL_1;
+    //     self->dac_index = 0;
+    // } else if
+    if (pin == &pin_PA05) {
         self->channel = DAC_CHANNEL_2;
         self->dac_index = 1;
-        DACx = DAC2;
+        DACx = DAC1;
     } else {
         raise_ValueError_invalid_pin();
     }
