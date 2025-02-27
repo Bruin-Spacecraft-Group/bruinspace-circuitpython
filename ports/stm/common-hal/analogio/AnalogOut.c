@@ -45,7 +45,7 @@ void common_hal_analogio_analogout_construct(analogio_analogout_obj_t *self,
         self->channel = DAC_CHANNEL_1;
         self->dac_index = 1;
         DACx = DAC1;
-    else if (pin == &pin_PA05) {
+    } else if (pin == &pin_PA05) {
         self->channel = DAC_CHANNEL_2;
         self->dac_index = 1;
         DACx = DAC1;
