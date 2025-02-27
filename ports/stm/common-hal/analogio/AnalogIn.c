@@ -145,7 +145,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // LL_GPIO_PIN_0
 
     // HAL Implementation
-    ADC_HandleTypeDef hadc1 = {};
+    ADC_HandleTypeDef AdcHandle = {};
     ADC_MultiModeTypeDef multimode = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
@@ -155,23 +155,23 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
   /** Common config
   */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
-  hadc1.Init.Resolution = ADC_RESOLUTION_16B;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
-  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  hadc1.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
-  hadc1.Init.OversamplingMode = DISABLE;
-  hadc1.Init.Oversampling.Ratio = 1;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  AdcHandle.Instance = ADC1;
+  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
+  AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
+  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  AdcHandle.Init.LowPowerAutoWait = DISABLE;
+  AdcHandle.Init.ContinuousConvMode = DISABLE;
+  AdcHandle.Init.NbrOfConversion = 1;
+  AdcHandle.Init.DiscontinuousConvMode = DISABLE;
+  AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+  AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+  AdcHandle.Init.OversamplingMode = DISABLE;
+  AdcHandle.Init.Oversampling.Ratio = 1;
+  if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
     return 0;
   }
@@ -179,7 +179,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   /** Configure the ADC multi-mode
   */
   multimode.Mode = ADC_MODE_INDEPENDENT;
-  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
   {
     return 0;
   }
@@ -193,7 +193,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
   sConfig.OffsetSignedSaturation = DISABLE;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
     return 0;
   }
