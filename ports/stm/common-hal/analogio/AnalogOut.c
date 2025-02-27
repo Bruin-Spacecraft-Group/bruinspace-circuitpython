@@ -90,7 +90,7 @@ void common_hal_analogio_analogout_deinit(analogio_analogout_obj_t *self) {
 
     // turn off the DAC if both channels are off
     if (dac_on[0] == false && dac_on[1] == false) {
-        __HAL_RCC_DAC_CLK_DISABLE();
+        //__HAL_RCC_DAC_CLK_DISABLE();
         HAL_DAC_DeInit(&handle);
     }
     #endif
