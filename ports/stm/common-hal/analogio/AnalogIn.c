@@ -149,13 +149,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     ADC_MultiModeTypeDef multimode = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
-  /* USER CODE BEGIN ADC1_Init 1 */
-
-  /* USER CODE END ADC1_Init 1 */
-
   /** Common config
   */
-  AdcHandle.Instance = ADC1;
+  AdcHandle.Instance = ADCx;
   AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
   AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
   AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
