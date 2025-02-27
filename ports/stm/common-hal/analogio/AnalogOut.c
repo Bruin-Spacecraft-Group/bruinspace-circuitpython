@@ -109,7 +109,7 @@ void common_hal_analogio_analogout_set_value(analogio_analogout_obj_t *self,
 
 void analogout_reset(void) {
     #if HAS_DAC
-    __HAL_RCC_DAC_CLK_DISABLE();
+    //__HAL_RCC_DAC_CLK_DISABLE();
     HAL_DAC_DeInit(&handle);
     #endif
 }
