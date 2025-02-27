@@ -173,7 +173,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   hadc1.Init.Oversampling.Ratio = 1;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
-    Error_Handler();
+    return 0;
   }
 
   /** Configure the ADC multi-mode
@@ -181,7 +181,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   multimode.Mode = ADC_MODE_INDEPENDENT;
   if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
   {
-    Error_Handler();
+    return 0;
   }
 
   /** Configure Regular Channel
@@ -195,7 +195,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   sConfig.OffsetSignedSaturation = DISABLE;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    Error_Handler();
+    return 0;
   }
     
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
