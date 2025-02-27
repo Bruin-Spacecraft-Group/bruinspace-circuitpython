@@ -53,7 +53,7 @@ void common_hal_analogio_analogout_construct(analogio_analogout_obj_t *self,
     // Only init if the shared DAC is empty or reset
     if (handle.Instance == NULL || handle.State == HAL_DAC_STATE_RESET) {
         //__HAL_RCC_DAC_CLK_ENABLE();
-        handle.Instance = DAC;
+        handle.Instance = DAC1;
         if (HAL_DAC_Init(&handle) != HAL_OK) {
             mp_raise_ValueError(MP_ERROR_TEXT("DAC Device Init Error"));
         }
