@@ -169,6 +169,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   AdcHandle.Init.Oversampling.Ratio = 1;
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
+    mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
     return 0;
   }
 
@@ -177,6 +178,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   multimode.Mode = ADC_MODE_INDEPENDENT;
   if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
   {
+    mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
     return 0;
   }
 
@@ -191,10 +193,12 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   sConfig.OffsetSignedSaturation = DISABLE;
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
+    mp_raise_RuntimeError(MP_ERROR_TEXT("3"));
     return 0;
   }
     
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("4"));
         return 0;
     }
     HAL_ADC_PollForConversion(&AdcHandle, 1);
