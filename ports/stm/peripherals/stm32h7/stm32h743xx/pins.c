@@ -108,8 +108,8 @@ const mcu_pin_obj_t pin_PF09 = PIN(5, 9, ADC_INPUT(ADC_3, 2));
 const mcu_pin_obj_t pin_PF10 = PIN(5, 10, ADC_INPUT(ADC_3, 6));
 const mcu_pin_obj_t pin_PF11 = PIN(5, 11, ADC_INPUT(ADC_1, 2));
 const mcu_pin_obj_t pin_PF12 = PIN(5, 12, ADC_INPUT(ADC_1, 6));
-const mcu_pin_obj_t pin_PF13 = PIN(5, 13, ADC_INPUT(ADC_2, 2));
-const mcu_pin_obj_t pin_PF14 = PIN(5, 14, ADC_INPUT(ADC_2, 6));
+const mcu_pin_obj_t pin_PF13 = PIN(5, 13, ADC_INPUT(ADC_12, 2));
+const mcu_pin_obj_t pin_PF14 = PIN(5, 14, ADC_INPUT(ADC_12, 6));
 const mcu_pin_obj_t pin_PF15 = PIN(5, 15, NO_ADC);
 
 const mcu_pin_obj_t pin_PG00 = PIN(6, 0, NO_ADC);
