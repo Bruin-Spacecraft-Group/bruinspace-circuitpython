@@ -41,10 +41,9 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     const mcu_pin_obj_t *pin) {
 
     // No ADC function on pin
-    if (pin->adc_unit == 0x00) {
-        mp_raise_ValueError_varg(MP_ERROR_TEXT("well there's your problem"));
-        raise_ValueError_invalid_pin();
-    }
+    // if (pin->adc_unit == 0x00) {
+    //     raise_ValueError_invalid_pin();
+    // }
     // TODO: add ADC traits to structure?
 
     // Note that ADC2 is always bundled pin-to-pin with ADC1 if it exists, and used only
