@@ -8,7 +8,7 @@
 
 // Micropython setup
 
-#define MICROPY_HW_BOARD_NAME       "RAPID-0 CDH"
+#define MICROPY_HW_BOARD_NAME       "RAPID-0"
 #define MICROPY_HW_MCU_NAME         "STM32H743"
 
 #define FLASH_PAGE_SIZE             (0x4000)
@@ -24,3 +24,4 @@
 #define HSE_VALUE ((uint32_t) 16000000)
 #define BOARD_HSE_SOURCE (RCC_HSE_ON)
 #define BOARD_HAS_LOW_SPEED_CRYSTAL (0)
+#define BOARD_OVERWRITE_SWD (1)
