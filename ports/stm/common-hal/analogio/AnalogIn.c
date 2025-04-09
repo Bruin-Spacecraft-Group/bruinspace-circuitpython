@@ -192,7 +192,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
-    mp_raise_msg_varg(&mp_type_RuntimeError, "ADC failed: 0x%lx", HAL_ADC_GetError(&AdcHandle));
+    mp_raise_msg_varg(&mp_type_RuntimeError, MP_ERROR_TEXT("ADC failed: 0x%lx"), HAL_ADC_GetError(&AdcHandle));
     return mp_const_none;
   }
 
