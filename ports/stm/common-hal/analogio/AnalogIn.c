@@ -7,7 +7,6 @@
 
 #include "common-hal/analogio/AnalogIn.h"
 #include "py/runtime.h"
-#include <stdio.h>
 
 #include "shared-bindings/microcontroller/Pin.h"
 
@@ -192,8 +191,10 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
-    mp_raise_msg_varg(&mp_type_RuntimeError, MP_ERROR_TEXT("ADC failed: 0x%lx"), HAL_ADC_GetError(&AdcHandle));
-    return mp_const_none;
+    uint32_t error = HAL_ADC_GetError(&AdcHandle);
+    mp_printf(&mp_plat_print, "ADC Error: 0x%lX\n", error);
+    mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
+    return 0;
   }
 
   /** Configure the ADC multi-mode
