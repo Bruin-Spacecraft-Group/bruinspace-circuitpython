@@ -60,6 +60,15 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     }
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
+
+    #ifdef CPY_STM32H7
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+  #endif
 }
 
 bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
@@ -141,6 +150,8 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
 
+    printf(ADCx)
+
     LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
     // LL_GPIO_PIN_0
 
@@ -153,17 +164,17 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   */
   AdcHandle.Instance = ADCx;
   #if CPY_STM32H7
-  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
-  AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV16;
+  AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
   AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  AdcHandle.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   AdcHandle.Init.LowPowerAutoWait = DISABLE;
-  AdcHandle.Init.ContinuousConvMode = ENABLE;
+  AdcHandle.Init.ContinuousConvMode = DISABLE;
   AdcHandle.Init.NbrOfConversion = 1;
   AdcHandle.Init.DiscontinuousConvMode = DISABLE;
-  AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+  AdcHandle.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
+  AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
   AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
   AdcHandle.Init.OversamplingMode = DISABLE;
