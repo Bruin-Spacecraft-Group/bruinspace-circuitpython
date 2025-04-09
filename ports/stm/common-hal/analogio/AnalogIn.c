@@ -10,6 +10,8 @@
 
 #include "shared-bindings/microcontroller/Pin.h"
 
+void SystemClock_Config(void);
+
 #if CPY_STM32L4
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_ll_gpio.h"
@@ -137,7 +139,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // so we completely re-initialize it.
 
     SystemClock_Config();
-    
+
     ADC_TypeDef *ADCx;
 
     if (self->pin->adc_unit & 0x01) {
