@@ -24,7 +24,7 @@
 #include "stm32h7xx_ll_adc.h"
 #include "stm32h7xx_ll_bus.h"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_8CYCLES_5
-#define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_ADC //might need to change this line
+#define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_TIM1 //might need to change this line
 
 #elif CPY_STM32F4
 #include "stm32f4xx_hal.h"
@@ -153,8 +153,8 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   */
   AdcHandle.Instance = ADCx;
   #if CPY_STM32H7
-  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
-  AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
+  AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
   AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
   AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   AdcHandle.Init.LowPowerAutoWait = DISABLE;
