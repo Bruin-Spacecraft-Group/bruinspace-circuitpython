@@ -189,10 +189,10 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
-    // uint32_t error = HAL_ADC_Init(&AdcHandle);
-    // mp_printf(&mp_plat_print, "ADC Error: 0x%lX\n", error);
-    // mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
-    // return 0;
+    uint32_t error = HAL_ADC_Init(&AdcHandle);
+    mp_printf(&mp_plat_print, "ADC Error: 0x%lX\n", error);
+    mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
+    return 0;
   }
 
   /** Configure the ADC multi-mode
@@ -200,8 +200,8 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   multimode.Mode = ADC_MODE_INDEPENDENT;
   if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
   {
-    // mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
-    // return 0;
+    mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
+    return 0;
   }
 
   /** Configure Regular Channel
@@ -215,13 +215,13 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   sConfig.OffsetSignedSaturation = DISABLE;
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
-    // mp_raise_RuntimeError(MP_ERROR_TEXT("3"));
-    // return 0;
+    mp_raise_RuntimeError(MP_ERROR_TEXT("3"));
+    return 0;
   }
     
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
-        // mp_raise_RuntimeError(MP_ERROR_TEXT("4"));
-        // return 0;
+        mp_raise_RuntimeError(MP_ERROR_TEXT("4"));
+        return 0;
     }
     HAL_ADC_PollForConversion(&AdcHandle, 1);
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
