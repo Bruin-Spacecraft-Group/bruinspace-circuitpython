@@ -152,6 +152,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   /** Common config
   */
   AdcHandle.Instance = ADCx;
+  #if CPY_STM32H7
   AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
   AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
   AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
@@ -167,6 +168,30 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
   AdcHandle.Init.OversamplingMode = DISABLE;
   AdcHandle.Init.Oversampling.Ratio = 1;
+  AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  AdcHandle.Init.DMAContinuousRequests = DISABLE;
+  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+
+  #else
+  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+    AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+    AdcHandle.Init.ScanConvMode = DISABLE;
+    AdcHandle.Init.ContinuousConvMode = DISABLE;
+    AdcHandle.Init.DiscontinuousConvMode = DISABLE;
+    AdcHandle.Init.NbrOfDiscConversion = 0;
+
+    AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+    AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+    AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    AdcHandle.Init.NbrOfConversion = 1;
+    AdcHandle.Init.DMAContinuousRequests = DISABLE;
+    AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+    #endif
+
+    #ifdef ADC_OVR_DATA_OVERWRITTEN
+    AdcHandle.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;                    /* DR register is overwritten with the last conversion result in case of overrun */
+    #endif
+
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
     mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
