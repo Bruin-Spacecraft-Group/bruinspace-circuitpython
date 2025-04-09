@@ -193,7 +193,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
     char str[10];
-    sprintf(str, "%u", HAL_ADC_GetError(&AdcHandle));
+    sprintf(str, "%lu", HAL_ADC_GetError(&AdcHandle));
     mp_raise_RuntimeError(MP_ERROR_TEXT(str));
     return 0;
   }
