@@ -7,6 +7,7 @@
 
 #include "common-hal/analogio/AnalogIn.h"
 #include "py/runtime.h"
+#include <stdio.h>
 
 #include "shared-bindings/microcontroller/Pin.h"
 
@@ -191,7 +192,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
-    mp_raise_RuntimeError(MP_ERROR_TEXT(HAL_ADC_GetError(&AdcHandle)));
+    char str[10];
+    sprintf(str, "%d", HAL_ADC_GetError(&AdcHandle));
+    mp_raise_RuntimeError(MP_ERROR_TEXT(str));
     return 0;
   }
 
