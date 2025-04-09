@@ -168,11 +168,12 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   AdcHandle.Init.OversamplingMode = DISABLE;
   AdcHandle.Init.Oversampling.Ratio = 1;
   
-//   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
-//   {
-//     mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
-//     return 0;
-//   }
+  if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
+  {
+    uint32_t error = HAL_ADC_Init(&AdcHandle);
+    mp_printf(&mp_plat_print, "ADC Error: 0x%lX\n", error);
+    return 0;
+  }
 
   /** Configure the ADC multi-mode
   */
