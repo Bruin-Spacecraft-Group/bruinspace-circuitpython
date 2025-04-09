@@ -191,8 +191,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
   {
-    mp_raise_RuntimeError(MP_ERROR_TEXT(&AdcHandle->ErrorCode));
-    mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
+    mp_raise_RuntimeError(MP_ERROR_TEXT(HAL_ADC_GetError(&AdcHandle)));
     return 0;
   }
 
