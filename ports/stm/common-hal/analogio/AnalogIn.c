@@ -168,9 +168,6 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
   AdcHandle.Init.OversamplingMode = DISABLE;
   AdcHandle.Init.Oversampling.Ratio = 1;
-  AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  AdcHandle.Init.DMAContinuousRequests = DISABLE;
-  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 
   #else
   AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
