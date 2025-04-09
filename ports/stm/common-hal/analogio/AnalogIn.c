@@ -158,6 +158,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
   AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   AdcHandle.Init.LowPowerAutoWait = DISABLE;
+  AdcHandle.Init.DataAlign = ADC_MDATAALIGN_RIGHT;
   AdcHandle.Init.ContinuousConvMode = DISABLE;
   AdcHandle.Init.NbrOfConversion = 1;
   AdcHandle.Init.DiscontinuousConvMode = DISABLE;
