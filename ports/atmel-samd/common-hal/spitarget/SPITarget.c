@@ -154,6 +154,8 @@ void common_hal_spitarget_spi_target_construct(spitarget_spi_target_obj_t *self,
     claim_pin(ss);
 
     self->running_dma.failure = 1; // not started
+    self->mosi_packet = NULL;
+    self->miso_packet = NULL;
 
     spi_m_sync_enable(&self->spi_desc);
 }
@@ -179,13 +181,17 @@ void common_hal_spitarget_spi_target_deinit(spitarget_spi_target_obj_t *self) {
 
 void common_hal_spitarget_spi_target_transfer_start(spitarget_spi_target_obj_t *self,
     uint8_t *mosi_packet, const uint8_t *miso_packet, size_t len) {
-        if (len == 0) {
+    if (len == 0) {
         return;
     }
     if (self->running_dma.failure != 1) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Async SPI transfer in progress on this bus, keep awaiting."));
     }
-    Sercom* sercom = self->spi_desc.dev.prvt;
+
+    self->mosi_packet = mosi_packet;
+    self->miso_packet = miso_packet;
+
+    Sercom *sercom = self->spi_desc.dev.prvt;
     self->running_dma = shared_dma_transfer_start(sercom, miso_packet, &sercom->SPI.DATA.reg, &sercom->SPI.DATA.reg, mosi_packet, len, 0);
 
     // There is an issue where if an unexpected SPI transfer is received before the user calls "end" for the in-progress, expected
@@ -203,14 +209,14 @@ void common_hal_spitarget_spi_target_transfer_start(spitarget_spi_target_obj_t *
         // save configurations
         hri_sercomspi_ctrla_reg_t ctrla_saved_val = hri_sercomspi_get_CTRLA_reg(sercom, -1); // -1 mask is all ones: save all bits
         hri_sercomspi_ctrlb_reg_t ctrlb_saved_val = hri_sercomspi_get_CTRLB_reg(sercom, -1); // -1 mask is all ones: save all bits
-        hri_sercomspi_baud_reg_t  baud_saved_val  = hri_sercomspi_get_BAUD_reg(sercom, -1);  // -1 mask is all ones: save all bits
+        hri_sercomspi_baud_reg_t baud_saved_val = hri_sercomspi_get_BAUD_reg(sercom, -1);    // -1 mask is all ones: save all bits
         // reset
         hri_sercomspi_set_CTRLA_SWRST_bit(sercom);
         hri_sercomspi_wait_for_sync(sercom, SERCOM_SPI_SYNCBUSY_MASK);
         // re-write configurations
         hri_sercomspi_write_CTRLA_reg(sercom, ctrla_saved_val);
         hri_sercomspi_write_CTRLB_reg(sercom, ctrlb_saved_val);
-        hri_sercomspi_write_BAUD_reg (sercom, baud_saved_val);
+        hri_sercomspi_write_BAUD_reg(sercom, baud_saved_val);
         hri_sercomspi_wait_for_sync(sercom, SERCOM_SPI_SYNCBUSY_MASK);
 
         // re-enable the sercom
@@ -231,5 +237,9 @@ int common_hal_spitarget_spi_target_transfer_close(spitarget_spi_target_obj_t *s
     }
     int res = shared_dma_transfer_close(self->running_dma);
     self->running_dma.failure = 1;
+
+    self->mosi_packet = NULL;
+    self->miso_packet = NULL;
+
     return res;
 }

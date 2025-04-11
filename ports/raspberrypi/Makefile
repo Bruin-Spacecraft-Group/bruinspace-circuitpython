@@ -12,6 +12,7 @@ HAL_DIR=hal/$(MCU_SERIES)
 
 ifeq ($(CIRCUITPY_CYW43),1)
 INC_CYW43 := \
+	-isystem lib/cyw43-driver \
 	-isystem lib/cyw43-driver/firmware \
 	-isystem lib/cyw43-driver/src \
 	-isystem lib/lwip/src/include \
@@ -32,6 +33,7 @@ CFLAGS_CYW43 := \
 	-DCYW43_USE_STATS=0 \
 	-DPICO_BUILD \
 	-DCYW43_ENABLE_BLUETOOTH=0 \
+	-DCIRCUITPY_CYW43_INIT_DELAY=$(CIRCUITPY_CYW43_INIT_DELAY) \
 	-DPICO_CYW43_ARCH_POLL=0
 
 SRC_SDK_CYW43 := \
@@ -91,8 +93,6 @@ INC += \
 	-I../shared/timeutils \
 	-Iboards/$(BOARD) \
 	-Iboards/ \
-	-isystem ./../../lib/cmsis/inc \
-	-isystem sdk/ \
 	-isystem sdk/src/common/boot_picobin_headers/include/ \
 	-isystem sdk/src/common/boot_picoboot_headers/include/ \
 	-isystem sdk/src/common/hardware_claim/include/ \
@@ -106,6 +106,8 @@ INC += \
 	-isystem sdk/src/$(CHIP_VARIANT_LOWER)/hardware_structs/include/ \
 	-isystem sdk/src/$(CHIP_VARIANT_LOWER)/pico_platform/include/ \
 	-isystem sdk/src/rp2_common/boot_bootrom_headers/include/ \
+	-isystem sdk/src/rp2_common/cmsis/stub/CMSIS/Core/Include/ \
+	-isystem sdk/src/rp2_common/cmsis/stub/CMSIS/Device/${CHIP_VARIANT}/Include \
 	-isystem sdk/src/rp2_common/cmsis/ \
 	-isystem sdk/src/rp2_common/hardware_adc/include/ \
 	-isystem sdk/src/rp2_common/hardware_base/include/ \
@@ -152,7 +154,7 @@ INC += \
 	-isystem sdk/src/rp2_common/pico_platform_panic/include/ \
 	-isystem sdk/src/rp2_common/pico_time_adapter/include/ \
 	-isystem sdk/src/rp2_common/pico_unique_id/include/ \
-$(INC_CYW43) \
+	$(INC_CYW43) \
 	-Isdk_config \
 	-I../../lib/tinyusb/src \
 	-I../../supervisor/shared/usb \
@@ -221,7 +223,7 @@ endif
 
 DISABLE_WARNINGS = -Wno-cast-align
 
-CFLAGS += $(INC) -Wall -Werror -std=gnu11 -fshort-enums $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT) $(DISABLE_WARNINGS) -Werror=missing-prototypes
+CFLAGS += $(INC) -Wtype-limits -Wall -Werror -std=gnu11 -fshort-enums $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT) $(DISABLE_WARNINGS) -Werror=missing-prototypes
 
 PICO_LDFLAGS = --specs=nosys.specs --specs=nano.specs
 
@@ -454,7 +456,7 @@ SRC_S_UPPER_CHIP_VARIANT := \
 	sdk/src/rp2_common/pico_double/double_fma_dcp.S \
 	sdk/src/rp2_common/pico_double/double_sci_m33.S \
 	sdk/src/rp2_common/pico_float/float_sci_m33_vfp.S \
-	sdk/src/rp2_common/pico_float/float_conv_m33.S \
+	sdk/src/rp2_common/pico_float/float_common_m33.S \
 
 PICO_LDFLAGS += $(PICO_WRAP_FLOAT_SCI_FLAGS) $(PICO_WRAP_DOUBLE_FLAGS)
 
@@ -556,6 +558,7 @@ ifeq ($(CIRCUITPY_PICODVI),1)
 SRC_C += \
 	bindings/picodvi/__init__.c \
 	bindings/picodvi/Framebuffer.c \
+	common-hal/picodvi/__init__.c \
 	common-hal/picodvi/Framebuffer_$(CHIP_VARIANT).c \
 
 ifeq ($(CHIP_VARIANT),RP2040)

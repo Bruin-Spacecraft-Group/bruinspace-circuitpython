@@ -10,6 +10,7 @@
 #include "py/obj.h"
 #include "shared-module/audiocore/RawSample.h"
 #include "shared-module/audiocore/WaveFile.h"
+#include "shared-module/audiocore/__init__.h"
 #include "supervisor/background_callback.h"
 
 typedef struct {
@@ -39,10 +40,6 @@ typedef enum {
     AUDIO_DMA_DMA_BUSY,
     AUDIO_DMA_MEMORY_ERROR,
 } audio_dma_result;
-
-uint32_t audiosample_sample_rate(mp_obj_t sample_obj);
-uint8_t audiosample_bits_per_sample(mp_obj_t sample_obj);
-uint8_t audiosample_channel_count(mp_obj_t sample_obj);
 
 void audio_dma_init(audio_dma_t *dma);
 void audio_dma_reset(void);
