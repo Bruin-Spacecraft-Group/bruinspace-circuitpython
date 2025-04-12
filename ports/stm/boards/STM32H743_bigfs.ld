@@ -16,8 +16,8 @@ MEMORY
 {
     FLASH (rx)          : ORIGIN = 0x08000000, LENGTH = 2048K
     FLASH_ISR (rx)      : ORIGIN = 0x08000000, LENGTH = 128K    /* sector 0, 128K */
-    FLASH_FS (r)        : ORIGIN = 0x08020000, LENGTH = 1152K   /* sector 1-10, 1152K */
-    FLASH_FIRMWARE (rx) : ORIGIN = 0x08140000, LENGTH = 768K    /* sectors 11-16, 768K */
+    FLASH_FS (r)        : ORIGIN = 0x08020000, LENGTH = 1408K   /* sector 1-12, 1408K */
+    FLASH_FIRMWARE (rx) : ORIGIN = 0x08180000, LENGTH = 512K    /* sectors 13-16, 512K */
     DTCM (xrw)          : ORIGIN = 0x20000000, LENGTH = 128K
     RAM (xrw)           : ORIGIN = 0x24000000, LENGTH = 512K    /* AXI SRAM */
     SRAM_D2 (xrw)       : ORIGIN = 0x30000000, LENGTH = 288K    /* AHB1 SRAM */

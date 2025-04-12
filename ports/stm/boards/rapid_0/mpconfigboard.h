@@ -11,7 +11,8 @@
 #define MICROPY_HW_BOARD_NAME       "RAPID-0"
 #define MICROPY_HW_MCU_NAME         "STM32H743"
 
-#define FLASH_PAGE_SIZE             (0x4000)
+#define FLASH_PAGE_SIZE                     (0x4000)
+#define INTERNAL_FLASH_FILESYSTEM_SIZE      (0x160000)
 
 // H7 and F7 MPU definitions
 #define CPY_FLASH_REGION_SIZE   ARM_MPU_REGION_SIZE_2MB
