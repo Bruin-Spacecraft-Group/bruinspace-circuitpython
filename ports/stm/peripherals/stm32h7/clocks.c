@@ -29,25 +29,22 @@ void stm32_peripherals_clocks_init(void) {
     __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
 
     // Set up primary PLL and HSE clocks
-    //RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
     RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-    // #if (BOARD_HAS_LOW_SPEED_CRYSTAL)
-    // RCC_OscInitStruct.OscillatorType |= RCC_OSCILLATORTYPE_LSE;
-    // RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-    // #else
-    // RCC_OscInitStruct.OscillatorType |= RCC_OSCILLATORTYPE_LSI;
-    // RCC_OscInitStruct.LSIState = RCC_LSI_ON;
-    // #endif
-    // #if (CPY_CLK_USB_USES_AUDIOPLL) // Not actually audio PLL in this case, swap macro?
-    // RCC_OscInitStruct.OscillatorType |= RCC_OSCILLATORTYPE_HSI48;
-    // RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
-    // #endif
-    //RCC_OscInitStruct.HSEState = BOARD_HSE_SOURCE;
-    RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
+    #if (BOARD_HAS_LOW_SPEED_CRYSTAL)
+    RCC_OscInitStruct.OscillatorType |= RCC_OSCILLATORTYPE_LSE;
+    RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+    #else
+    RCC_OscInitStruct.OscillatorType |= RCC_OSCILLATORTYPE_LSI;
+    RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+    #endif
+    #if (CPY_CLK_USB_USES_AUDIOPLL) // Not actually audio PLL in this case, swap macro?
+    RCC_OscInitStruct.OscillatorType |= RCC_OSCILLATORTYPE_HSI48;
+    RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
+    #endif
+    RCC_OscInitStruct.HSEState = BOARD_HSE_SOURCE;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    //RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
     RCC_OscInitStruct.PLL.PLLM = HSE_VALUE / 2000000;
     RCC_OscInitStruct.PLL.PLLN = CPY_CLK_PLLN;
     RCC_OscInitStruct.PLL.PLLP = CPY_CLK_PLLP;
