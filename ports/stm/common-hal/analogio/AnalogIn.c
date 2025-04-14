@@ -49,19 +49,11 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     // Note that ADC2 is always bundled pin-to-pin with ADC1 if it exists, and used only
     // for dual conversion. For this basic application it is never used.
     LL_GPIO_SetPinMode(pin_port(pin->port), (uint32_t)pin_mask(pin->number), LL_GPIO_MODE_ANALOG);
-    if (pin->adc_unit & 0x01) {
+    if (pin->adc_unit == 0x01 || pin->adc_unit == 0x03 || pin->adc_unit == 0x07) {
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
-    } else if (pin->adc_unit == 0x03) {
-        #ifdef LL_APB_2_GRP1_PERIPH_ADC12
-        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC12);
-        #endif
     }else if (pin->adc_unit == 0x04) {
         #ifdef LL_APB2_GRP1_PERIPH_ADC3
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC3);
-        #endif
-    } else if (pin->adc_unit == 0x07) {
-        #ifdef LL_APB2_GRP1_PERIPH_ADC123
-        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC123);
         #endif
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
