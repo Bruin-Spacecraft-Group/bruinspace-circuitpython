@@ -66,7 +66,6 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
     PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
     HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit);
-    o __HAL_RCC_GPIOA_CLK_ENABLE()
     #endif
 }
 
