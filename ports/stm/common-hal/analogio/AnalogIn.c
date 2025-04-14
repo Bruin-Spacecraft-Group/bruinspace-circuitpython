@@ -63,11 +63,11 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
         #ifdef LL_APB2_GRP1_PERIPH_ADC3
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC3);
         #endif
-    } else if (pin->adc_unit == 0x04) {
+    } else if (pin->adc_unit == 0x07) {
         #ifdef LL_APB2_GRP1_PERIPH_ADC123
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC123);
         #endif
-    else {
+    } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
     mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit);
@@ -75,7 +75,6 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     self->pin = pin;
     #if CPY_STM32H7
     __HAL_RCC_ADC12_CLK_ENABLE();
-    __HAL_RCC_ADC123_CLK_ENABLE();
     __HAL_RCC_ADC3_CLK_ENABLE();
     RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
