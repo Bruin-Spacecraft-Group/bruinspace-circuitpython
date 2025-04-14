@@ -23,6 +23,7 @@
 #include "stm32h7xx_ll_gpio.h"
 #include "stm32h7xx_ll_adc.h"
 #include "stm32h7xx_ll_bus.h"
+#include "st_driver/stm32h7xx_hal_driver"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_8CYCLES_5
 #define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_TIM1 //might need to change this line
 
@@ -61,7 +62,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
     #if CPY_STM32H7
-    __ADC_CLK_ENABLE(); 
+    __HAL_RCC_ADC_CLK_ENABLE();
     RCC_PeriphClkInitTypeDef RCC_PeriphClkInit;
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
     RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
