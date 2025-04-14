@@ -60,6 +60,14 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     }
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
+    #if CPY_STM32H7
+    __HAL_RCC_ADC_CLK_ENABLE(); 
+    RCC_PeriphClkInitTypeDef RCC_PeriphClkInit;
+    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit);
+    o __HAL_RCC_GPIOA_CLK_ENABLE()
+    #endif
 }
 
 bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
@@ -161,9 +169,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
  AdcHandle.Init.ContinuousConvMode = DISABLE;
  AdcHandle.Init.NbrOfConversion = 1;
  AdcHandle.Init.DiscontinuousConvMode = DISABLE;
- AdcHandle.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
- AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
- AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
+ AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+ AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+ //AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
  AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
  AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
  AdcHandle.Init.OversamplingMode = DISABLE;
