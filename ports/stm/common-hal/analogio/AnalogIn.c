@@ -23,7 +23,7 @@
 #include "stm32h7xx_ll_gpio.h"
 #include "stm32h7xx_ll_adc.h"
 #include "stm32h7xx_ll_bus.h"
-#include "st_driver/stm32h7xx_hal_driver"
+#include "st_driver/stm32h7xx_hal_driver/Inc/Legacy/stm32_hal_legacy.h"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_8CYCLES_5
 #define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_TIM1 //might need to change this line
 
