@@ -10,15 +10,6 @@
 
 #include "shared-bindings/microcontroller/Pin.h"
 
-#include "stm32h7xx_hal.h"
-#include "stm32h7xx_ll_gpio.h"
-#include "stm32h7xx_ll_adc.h"
-#include "stm32h7xx_ll_bus.h"
-#include "stm32_hal_legacy.h"
-#include "stm32h7xx_hal_def.h"
-#include "stm32h7xx_hal_rcc.h"
-#include "hal_conf/stm32h7xx_hal_conf.h"
-
 #if CPY_STM32L4
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_ll_gpio.h"
@@ -28,14 +19,14 @@
 #define LL_APB2_GRP1_PERIPH_ADC1 LL_AHB2_GRP1_PERIPH_ADC
 
 #elif CPY_STM32H7
-// #include "stm32h7xx_hal.h"
-// #include "stm32h7xx_ll_gpio.h"
-// #include "stm32h7xx_ll_adc.h"
-// #include "stm32h7xx_ll_bus.h"
-// #include "stm32_hal_legacy.h"
-// #include "stm32h7xx_hal_def.h"
-// #include "stm32h7xx_hal_rcc.h"
-// #include "hal_conf/stm32h7xx_hal_conf.h"
+#include "stm32h7xx_hal.h"
+#include "stm32h7xx_ll_gpio.h"
+#include "stm32h7xx_ll_adc.h"
+#include "stm32h7xx_ll_bus.h"
+#include "stm32_hal_legacy.h"
+#include "stm32h7xx_hal_def.h"
+#include "stm32h7xx_hal_rcc.h"
+#include "hal_conf/stm32h7xx_hal_conf.h"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_8CYCLES_5
 #define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_TIM1 //might need to change this line
 
@@ -74,10 +65,10 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
     #if CPY_STM32H7
-    __HAL_RCC_ADC_CLK_ENABLE();
+    //__HAL_RCC_ADC_CLK_ENABLE();
     RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
-    RCC_PeriphCLKInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-    RCC_PeriphCLKInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
     #endif
 }
