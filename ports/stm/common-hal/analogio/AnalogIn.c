@@ -24,6 +24,10 @@
 #include "stm32h7xx_ll_adc.h"
 #include "stm32h7xx_ll_bus.h"
 #include "st_driver/stm32h7xx_hal_driver/Inc/Legacy/stm32_hal_legacy.h"
+#include "st_driver/stm32h7xx_hal_driver/Inc/stm32h7xx_hal.h"
+#include "st_driver/stm32h7xx_hal_driver/Inc/stm32h7xx_hal_def.h"
+#include "st_driver/stm32h7xx_hal_driver/Inc/stm32h7xx_hal_rcc.h"
+#include "hal_conf/stm32h7xx_hal_conf.h"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_8CYCLES_5
 #define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_TIM1 //might need to change this line
 
