@@ -61,11 +61,11 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
     #if CPY_STM32H7
-    __HAL_RCC_ADC_CLK_ENABLE(); 
+    __HAL_RCC_ADC1_CLK_ENABLE(); 
     RCC_PeriphClkInitTypeDef RCC_PeriphClkInit;
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-    PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
-    HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit);
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
     #endif
 }
 
