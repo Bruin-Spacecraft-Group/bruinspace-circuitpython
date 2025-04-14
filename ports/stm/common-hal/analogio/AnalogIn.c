@@ -55,17 +55,25 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     LL_GPIO_SetPinMode(pin_port(pin->port), (uint32_t)pin_mask(pin->number), LL_GPIO_MODE_ANALOG);
     if (pin->adc_unit & 0x01) {
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
-    } else if (pin->adc_unit == 0x04) {
+    } else if (pin->adc_unit == 0x03) {
+        #ifdef LL_APB_2_GRP1_PERIPH_ADC12
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC12);
+        #endif
+    }else if (pin->adc_unit == 0x04) {
         #ifdef LL_APB2_GRP1_PERIPH_ADC3
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC3);
         #endif
-    } else {
+    } else if (pin->adc_unit == 0x04) {
+        #ifdef LL_APB2_GRP1_PERIPH_ADC123
+        LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC123);
+        #endif
+    else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
+    mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit);
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
     #if CPY_STM32H7
-    __HAL_RCC_ADC1_CLK_ENABLE();
     __HAL_RCC_ADC12_CLK_ENABLE();
     __HAL_RCC_ADC123_CLK_ENABLE();
     __HAL_RCC_ADC3_CLK_ENABLE();
