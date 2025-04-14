@@ -10,7 +10,7 @@
 
 // Todo: some pins do have ADCs, but the module isn't set up yet.
 
-const mcu_pin_obj_t pin_PA00 = PIN(0, 0, ADC_INPUT(ADC_1, 16));
+const mcu_pin_obj_t pin_PA00 = PIN(0, 0, ADC_INPUT(ADC_12, 16));
 const mcu_pin_obj_t pin_PA01 = PIN(0, 1, ADC_INPUT(ADC_12, 0));
 const mcu_pin_obj_t pin_PA02 = PIN(0, 2, ADC_INPUT(ADC_12, 14));
 const mcu_pin_obj_t pin_PA03 = PIN(0, 3, ADC_INPUT(ADC_12, 15));
