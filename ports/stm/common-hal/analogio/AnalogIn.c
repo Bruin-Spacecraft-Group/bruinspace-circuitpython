@@ -61,14 +61,6 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit);
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
-    #if CPY_STM32H7
-    __HAL_RCC_ADC12_CLK_ENABLE();
-    __HAL_RCC_ADC3_CLK_ENABLE();
-    RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
-    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
-    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
-    #endif
 }
 
 bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
@@ -141,14 +133,26 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
         ADCx = ADC1;
         #if CPY_STM32L4
         __HAL_RCC_ADC_CLK_ENABLE();
+        #elif CPY_STM32H7
+        __HAL_RCC_ADC12_CLK_ENABLE();
         #endif
     } else if (self->pin->adc_unit == 0x04) {
         #ifdef ADC3
         ADCx = ADC3;
         #endif
+        #if CPY_STM32H7
+        __HAL_RCC_ADC3_CLK_ENABLE();
+        #endif
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
+
+    #if CPY_STM32H7
+    RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+    #endif
 
     LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
     // LL_GPIO_PIN_0
@@ -172,7 +176,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
  AdcHandle.Init.DiscontinuousConvMode = DISABLE;
  AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
  AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
- //AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
+ AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
  AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
  AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
  AdcHandle.Init.OversamplingMode = DISABLE;
