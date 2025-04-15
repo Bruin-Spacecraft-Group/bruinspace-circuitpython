@@ -103,9 +103,9 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
  AdcHandle.Instance = ADCx;
  #if CPY_STM32H7
  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
- AdcHandle.Init.Resolution = ADC_RESOLUTION_8B;
+ AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
- AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+ AdcHandle.Init.EOCSelection = ADC_EOC_SEQ_CONV;
  AdcHandle.Init.LowPowerAutoWait = DISABLE;
  AdcHandle.Init.ContinuousConvMode = DISABLE;
  AdcHandle.Init.NbrOfConversion = 1;
