@@ -130,7 +130,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     ADC_TypeDef *ADCx;
 
     if (self->pin->adc_unit & 0x01) {
-        ADCx = ADC12;
+        ADCx = ADC1;
         #if CPY_STM32L4
         __HAL_RCC_ADC_CLK_ENABLE();
         #elif CPY_STM32H7
