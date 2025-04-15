@@ -59,32 +59,8 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
     mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit); //remove this line when done
-    common_hal_reset_pin(pin); //remove this line when done
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
-
-    ADC_TypeDef *ADCx;
-
-    if (self->pin->adc_unit & 0x01) {
-        ADCx = ADC1;
-        #if CPY_STM32L4
-        __HAL_RCC_ADC_CLK_ENABLE();
-        #elif CPY_STM32H7
-        __HAL_RCC_ADC12_CLK_ENABLE();
-        #endif
-    } else if (self->pin->adc_unit == 0x04) {
-        #ifdef ADC3
-        ADCx = ADC3;
-        #endif
-        #if CPY_STM32H7
-        __HAL_RCC_ADC3_CLK_ENABLE();
-        #endif
-    } else {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
-    }
-
-    LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
-    // LL_GPIO_PIN_0
 }
 
 bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
