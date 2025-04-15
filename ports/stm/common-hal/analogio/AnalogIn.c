@@ -141,7 +141,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     uint32_t error = HAL_ADC_Init(&AdcHandle);
     mp_printf(&mp_plat_print, "ADC Error: 0x%lX\n", error);
     mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
-    return 0;
+    // return 0;
   }
 
   /** Configure the ADC multi-mode
@@ -165,7 +165,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
   {
     mp_raise_RuntimeError(MP_ERROR_TEXT("3"));
-    return 0;
+    // return 0;
   }
 }
 
