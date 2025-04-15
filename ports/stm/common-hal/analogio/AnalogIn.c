@@ -49,7 +49,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     // Note that ADC2 is always bundled pin-to-pin with ADC1 if it exists, and used only
     // for dual conversion. For this basic application it is never used.
     LL_GPIO_SetPinMode(pin_port(pin->port), (uint32_t)pin_mask(pin->number), LL_GPIO_MODE_ANALOG);
-    if (pin->adc_unit == 0x01 || pin->adc_unit == 0x03 || pin->adc_unit == 0x07) {
+    if (pin->adc_unit & 0x01) {
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
     }else if (pin->adc_unit == 0x04) {
         #ifdef LL_APB2_GRP1_PERIPH_ADC3
@@ -165,7 +165,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
  AdcHandle.Init.Resolution = ADC_RESOLUTION_8B;
  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
- AdcHandle.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+ AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
  AdcHandle.Init.LowPowerAutoWait = DISABLE;
  AdcHandle.Init.ContinuousConvMode = DISABLE;
  AdcHandle.Init.NbrOfConversion = 1;
