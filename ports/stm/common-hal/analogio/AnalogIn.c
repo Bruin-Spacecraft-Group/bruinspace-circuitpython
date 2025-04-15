@@ -341,7 +341,11 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("4"));
         return 0;
     }
-    HAL_ADC_PollForConversion(&AdcHandle, 1000000);
+    if (HAL_ADC_PollForConversion(&AdcHandle, 500) != HAL_OK)
+    {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("5"));
+        return 0;
+    }
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
