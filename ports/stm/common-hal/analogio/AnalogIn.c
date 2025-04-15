@@ -264,13 +264,13 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 //     // LL_GPIO_PIN_0
 
 //     // HAL Implementation
-//     ADC_HandleTypeDef AdcHandle = {};
+    ADC_HandleTypeDef AdcHandle = {};
 //     // ADC_MultiModeTypeDef multimode = {0};
 //   ADC_ChannelConfTypeDef sConfig = {0};
 
 //   /** Common config
 //   */
-//  AdcHandle.Instance = ADCx;
+ AdcHandle.Instance = ADCx;
 //  #if CPY_STM32H7
 //  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
 //  AdcHandle.Init.Resolution = ADC_RESOLUTION_8B;
