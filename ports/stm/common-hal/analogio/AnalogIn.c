@@ -102,7 +102,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
   */
  AdcHandle.Instance = ADCx;
  #if CPY_STM32H7
- AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
+ AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
  AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
  AdcHandle.Init.EOCSelection = ADC_EOC_SEQ_CONV;
@@ -272,7 +272,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 //   */
  AdcHandle.Instance = ADCx;
 //  #if CPY_STM32H7
-//  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
+//  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
 //  AdcHandle.Init.Resolution = ADC_RESOLUTION_8B;
 //  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
 //  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
@@ -341,7 +341,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("4"));
         return 0;
     }
-    if (HAL_ADC_PollForConversion(&AdcHandle, 500) != HAL_OK)
+    if (HAL_ADC_PollForConversion(&AdcHandle, HAL_MAX_DELAY) != HAL_OK)
     {
         mp_raise_RuntimeError(MP_ERROR_TEXT("5"));
         return 0;
