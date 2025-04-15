@@ -58,7 +58,8 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
-    mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit);
+    mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit); //remove this line when done
+    common_hal_mcu_pin_is_free(pin); //remove this line when done
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
 }
