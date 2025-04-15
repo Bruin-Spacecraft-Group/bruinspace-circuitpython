@@ -210,12 +210,12 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
   /** Configure the ADC multi-mode
   */
-  multimode.Mode = ADC_MODE_INDEPENDENT;
-  if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
-  {
-    mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
-    return 0;
-  }
+//   multimode.Mode = ADC_MODE_INDEPENDENT;
+//   if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
+//   {
+//     mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
+//     return 0;
+//   }
 
   /** Configure Regular Channel
   */
