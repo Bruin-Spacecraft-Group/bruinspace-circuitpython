@@ -62,72 +62,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     common_hal_mcu_pin_is_free(pin); //remove this line when done
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
-}
 
-bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
-    return self->pin == NULL;
-}
-
-void common_hal_analogio_analogin_deinit(analogio_analogin_obj_t *self) {
-    if (common_hal_analogio_analogin_deinited(self)) {
-        return;
-    }
-    reset_pin_number(self->pin->port, self->pin->number);
-    self->pin = NULL;
-}
-
-uint32_t adc_channel(uint32_t channel) {
-    #if CPY_STM32L4
-    switch (channel) {
-        case 0:
-            return ADC_CHANNEL_0;
-        case 1:
-            return ADC_CHANNEL_1;
-        case 2:
-            return ADC_CHANNEL_2;
-        case 3:
-            return ADC_CHANNEL_3;
-        case 4:
-            return ADC_CHANNEL_4;
-        case 5:
-            return ADC_CHANNEL_5;
-        case 6:
-            return ADC_CHANNEL_6;
-        case 7:
-            return ADC_CHANNEL_7;
-        case 8:
-            return ADC_CHANNEL_8;
-        case 9:
-            return ADC_CHANNEL_9;
-        case 10:
-            return ADC_CHANNEL_10;
-        case 11:
-            return ADC_CHANNEL_11;
-        case 12:
-            return ADC_CHANNEL_12;
-        case 13:
-            return ADC_CHANNEL_13;
-        case 14:
-            return ADC_CHANNEL_14;
-        case 15:
-            return ADC_CHANNEL_15;
-        case 16:
-            return ADC_CHANNEL_16;
-        case 17:
-            return ADC_CHANNEL_17;
-        case 18:
-            return ADC_CHANNEL_18;
-        default:
-            return 0;
-    }
-    #else
-    return channel;
-    #endif
-}
-
-uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
-    // Something else might have used the ADC in a different way,
-    // so we completely re-initialize it.
     ADC_TypeDef *ADCx;
 
     if (self->pin->adc_unit & 0x01) {
@@ -232,6 +167,176 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     mp_raise_RuntimeError(MP_ERROR_TEXT("3"));
     return 0;
   }
+}
+
+bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
+    return self->pin == NULL;
+}
+
+void common_hal_analogio_analogin_deinit(analogio_analogin_obj_t *self) {
+    if (common_hal_analogio_analogin_deinited(self)) {
+        return;
+    }
+    reset_pin_number(self->pin->port, self->pin->number);
+    self->pin = NULL;
+}
+
+uint32_t adc_channel(uint32_t channel) {
+    #if CPY_STM32L4
+    switch (channel) {
+        case 0:
+            return ADC_CHANNEL_0;
+        case 1:
+            return ADC_CHANNEL_1;
+        case 2:
+            return ADC_CHANNEL_2;
+        case 3:
+            return ADC_CHANNEL_3;
+        case 4:
+            return ADC_CHANNEL_4;
+        case 5:
+            return ADC_CHANNEL_5;
+        case 6:
+            return ADC_CHANNEL_6;
+        case 7:
+            return ADC_CHANNEL_7;
+        case 8:
+            return ADC_CHANNEL_8;
+        case 9:
+            return ADC_CHANNEL_9;
+        case 10:
+            return ADC_CHANNEL_10;
+        case 11:
+            return ADC_CHANNEL_11;
+        case 12:
+            return ADC_CHANNEL_12;
+        case 13:
+            return ADC_CHANNEL_13;
+        case 14:
+            return ADC_CHANNEL_14;
+        case 15:
+            return ADC_CHANNEL_15;
+        case 16:
+            return ADC_CHANNEL_16;
+        case 17:
+            return ADC_CHANNEL_17;
+        case 18:
+            return ADC_CHANNEL_18;
+        default:
+            return 0;
+    }
+    #else
+    return channel;
+    #endif
+}
+
+uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
+    // Something else might have used the ADC in a different way,
+    // so we completely re-initialize it.
+//     ADC_TypeDef *ADCx;
+
+//     if (self->pin->adc_unit & 0x01) {
+//         ADCx = ADC1;
+//         #if CPY_STM32L4
+//         __HAL_RCC_ADC_CLK_ENABLE();
+//         #elif CPY_STM32H7
+//         __HAL_RCC_ADC12_CLK_ENABLE();
+//         #endif
+//     } else if (self->pin->adc_unit == 0x04) {
+//         #ifdef ADC3
+//         ADCx = ADC3;
+//         #endif
+//         #if CPY_STM32H7
+//         __HAL_RCC_ADC3_CLK_ENABLE();
+//         #endif
+//     } else {
+//         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
+//     }
+
+//     #if CPY_STM32H7
+//     RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
+//     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+//     RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+//     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+//     #endif
+
+//     LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
+//     // LL_GPIO_PIN_0
+
+//     // HAL Implementation
+//     ADC_HandleTypeDef AdcHandle = {};
+//     // ADC_MultiModeTypeDef multimode = {0};
+//   ADC_ChannelConfTypeDef sConfig = {0};
+
+//   /** Common config
+//   */
+//  AdcHandle.Instance = ADCx;
+//  #if CPY_STM32H7
+//  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
+//  AdcHandle.Init.Resolution = ADC_RESOLUTION_8B;
+//  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
+//  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+//  AdcHandle.Init.LowPowerAutoWait = DISABLE;
+//  AdcHandle.Init.ContinuousConvMode = DISABLE;
+//  AdcHandle.Init.NbrOfConversion = 1;
+//  AdcHandle.Init.DiscontinuousConvMode = DISABLE;
+//  AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+//  AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+//  AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+//  AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+//  AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+//  AdcHandle.Init.OversamplingMode = DISABLE;
+//  AdcHandle.Init.Oversampling.Ratio = 1;
+//  #else
+//  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+//    AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+//    AdcHandle.Init.ScanConvMode = DISABLE;
+//    AdcHandle.Init.ContinuousConvMode = DISABLE;
+//    AdcHandle.Init.DiscontinuousConvMode = DISABLE;
+//    AdcHandle.Init.NbrOfDiscConversion = 0;
+//    AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+//    AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+//    AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+//    AdcHandle.Init.NbrOfConversion = 1;
+//    AdcHandle.Init.DMAContinuousRequests = DISABLE;
+//    AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+//    #endif
+
+//    #ifdef ADC_OVR_DATA_OVERWRITTEN
+//    AdcHandle.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;                    /* DR register is overwritten with the last conversion result in case of overrun */
+//    #endif
+  
+//   if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
+//   {
+//     uint32_t error = HAL_ADC_Init(&AdcHandle);
+//     mp_printf(&mp_plat_print, "ADC Error: 0x%lX\n", error);
+//     mp_raise_RuntimeError(MP_ERROR_TEXT("1"));
+//     return 0;
+//   }
+
+//   /** Configure the ADC multi-mode
+//   */
+// //   multimode.Mode = ADC_MODE_INDEPENDENT;
+// //   if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
+// //   {
+// //     mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
+// //     return 0;
+// //   }
+
+//   /** Configure Regular Channel
+//   */
+//   sConfig.Channel = ADC_CHANNEL_3;
+//   sConfig.Rank = ADC_REGULAR_RANK_1;
+//   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+//   sConfig.SingleDiff = ADC_SINGLE_ENDED;
+//   sConfig.OffsetNumber = ADC_OFFSET_NONE;
+//   sConfig.Offset = 0;
+//   sConfig.OffsetSignedSaturation = DISABLE;
+//   if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
+//   {
+//     mp_raise_RuntimeError(MP_ERROR_TEXT("3"));
+//     return 0;
+//   }
     
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("4"));
