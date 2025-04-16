@@ -21,6 +21,10 @@
 
 #include STM32_HAL_H
 
+#if CPY_STM32H7
+#include "stm32h7xx_hal.h"
+#endif
+
 #ifndef __HAL_RCC_DAC_CLK_ENABLE
 #if CPY_STM32H7
 #define __HAL_RCC_DAC_CLK_ENABLE __HAL__RCC_DAC12_CLK_ENABLE
