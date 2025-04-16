@@ -159,7 +159,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
  AdcHandle.Instance = ADCx;
  #if CPY_STM32H7
  AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
- AdcHandle.Init.Resolution = ADC_RESOLUTION_8B;
+ AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
  AdcHandle.Init.ScanConvMode = ADC_SCAN_DISABLE;
  AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
  AdcHandle.Init.LowPowerAutoWait = DISABLE;

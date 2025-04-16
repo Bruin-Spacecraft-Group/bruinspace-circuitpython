@@ -21,11 +21,6 @@
 
 #include STM32_HAL_H
 
-// #if CPY_STM32H7
-// #include "stm32h7xx_hal.h"
-// #include "stm32h7xx_ll_dac.h"
-// #endif
-
 #ifndef __HAL_RCC_DAC_CLK_ENABLE
 #if CPY_STM32H7
 #define __HAL_RCC_DAC_CLK_ENABLE __HAL_RCC_DAC12_CLK_ENABLE
@@ -57,7 +52,7 @@ void common_hal_analogio_analogout_construct(analogio_analogout_obj_t *self,
     #else
     if (pin == &pin_PA04) {
         self->channel = DAC_CHANNEL_1;
-        self->dac_index = 1;
+        self->dac_index = 0;
         DACx = DAC1;
     } else if (pin == &pin_PA05) {
         self->channel = DAC_CHANNEL_2;
