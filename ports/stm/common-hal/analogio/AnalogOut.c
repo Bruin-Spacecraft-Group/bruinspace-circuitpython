@@ -21,12 +21,12 @@
 
 #include STM32_HAL_H
 
-// #ifndef __HAL_RCC_DAC_CLK_ENABLE
-// #define __HAL_RCC_DAC_CLK_ENABLE __HAL_RCC_DAC1_CLK_ENABLE
-// #endif
-// #ifndef __HAL_RCC_DAC_CLK_DISABLE
-// #define __HAL_RCC_DAC_CLK_DISABLE __HAL_RCC_DAC1_CLK_DISABLE
-// #endif
+#ifndef __HAL_RCC_DAC_CLK_ENABLE
+#define __HAL_RCC_DAC_CLK_ENABLE __HAL_RCC_DAC1_CLK_ENABLE
+#endif
+#ifndef __HAL_RCC_DAC_CLK_DISABLE
+#define __HAL_RCC_DAC_CLK_DISABLE __HAL_RCC_DAC1_CLK_DISABLE
+#endif
 
 // DAC is shared between both channels.
 #if HAS_DAC
@@ -55,7 +55,7 @@ void common_hal_analogio_analogout_construct(analogio_analogout_obj_t *self,
 
     // Only init if the shared DAC is empty or reset
     if (handle.Instance == NULL || handle.State == HAL_DAC_STATE_RESET) {
-        //__HAL_RCC_DAC_CLK_ENABLE();
+        __HAL_RCC_DAC_CLK_ENABLE();
         handle.Instance = DACx;
         if (HAL_DAC_Init(&handle) != HAL_OK) {
             mp_raise_ValueError(MP_ERROR_TEXT("DAC Device Init Error"));
@@ -93,7 +93,7 @@ void common_hal_analogio_analogout_deinit(analogio_analogout_obj_t *self) {
 
     // turn off the DAC if both channels are off
     if (dac_on[0] == false && dac_on[1] == false) {
-        //__HAL_RCC_DAC_CLK_DISABLE();
+        __HAL_RCC_DAC_CLK_DISABLE();
         HAL_DAC_DeInit(&handle);
     }
     #endif
@@ -109,7 +109,7 @@ void common_hal_analogio_analogout_set_value(analogio_analogout_obj_t *self,
 
 void analogout_reset(void) {
     #if HAS_DAC
-    //__HAL_RCC_DAC_CLK_DISABLE();
+    __HAL_RCC_DAC_CLK_DISABLE();
     HAL_DAC_DeInit(&handle);
     #endif
 }
