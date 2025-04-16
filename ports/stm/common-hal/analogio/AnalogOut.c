@@ -27,12 +27,14 @@
 #else
 #define __HAL_RCC_DAC_CLK_ENABLE __HAL_RCC_DAC1_CLK_ENABLE
 #endif
+#endif
 
 #ifndef __HAL_RCC_DAC_CLK_DISABLE
 #if CPY_STM32H7
 #define __HAL_RCC_DAC_CLK_DISABLE __HAL_RCC_DAC12_CLK_DISABLE
 #else
 #define __HAL_RCC_DAC_CLK_DISABLE __HAL_RCC_DAC1_CLK_DISABLE
+#endif
 #endif
 
 // DAC is shared between both channels.
