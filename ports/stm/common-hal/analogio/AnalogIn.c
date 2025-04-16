@@ -219,7 +219,11 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
   {
     return 0;
   }
+
+  #if CPY_STM32H7
   HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, sConfig.SingleDiff);
+  #endif
+
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
         return 0;
     }
