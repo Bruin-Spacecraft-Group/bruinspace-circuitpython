@@ -24,7 +24,7 @@
 #include "stm32h7xx_ll_adc.h"
 #include "stm32h7xx_ll_bus.h"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_8CYCLES_5
-#define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_TIM1 //might need to change this line
+#define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_DFSDM1
 
 #elif CPY_STM32F4
 #include "stm32f4xx_hal.h"
