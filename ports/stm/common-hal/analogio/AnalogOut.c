@@ -21,14 +21,14 @@
 
 #include STM32_HAL_H
 
-#if CPY_STM32H7
-#include "stm32h7xx_hal.h"
-#include "stm32h7xx_ll_dac.h"
-#endif
+// #if CPY_STM32H7
+// #include "stm32h7xx_hal.h"
+// #include "stm32h7xx_ll_dac.h"
+// #endif
 
 #ifndef __HAL_RCC_DAC_CLK_ENABLE
 #if CPY_STM32H7
-#define __HAL_RCC_DAC_CLK_ENABLE __HAL__RCC_DAC12_CLK_ENABLE
+#define __HAL_RCC_DAC_CLK_ENABLE __HAL_RCC_DAC12_CLK_ENABLE
 #else
 #define __HAL_RCC_DAC_CLK_ENABLE __HAL_RCC_DAC1_CLK_ENABLE
 #endif
