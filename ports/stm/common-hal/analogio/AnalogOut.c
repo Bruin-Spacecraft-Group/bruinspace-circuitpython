@@ -23,6 +23,7 @@
 
 #if CPY_STM32H7
 #include "stm32h7xx_hal.h"
+#include "stm32h7xx_dac.h"
 #endif
 
 #ifndef __HAL_RCC_DAC_CLK_ENABLE
