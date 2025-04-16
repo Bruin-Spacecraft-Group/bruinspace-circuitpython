@@ -77,7 +77,7 @@ void stm32_peripherals_clocks_init(void) {
     // Set up non-bus peripherals
     // TODO: I2S settings go here
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC | RCC_PERIPHCLK_USART3
-        | RCC_PERIPHCLK_USB;
+        | RCC_PERIPHCLK_USB | RCC_PERIPHCLK_ADC;
     #if (BOARD_HAS_LOW_SPEED_CRYSTAL)
     PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
     #else
@@ -89,6 +89,10 @@ void stm32_peripherals_clocks_init(void) {
     #else
     PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
     #endif
+
+    //ADC Clock init
+    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+
     HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
 
     // Enable USB Voltage detector

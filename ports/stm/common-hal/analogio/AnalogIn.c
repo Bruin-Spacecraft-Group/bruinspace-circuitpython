@@ -58,7 +58,6 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
-    mp_printf(&mp_plat_print, "ADC Unit: 0x%lX\n", pin->adc_unit); //remove this line when done
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
 }
@@ -146,13 +145,6 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
-
-    #if CPY_STM32H7
-    RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
-    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
-    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
-    #endif
 
     LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
 //     // LL_GPIO_PIN_0
