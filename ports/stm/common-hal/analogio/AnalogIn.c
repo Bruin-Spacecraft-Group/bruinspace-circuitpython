@@ -179,7 +179,6 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
    AdcHandle.Init.NbrOfConversion = 1;
    AdcHandle.Init.DMAContinuousRequests = DISABLE;
    AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-   #endif
 
    #ifdef ADC_OVR_DATA_OVERWRITTEN
    AdcHandle.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;                    /* DR register is overwritten with the last conversion result in case of overrun */
@@ -228,7 +227,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     HAL_ADC_Stop(&AdcHandle);
 
     // Stretch 12-bit ADC reading to 16-bit range
-    #if AdcHandle.Resolution == ADC_RESOLUTION_12B
+    #if AdcHandle.Init.Resolution == ADC_RESOLUTION_12B
     return (value << 4) | (value >> 8);
     #else
     return value;
