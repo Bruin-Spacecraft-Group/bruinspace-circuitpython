@@ -227,7 +227,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     HAL_ADC_Stop(&AdcHandle);
 
     // Stretch 12-bit ADC reading to 16-bit range
-    #if (AdcHandle.Init.Resolution == ADC_RESOLUTION_12B)
+    #if (CPY_STM32H7 && ADCx == ADC12)
     return (value << 4) | (value >> 8);
     #else
     return value;
