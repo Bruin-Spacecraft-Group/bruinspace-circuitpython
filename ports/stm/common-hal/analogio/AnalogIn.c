@@ -177,9 +177,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
    AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
    #if (!CPY_STM32H7)
    AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+   AdcHandle.Init.DMAContinuousRequests = DISABLE;
    #endif
    AdcHandle.Init.NbrOfConversion = 1;
-   AdcHandle.Init.DMAContinuousRequests = DISABLE;
    AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 
    #ifdef ADC_OVR_DATA_OVERWRITTEN
