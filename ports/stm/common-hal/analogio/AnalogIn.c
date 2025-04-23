@@ -194,7 +194,6 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     */
     multimode.Mode = ADC_MODE_INDEPENDENT;
     if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
         return 0;
     }
 
@@ -224,10 +223,10 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
-    // Stretch 12-bit ADC reading to 16-bit range
     #if (CPY_STM32H7 && ADCx == ADC12)
     return value;
     #else
+    // Stretch 12-bit ADC reading to 16-bit range
     return (value << 4) | (value >> 8);
     #endif
 }
