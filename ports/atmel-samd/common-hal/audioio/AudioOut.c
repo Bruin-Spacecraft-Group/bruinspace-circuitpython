@@ -79,6 +79,9 @@ static void ramp_value(uint16_t start, uint16_t end) {
 // Caller validates that pins are free.
 void common_hal_audioio_audioout_construct(audioio_audioout_obj_t *self,
     const mcu_pin_obj_t *left_channel, const mcu_pin_obj_t *right_channel, uint16_t quiescent_value) {
+
+    // The case of left_channel == right_channel is already disallowed in shared-bindings.
+
     #ifdef SAM_D5X_E5X
     bool dac_clock_enabled = hri_mclk_get_APBDMASK_DAC_bit(MCLK);
     #endif
@@ -106,10 +109,6 @@ void common_hal_audioio_audioout_construct(audioio_audioout_obj_t *self,
     }
     if (right_channel != NULL && right_channel != &pin_PA02 && right_channel != &pin_PA05) {
         raise_ValueError_invalid_pin_name(MP_QSTR_right_channel);
-    }
-    if (right_channel == left_channel) {
-        mp_raise_ValueError_varg(MP_ERROR_TEXT("%q and %q must be different"),
-            MP_QSTR_left_channel, MP_QSTR_right_channel);
     }
     claim_pin(left_channel);
     if (right_channel != NULL) {
@@ -333,7 +332,7 @@ void common_hal_audioio_audioout_play(audioio_audioout_obj_t *self,
         common_hal_audioio_audioout_stop(self);
     }
     audio_dma_result result = AUDIO_DMA_OK;
-    uint32_t sample_rate = audiosample_sample_rate(sample);
+    uint32_t sample_rate = audiosample_get_sample_rate(sample);
     #ifdef SAMD21
     const uint32_t max_sample_rate = 350000;
     #endif
@@ -364,12 +363,12 @@ void common_hal_audioio_audioout_play(audioio_audioout_obj_t *self,
         right_channel_reg = (uint32_t)&DAC->DATABUF[0].reg;
     }
 
-    size_t num_channels = audiosample_channel_count(sample);
+    size_t num_channels = audiosample_get_channel_count(sample);
 
     if (num_channels == 2 &&
         // Are DAC channels sequential?
         left_channel_reg + 2 == right_channel_reg &&
-        audiosample_bits_per_sample(sample) == 16) {
+        audiosample_get_bits_per_sample(sample) == 16) {
         result = audio_dma_setup_playback(&self->left_dma, sample, loop, false, 0,
             false /* output unsigned */,
             left_channel_reg,
@@ -403,7 +402,7 @@ void common_hal_audioio_audioout_play(audioio_audioout_obj_t *self,
         }
     }
     Tc *timer = tc_insts[self->tc_index];
-    set_timer_frequency(timer, audiosample_sample_rate(sample));
+    set_timer_frequency(timer, audiosample_get_sample_rate(sample));
     timer->COUNT16.CTRLBSET.reg = TC_CTRLBSET_CMD_RETRIGGER;
     while (timer->COUNT16.STATUS.bit.STOP == 1) {
     }

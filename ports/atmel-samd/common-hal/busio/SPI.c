@@ -21,6 +21,8 @@
 #include "samd/dma.h"
 #include "samd/sercom.h"
 
+void setup_pin(const mcu_pin_obj_t *pin, uint32_t pinmux);
+
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
     const mcu_pin_obj_t *miso, bool half_duplex) {
@@ -139,33 +141,21 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         mp_raise_OSError(MP_EIO);
     }
 
-    gpio_set_pin_direction(clock->number, GPIO_DIRECTION_OUT);
-    gpio_set_pin_pull_mode(clock->number, GPIO_PULL_OFF);
-    gpio_set_pin_function(clock->number, clock_pinmux);
-    claim_pin(clock);
-    hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(clock->number), GPIO_PIN(clock->number));
+    setup_pin(clock, clock_pinmux);
     self->clock_pin = clock->number;
 
     if (mosi_none) {
         self->MOSI_pin = NO_PIN;
     } else {
-        gpio_set_pin_direction(mosi->number, GPIO_DIRECTION_OUT);
-        gpio_set_pin_pull_mode(mosi->number, GPIO_PULL_OFF);
-        gpio_set_pin_function(mosi->number, mosi_pinmux);
+        setup_pin(mosi, mosi_pinmux);
         self->MOSI_pin = mosi->number;
-        claim_pin(mosi);
-        hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(mosi->number), GPIO_PIN(mosi->number));
     }
 
     if (miso_none) {
         self->MISO_pin = NO_PIN;
     } else {
-        gpio_set_pin_direction(miso->number, GPIO_DIRECTION_IN);
-        gpio_set_pin_pull_mode(miso->number, GPIO_PULL_OFF);
-        gpio_set_pin_function(miso->number, miso_pinmux);
+        setup_pin(miso, miso_pinmux);
         self->MISO_pin = miso->number;
-        claim_pin(miso);
-        hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(miso->number), GPIO_PIN(miso->number));
     }
 
     spi_m_sync_enable(&self->spi_desc);
@@ -326,4 +316,12 @@ uint8_t common_hal_busio_spi_get_phase(busio_spi_obj_t *self) {
 uint8_t common_hal_busio_spi_get_polarity(busio_spi_obj_t *self) {
     void *hw = self->spi_desc.dev.prvt;
     return hri_sercomspi_get_CTRLA_CPOL_bit(hw);
+}
+
+void setup_pin(const mcu_pin_obj_t *pin, uint32_t pinmux) {
+    gpio_set_pin_direction(pin->number, GPIO_DIRECTION_OUT);
+    gpio_set_pin_pull_mode(pin->number, GPIO_PULL_OFF);
+    gpio_set_pin_function(pin->number, pinmux);
+    claim_pin(pin);
+    hri_port_set_PINCFG_DRVSTR_bit(PORT, (enum gpio_port)GPIO_PORT(pin->number), GPIO_PIN(pin->number));
 }

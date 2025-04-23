@@ -14,12 +14,12 @@
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/memorymap/AddressRange.h"
 
-#include "src/rp2040/hardware_regs/include/hardware/platform_defs.h"
-#include "src/rp2_common/hardware_clocks/include/hardware/clocks.h"
-#include "src/rp2_common/hardware_dma/include/hardware/dma.h"
-#include "src/rp2_common/hardware_pio/include/hardware/pio_instructions.h"
-#include "src/rp2040/hardware_structs/include/hardware/structs/iobank0.h"
-#include "src/rp2_common/hardware_irq/include/hardware/irq.h"
+#include "hardware/platform_defs.h"
+#include "hardware/structs/iobank0.h"
+#include "hardware/clocks.h"
+#include "hardware/dma.h"
+#include "hardware/pio_instructions.h"
+#include "hardware/irq.h"
 
 #include "shared/runtime/interrupt_char.h"
 #include "py/obj.h"
@@ -57,19 +57,6 @@ static void *_interrupt_arg[NUM_PIOS][NUM_PIO_STATE_MACHINES];
 
 static void rp2pio_statemachine_interrupt_handler(void);
 
-// Workaround for sdk bug: https://github.com/raspberrypi/pico-sdk/issues/1878
-// This workaround can be removed when we upgrade to sdk 2.0.1
-static inline void sm_config_set_in_pin_count_issue1878(pio_sm_config *c, uint in_count) {
-    #if PICO_PIO_VERSION == 0
-    // can't be changed from 32 on PIO v0
-    ((void)c);
-    valid_params_if(HARDWARE_PIO, in_count == 32);
-    #else
-    valid_params_if(HARDWARE_PIO, in_count && in_count <= 32);
-    c->shiftctrl = (c->shiftctrl & ~PIO_SM0_SHIFTCTRL_IN_COUNT_BITS) |
-        ((in_count & 0x1fu) << PIO_SM0_SHIFTCTRL_IN_COUNT_LSB);
-    #endif
-}
 static void rp2pio_statemachine_set_pull(pio_pinmask_t pull_pin_up, pio_pinmask_t pull_pin_down, pio_pinmask_t pins_we_use) {
     for (size_t i = 0; i < NUM_BANK0_GPIOS; i++) {
         bool used = PIO_PINMASK_IS_SET(pins_we_use, i);
@@ -235,7 +222,7 @@ static bool is_gpio_compatible(PIO pio, uint32_t used_gpio_ranges) {
     #endif
 }
 
-static bool use_existing_program(PIO *pio_out, uint *sm_out, int *offset_inout, uint32_t program_id, size_t program_len, uint gpio_base, uint gpio_count) {
+static bool use_existing_program(PIO *pio_out, int *sm_out, int *offset_inout, uint32_t program_id, size_t program_len, uint gpio_base, uint gpio_count) {
     uint32_t required_gpio_ranges;
     if (gpio_count) {
         required_gpio_ranges = (1u << (gpio_base >> 4)) |
@@ -253,10 +240,12 @@ static bool use_existing_program(PIO *pio_out, uint *sm_out, int *offset_inout, 
             if (_current_program_id[i][j] == program_id &&
                 _current_program_len[i][j] == program_len &&
                 (*offset_inout == -1 || *offset_inout == _current_program_offset[i][j])) {
-                *pio_out = pio;
-                *sm_out = j;
-                *offset_inout = _current_program_offset[i][j];
-                return true;
+                *sm_out = pio_claim_unused_sm(pio, false);
+                if (*sm_out >= 0) {
+                    *pio_out = pio;
+                    *offset_inout = _current_program_offset[i][j];
+                    return true;
+                }
             }
         }
     }
@@ -318,12 +307,12 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         .origin = offset,
     };
     PIO pio;
-    uint state_machine;
+    int state_machine;
     bool added = false;
 
     if (!use_existing_program(&pio, &state_machine, &offset, program_id, program_len, gpio_base, gpio_count)) {
         uint program_offset;
-        bool r = pio_claim_free_sm_and_add_program_for_gpio_range(&program_struct, &pio, &state_machine, &program_offset, gpio_base, gpio_count, true);
+        bool r = pio_claim_free_sm_and_add_program_for_gpio_range(&program_struct, &pio, (uint *)&state_machine, &program_offset, gpio_base, gpio_count, true);
         if (!r) {
             return false;
         }
@@ -347,6 +336,8 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         }
     }
 
+    // Sanity check that state_machine number is valid.
+    assert(state_machine >= 0);
     self->pio = pio;
     self->state_machine = state_machine;
     self->offset = offset;
@@ -435,7 +426,7 @@ bool rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
     sm_config_set_wrap(&c, wrap_target, wrap);
     sm_config_set_in_shift(&c, in_shift_right, auto_push, push_threshold);
     #if PICO_PIO_VERSION > 0
-    sm_config_set_in_pin_count_issue1878(&c, in_pin_count);
+    sm_config_set_in_pin_count(&c, in_pin_count);
     #endif
 
     sm_config_set_out_shift(&c, out_shift_right, auto_pull, pull_threshold);
@@ -750,6 +741,8 @@ void common_hal_rp2pio_statemachine_construct(rp2pio_statemachine_obj_t *self,
         fifo_type,
         mov_status_type, mov_status_n);
     if (!ok) {
+        // indicate state machine never inited
+        self->state_machine = NUM_PIO_STATE_MACHINES;
         mp_raise_RuntimeError(MP_ERROR_TEXT("All state machines in use"));
     }
 }

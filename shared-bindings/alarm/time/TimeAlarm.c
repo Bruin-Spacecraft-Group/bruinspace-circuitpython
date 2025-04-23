@@ -35,8 +35,15 @@ mp_obj_t MP_WEAK rtc_get_time_source_time(void) {
 //|         If the given time is already in the past, then an exception is raised.
 //|         If the sleep happens after the given time, then it will wake immediately
 //|         due to this time alarm.
+//|
+//|         Example::
+//|
+//|           # Deep sleep for 30 seconds.
+//|           time_alarm = alarm.time.TimeAlarm(monotonic_time=time.monotonic() + 30)
+//|           alarm.exit_and_deep_sleep_until_alarms(time_alarm)
 //|         """
 //|         ...
+//|
 static mp_obj_t alarm_time_timealarm_make_new(const mp_obj_type_t *type,
     size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     alarm_time_timealarm_obj_t *self = mp_obj_malloc(alarm_time_timealarm_obj_t, &alarm_time_timealarm_type);
@@ -95,6 +102,7 @@ static mp_obj_t alarm_time_timealarm_make_new(const mp_obj_type_t *type,
 //|        The time may be given as ``epoch_time`` in the constructor, but it is returned
 //|        by this property only as a `time.monotonic()` time.
 //|        """
+//|
 //|
 static mp_obj_t alarm_time_timealarm_obj_get_monotonic_time(mp_obj_t self_in) {
     alarm_time_timealarm_obj_t *self = MP_OBJ_TO_PTR(self_in);

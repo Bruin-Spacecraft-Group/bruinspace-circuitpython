@@ -20,6 +20,7 @@
 
 //| from busdisplay import _DisplayBus
 //|
+//|
 //| class EPaperDisplay:
 //|     """Manage updating an epaper display over a display bus
 //|
@@ -28,7 +29,8 @@
 //|     is called. This is done so that CircuitPython can use the display itself.
 //|
 //|     Most people should not use this class directly. Use a specific display driver instead that will
-//|     contain the startup and shutdown sequences at minimum."""
+//|     contain the startup and shutdown sequences at minimum.
+//|     """
 //|
 //|     def __init__(
 //|         self,
@@ -62,7 +64,7 @@
 //|         advanced_color_epaper: bool = False,
 //|         two_byte_sequence_length: bool = False,
 //|         start_up_time: float = 0,
-//|         address_little_endian: bool = False
+//|         address_little_endian: bool = False,
 //|     ) -> None:
 //|         """Create a EPaperDisplay object on the given display bus (`fourwire.FourWire` or `paralleldisplaybus.ParallelBus`).
 //|
@@ -107,6 +109,7 @@
 //|         :param bool address_little_endian: Send the least significant byte (not bit) of multi-byte addresses first. Ignored when ram is addressed with one byte
 //|         """
 //|         ...
+//|
 static mp_obj_t epaperdisplay_epaperdisplay_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_display_bus, ARG_start_sequence, ARG_stop_sequence, ARG_width, ARG_height,
            ARG_ram_width, ARG_ram_height, ARG_colstart, ARG_rowstart, ARG_rotation,
@@ -238,6 +241,7 @@ MP_DEFINE_CONST_FUN_OBJ_2(epaperdisplay_epaperdisplay_show_obj, epaperdisplay_ep
 //|     ) -> None:
 //|         """Updates the ``start_sequence`` and ``seconds_per_frame`` parameters to enable
 //|         varying the refresh mode of the display."""
+//|
 static mp_obj_t epaperdisplay_epaperdisplay_update_refresh_mode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_start_sequence, ARG_seconds_per_frame };
     static const mp_arg_t allowed_args[] = {
@@ -263,6 +267,7 @@ MP_DEFINE_CONST_FUN_OBJ_KW(epaperdisplay_epaperdisplay_update_refresh_mode_obj, 
 //|         """Refreshes the display immediately or raises an exception if too soon. Use
 //|         ``time.sleep(display.time_to_refresh)`` to sleep until a refresh can occur."""
 //|         ...
+//|
 static mp_obj_t epaperdisplay_epaperdisplay_obj_refresh(mp_obj_t self_in) {
     epaperdisplay_epaperdisplay_obj_t *self = native_display(self_in);
     bool ok = common_hal_epaperdisplay_epaperdisplay_refresh(self);
@@ -359,6 +364,7 @@ MP_PROPERTY_GETTER(epaperdisplay_epaperdisplay_bus_obj,
 //|     If the root group is set to `displayio.CIRCUITPYTHON_TERMINAL`, the default CircuitPython terminal will be shown.
 //|     If the root group is set to ``None``, no output will be shown.
 //|     """
+//|
 //|
 static mp_obj_t epaperdisplay_epaperdisplay_obj_get_root_group(mp_obj_t self_in) {
     epaperdisplay_epaperdisplay_obj_t *self = native_display(self_in);
