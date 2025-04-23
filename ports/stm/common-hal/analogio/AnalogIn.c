@@ -152,36 +152,35 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 //     // HAL Implementation
     ADC_HandleTypeDef AdcHandle = {};
     ADC_MultiModeTypeDef multimode = {0};
-  ADC_ChannelConfTypeDef sConfig = {0};
+    ADC_ChannelConfTypeDef sConfig = {0};
 
   /** Common config
   */
- AdcHandle.Instance = ADCx;
- #if (CPY_STM32H7 && ADCx == ADC12)
- AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
- #endif
- AdcHandle.Init.LowPowerAutoWait = DISABLE;
- AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
- AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
- AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
- AdcHandle.Init.OversamplingMode = DISABLE;
- AdcHandle.Init.Oversampling.Ratio = 1;
-
- AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+   AdcHandle.Instance = ADCx;
+   AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+   #if (CPY_STM32H7 && ADCx == ADC12)
+   AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
+   #else
    AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+   #endif
    AdcHandle.Init.ScanConvMode = DISABLE;
    AdcHandle.Init.ContinuousConvMode = DISABLE;
    AdcHandle.Init.DiscontinuousConvMode = DISABLE;
    AdcHandle.Init.NbrOfDiscConversion = 0;
    AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
    AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+   AdcHandle.Init.LowPowerAutoWait = DISABLE;
+   AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+   AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+   AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+   AdcHandle.Init.OversamplingMode = DISABLE;
+   AdcHandle.Init.Oversampling.Ratio = 1;
    #if (!CPY_STM32H7)
    AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
    AdcHandle.Init.DMAContinuousRequests = DISABLE;
    #endif
    AdcHandle.Init.NbrOfConversion = 1;
    AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-
    #ifdef ADC_OVR_DATA_OVERWRITTEN
    AdcHandle.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;                    /* DR register is overwritten with the last conversion result in case of overrun */
    #endif
@@ -230,9 +229,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     // Stretch 12-bit ADC reading to 16-bit range
     #if (CPY_STM32H7 && ADCx == ADC12)
-    return (value << 4) | (value >> 8);
-    #else
     return value;
+    #else
+    return (value << 4) | (value >> 8);
     #endif
 }
 
