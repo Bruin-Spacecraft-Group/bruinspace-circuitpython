@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        board: [nucleo_h743zi_2]
+        board: [nucleo_h743zi_2, rapid_0]
     steps:
     - name: Set up repository
       uses: actions/checkout@v4
@@ -50,4 +50,3 @@ jobs:
         name: ${{ matrix.board }}
         path: ports/stm/build-${{ matrix.board }}/firmware.*
         overwrite: true
-

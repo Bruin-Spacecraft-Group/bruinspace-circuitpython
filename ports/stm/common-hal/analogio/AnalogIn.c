@@ -51,7 +51,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     LL_GPIO_SetPinMode(pin_port(pin->port), (uint32_t)pin_mask(pin->number), LL_GPIO_MODE_ANALOG);
     if (pin->adc_unit & 0x01) {
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
-    }else if (pin->adc_unit == 0x04) {
+    } else if (pin->adc_unit == 0x04) {
         #ifdef LL_APB2_GRP1_PERIPH_ADC3
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC3);
         #endif
@@ -154,74 +154,71 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     ADC_MultiModeTypeDef multimode = {0};
     ADC_ChannelConfTypeDef sConfig = {0};
 
-  /** Common config
-  */
-   AdcHandle.Instance = ADCx;
-   AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-   #if (CPY_STM32H7 && ADCx == ADC12)
-   AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
-   #else
-   AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
-   #endif
-   AdcHandle.Init.ScanConvMode = DISABLE;
-   AdcHandle.Init.ContinuousConvMode = DISABLE;
-   AdcHandle.Init.DiscontinuousConvMode = DISABLE;
-   AdcHandle.Init.NbrOfDiscConversion = 0;
-   AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-   AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-   AdcHandle.Init.LowPowerAutoWait = DISABLE;
-   AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
-   AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-   AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
-   AdcHandle.Init.OversamplingMode = DISABLE;
-   AdcHandle.Init.Oversampling.Ratio = 1;
-   #if (!CPY_STM32H7)
-   AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-   AdcHandle.Init.DMAContinuousRequests = DISABLE;
-   #endif
-   AdcHandle.Init.NbrOfConversion = 1;
-   AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-   #ifdef ADC_OVR_DATA_OVERWRITTEN
-   AdcHandle.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;                    /* DR register is overwritten with the last conversion result in case of overrun */
-   #endif
-  
-  if (HAL_ADC_Init(&AdcHandle) != HAL_OK)
-  {
-    return 0;
-  }
+    /** Common config
+    */
+    AdcHandle.Instance = ADCx;
+    AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+    #if (CPY_STM32H7 && ADCx == ADC12)
+    AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
+    #else
+    AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+    #endif
+    AdcHandle.Init.ScanConvMode = DISABLE;
+    AdcHandle.Init.ContinuousConvMode = DISABLE;
+    AdcHandle.Init.DiscontinuousConvMode = DISABLE;
+    AdcHandle.Init.NbrOfDiscConversion = 0;
+    AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+    AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+    AdcHandle.Init.LowPowerAutoWait = DISABLE;
+    AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+    AdcHandle.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+    AdcHandle.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+    AdcHandle.Init.OversamplingMode = DISABLE;
+    AdcHandle.Init.Oversampling.Ratio = 1;
+    #if (!CPY_STM32H7)
+    AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    AdcHandle.Init.DMAContinuousRequests = DISABLE;
+    #endif
+    AdcHandle.Init.NbrOfConversion = 1;
+    AdcHandle.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 
-  /** Configure the ADC multi-mode
-  */
-  multimode.Mode = ADC_MODE_INDEPENDENT;
-  if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK)
-  {
-    mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
-    return 0;
-  }
+    #ifdef ADC_OVR_DATA_OVERWRITTEN
+    AdcHandle.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;                   /* DR register is overwritten with the last conversion result in case of overrun */
+    #endif
 
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_3;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  sConfig.OffsetSignedSaturation = DISABLE;
-  if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK)
-  {
-    return 0;
-  }
+    if (HAL_ADC_Init(&AdcHandle) != HAL_OK) {
+        return 0;
+    }
 
-  #if CPY_STM32H7
-  HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, sConfig.SingleDiff);
-  #endif
+    /** Configure the ADC multi-mode
+    */
+    multimode.Mode = ADC_MODE_INDEPENDENT;
+    if (HAL_ADCEx_MultiModeConfigChannel(&AdcHandle, &multimode) != HAL_OK) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("2"));
+        return 0;
+    }
+
+    /** Configure Regular Channel
+    */
+    sConfig.Channel = ADC_CHANNEL_3;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+    sConfig.SingleDiff = ADC_SINGLE_ENDED;
+    sConfig.OffsetNumber = ADC_OFFSET_NONE;
+    sConfig.Offset = 0;
+    sConfig.OffsetSignedSaturation = DISABLE;
+    if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK) {
+        return 0;
+    }
+
+    #if CPY_STM32H7
+    HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, sConfig.SingleDiff);
+    #endif
 
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
         return 0;
     }
-    if (HAL_ADC_PollForConversion(&AdcHandle, HAL_MAX_DELAY) != HAL_OK)
-    {
+    if (HAL_ADC_PollForConversion(&AdcHandle, HAL_MAX_DELAY) != HAL_OK) {
         return 0;
     }
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);

@@ -396,6 +396,9 @@ endif
 ifeq ($(CIRCUITPY_FONTIO),1)
 SRC_PATTERNS += fontio/%
 endif
+ifeq ($(CIRCUITPY_TILEPALETTEMAPPER),1)
+SRC_PATTERNS += tilepalettemapper/%
+endif
 ifeq ($(CIRCUITPY_TIME),1)
 SRC_PATTERNS += time/%
 endif
@@ -629,6 +632,7 @@ SRC_SHARED_MODULE_ALL = \
 	audiocore/WaveFile.c \
 	audiocore/__init__.c \
 	audiodelays/Echo.c \
+	audiodelays/PitchShift.c \
 	audiodelays/__init__.c \
 	audiofilters/Distortion.c \
 	audiofilters/Filter.c \
@@ -732,12 +736,15 @@ SRC_SHARED_MODULE_ALL = \
 	synthio/__init__.c \
 	terminalio/Terminal.c \
 	terminalio/__init__.c \
+	tilepalettemapper/__init__.c \
+	tilepalettemapper/TilePaletteMapper.c \
 	time/__init__.c \
 	traceback/__init__.c \
 	uheap/__init__.c \
 	usb/__init__.c \
 	usb/core/__init__.c \
 	usb/core/Device.c \
+	usb/util/__init__.c \
 	ustack/__init__.c \
 	vectorio/Circle.c \
 	vectorio/Polygon.c \
@@ -937,7 +944,7 @@ SRC_CIRCUITPY_COMMON = \
 
 ifeq ($(CIRCUITPY_QRIO),1)
 SRC_CIRCUITPY_COMMON += lib/quirc/lib/decode.c lib/quirc/lib/identify.c lib/quirc/lib/quirc.c lib/quirc/lib/version_db.c
-$(BUILD)/lib/quirc/lib/%.o: CFLAGS += -Wno-shadow -Wno-sign-compare -include shared-module/qrio/quirc_alloc.h
+$(BUILD)/lib/quirc/lib/%.o: CFLAGS += -Wno-type-limits -Wno-shadow -Wno-sign-compare -include shared-module/qrio/quirc_alloc.h
 endif
 
 ifdef LD_TEMPLATE_FILE

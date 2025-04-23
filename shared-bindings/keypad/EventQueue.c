@@ -20,9 +20,11 @@
 //|     """
 //|
 //|     ...
+//|
 
 //|     def get(self) -> Optional[Event]:
-//|         """Return the next key transition event. Return ``None`` if no events are pending.
+//|         """Remove the next key transition event from the `EventQueue` and return it.
+//|         Return ``None`` if no events are pending.
 //|
 //|         Note that the queue size is limited; see ``max_events`` in the constructor of
 //|         a scanner such as `Keys` or `KeyMatrix`.
@@ -33,6 +35,7 @@
 //|         :rtype: Optional[Event]
 //|         """
 //|         ...
+//|
 static mp_obj_t keypad_eventqueue_get(mp_obj_t self_in) {
     keypad_eventqueue_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -41,7 +44,7 @@ static mp_obj_t keypad_eventqueue_get(mp_obj_t self_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(keypad_eventqueue_get_obj, keypad_eventqueue_get);
 
 //|     def get_into(self, event: Event) -> bool:
-//|         """Store the next key transition event in the supplied event, if available,
+//|         """Remove the next key transition event from the ``EventQueue`, store it in ``event``,
 //|         and return ``True``.
 //|         If there are no queued events, do not touch ``event`` and return ``False``.
 //|
@@ -55,6 +58,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(keypad_eventqueue_get_obj, keypad_eventqueue_get);
 //|         :rtype: bool
 //|         """
 //|         ...
+//|
 static mp_obj_t keypad_eventqueue_get_into(mp_obj_t self_in, mp_obj_t event_in) {
     keypad_eventqueue_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -67,6 +71,7 @@ MP_DEFINE_CONST_FUN_OBJ_2(keypad_eventqueue_get_into_obj, keypad_eventqueue_get_
 //|     def clear(self) -> None:
 //|         """Clear any queued key transition events. Also sets `overflowed` to ``False``."""
 //|         ...
+//|
 static mp_obj_t keypad_eventqueue_clear(mp_obj_t self_in) {
     keypad_eventqueue_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -84,6 +89,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(keypad_eventqueue_clear_obj, keypad_eventqueue_clear);
 //|     def __len__(self) -> int:
 //|         """Return the number of events currently in the queue. Used to implement ``len()``."""
 //|         ...
+//|
 static mp_obj_t keypad_eventqueue_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     keypad_eventqueue_obj_t *self = MP_OBJ_TO_PTR(self_in);
     uint16_t len = common_hal_keypad_eventqueue_get_length(self);
@@ -101,6 +107,7 @@ static mp_obj_t keypad_eventqueue_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
 //|     """``True`` if an event could not be added to the event queue because it was full. (read-only)
 //|     Set to ``False`` by  `clear()`.
 //|     """
+//|
 //|
 static mp_obj_t keypad_eventqueue_get_overflowed(mp_obj_t self_in) {
     keypad_eventqueue_obj_t *self = MP_OBJ_TO_PTR(self_in);

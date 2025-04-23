@@ -20,8 +20,8 @@
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/microcontroller/Processor.h"
 
-#include "src/rp2040/hardware_structs/include/hardware/structs/dma.h"
-#include "src/rp2_common/hardware_pwm/include/hardware/pwm.h"
+#include "hardware/structs/dma.h"
+#include "hardware/pwm.h"
 
 // The PWM clock frequency is base_clock_rate / PWM_TOP, typically 125_000_000 / PWM_TOP.
 // We pick BITS_PER_SAMPLE so we get a clock frequency that is above what would cause aliasing.
@@ -187,7 +187,7 @@ void common_hal_audiopwmio_pwmaudioout_play(audiopwmio_pwmaudioout_obj_t *self, 
     // to trigger the DMA. Each has a 16 bit fractional divisor system clock * X / Y where X and Y
     // are 16-bit.
 
-    uint32_t sample_rate = audiosample_sample_rate(sample);
+    uint32_t sample_rate = audiosample_get_sample_rate(sample);
 
     uint32_t system_clock = common_hal_mcu_processor_get_frequency();
     uint32_t best_denominator;

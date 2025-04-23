@@ -21,7 +21,7 @@
 //|         sck: microcontroller.Pin,
 //|         mosi: microcontroller.Pin,
 //|         miso: microcontroller.Pin,
-//|         ss: microcontroller.Pin
+//|         ss: microcontroller.Pin,
 //|     ) -> None:
 //|         """SPI is a four-wire protocol for communicating between devices.
 //|         This implements the secondary (aka target or peripheral) side.
@@ -31,7 +31,8 @@
 //|         :param ~microcontroller.Pin miso: The pin transferring data from the secondary to the main
 //|         :param ~microcontroller.Pin ss: The secondary selection pin"""
 //|         ...
-STATIC mp_obj_t spitarget_spi_target_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+//|
+static mp_obj_t spitarget_spi_target_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     spitarget_spi_target_obj_t *self = mp_obj_malloc(spitarget_spi_target_obj_t, &spitarget_spi_target_type);
     enum { ARG_sck, ARG_mosi, ARG_miso, ARG_ss };
     static const mp_arg_t allowed_args[] = {
@@ -55,7 +56,8 @@ STATIC mp_obj_t spitarget_spi_target_make_new(const mp_obj_type_t *type, size_t 
 //|     def deinit(self) -> None:
 //|         """Releases control of the underlying hardware so other classes can use it."""
 //|         ...
-STATIC mp_obj_t spitarget_spi_target_obj_deinit(mp_obj_t self_in) {
+//|
+static mp_obj_t spitarget_spi_target_obj_deinit(mp_obj_t self_in) {
     mp_check_self(mp_obj_is_type(self_in, &spitarget_spi_target_type));
     spitarget_spi_target_obj_t *self = MP_OBJ_TO_PTR(self_in);
     common_hal_spitarget_spi_target_deinit(self);
@@ -66,28 +68,31 @@ MP_DEFINE_CONST_FUN_OBJ_1(spitarget_spi_target_deinit_obj, spitarget_spi_target_
 //|     def __enter__(self) -> SPITarget:
 //|         """No-op used in Context Managers."""
 //|         ...
+//|
 //  Provided by context manager helper.
 
 //|     def __exit__(self) -> None:
 //|         """Automatically deinitializes the hardware on context exit. See
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
-STATIC mp_obj_t spitarget_spi_target_obj___exit__(size_t n_args, const mp_obj_t *args) {
+//|
+static mp_obj_t spitarget_spi_target_obj___exit__(size_t n_args, const mp_obj_t *args) {
     mp_check_self(mp_obj_is_type(args[0], &spitarget_spi_target_target_type));
     spitarget_spi_target_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     common_hal_spitarget_spi_target_deinit(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(spitarget_spi_target___exit___obj, 4, 4, spitarget_spi_target_obj___exit__);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(spitarget_spi_target___exit___obj, 4, 4, spitarget_spi_target_obj___exit__);
 
 //|     def load_packet(self, mosi_packet: bytearray, miso_packet: bytearray) -> None:
 //|         """Queue data for the next SPI transfer from the main device.
 //|         If a packet has already been queued for this SPI bus but has not yet been transferred, an error will be raised.
 //|
-//|         :param bytearray miso_packet: Packet data to be sent from secondary to main on next request."""
-//|         :param bytearray mosi_packet: Packet to be filled with data from main on next request."""
+//|         :param bytearray miso_packet: Packet data to be sent from secondary to main on next request.
+//|         :param bytearray mosi_packet: Packet to be filled with data from main on next request.
+//|         """
 //|
-STATIC mp_obj_t spitarget_spi_target_load_packet(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t spitarget_spi_target_load_packet(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     mp_check_self(mp_obj_is_type(pos_args[0], &spitarget_spi_target_type));
     spitarget_spi_target_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     if (common_hal_spitarget_spi_target_deinited(self)) {
@@ -114,16 +119,17 @@ STATIC mp_obj_t spitarget_spi_target_load_packet(size_t n_args, const mp_obj_t *
     common_hal_spitarget_spi_target_transfer_start(self, ((uint8_t *)mosi_bufinfo.buf), ((uint8_t *)miso_bufinfo.buf), mosi_bufinfo.len);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_load_packet_obj, 1, spitarget_spi_target_load_packet);
+static MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_load_packet_obj, 1, spitarget_spi_target_load_packet);
 
 //|     def wait_transfer(self, *, timeout: float = -1) -> bool:
 //|         """Wait for an SPI transfer from the main device.
 //|
 //|         :param float timeout: Timeout in seconds. Zero means wait forever, a negative value means check once
 //|         :return: True if the transfer is complete, or False if no response received before the timeout
-//|         :rtype: ~bool"""
+//|         """
 //|
-STATIC mp_obj_t spitarget_spi_target_wait_transfer(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+//|
+static mp_obj_t spitarget_spi_target_wait_transfer(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     mp_check_self(mp_obj_is_type(pos_args[0], &spitarget_spi_target_type));
     spitarget_spi_target_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     if (common_hal_spitarget_spi_target_deinited(self)) {
@@ -161,9 +167,9 @@ STATIC mp_obj_t spitarget_spi_target_wait_transfer(size_t n_args, const mp_obj_t
 
     return mp_const_false;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_wait_transfer_obj, 1, spitarget_spi_target_wait_transfer);
+static MP_DEFINE_CONST_FUN_OBJ_KW(spitarget_spi_target_wait_transfer_obj, 1, spitarget_spi_target_wait_transfer);
 
-STATIC const mp_rom_map_elem_t spitarget_spi_target_locals_dict_table[] = {
+static const mp_rom_map_elem_t spitarget_spi_target_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&spitarget_spi_target_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
     { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&spitarget_spi_target___exit___obj) },
@@ -172,7 +178,7 @@ STATIC const mp_rom_map_elem_t spitarget_spi_target_locals_dict_table[] = {
 
 };
 
-STATIC MP_DEFINE_CONST_DICT(spitarget_spi_target_locals_dict, spitarget_spi_target_locals_dict_table);
+static MP_DEFINE_CONST_DICT(spitarget_spi_target_locals_dict, spitarget_spi_target_locals_dict_table);
 
 MP_DEFINE_CONST_OBJ_TYPE(
     spitarget_spi_target_type,
