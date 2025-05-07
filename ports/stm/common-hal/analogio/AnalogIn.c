@@ -147,9 +147,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     }
 
     LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
-//     // LL_GPIO_PIN_0
+    // LL_GPIO_PIN_0
 
-//     // HAL Implementation
+    // HAL Implementation
     ADC_HandleTypeDef AdcHandle = {};
     ADC_MultiModeTypeDef multimode = {0};
     ADC_ChannelConfTypeDef sConfig = {0};
@@ -199,7 +199,11 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     /** Configure Regular Channel
     */
-    sConfig.Channel = ADC_CHANNEL_3;
+    if (CPY_STM32H7 && ADCx == ADC1)
+        sConfig.Channel = ADC_CHANNEL_1
+    else
+        sConfig.Channel = ADC_CHANNEL_3;
+    #endif
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
     sConfig.SingleDiff = ADC_SINGLE_ENDED;
