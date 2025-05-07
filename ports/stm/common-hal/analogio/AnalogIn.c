@@ -200,7 +200,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     /** Configure Regular Channel
     */
 
-    sConfig.Channel = ADC_CHANNEL_3;
+    sConfig.Channel = self->pin->p_adc->adc_channel;
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
     sConfig.SingleDiff = ADC_SINGLE_ENDED;
