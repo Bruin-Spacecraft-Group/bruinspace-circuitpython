@@ -128,11 +128,14 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // so we completely re-initialize it.
     ADC_TypeDef *ADCx;
 
+    bool higherRes = false;
+
     if (self->pin->adc_unit & 0x01) {
         ADCx = ADC1;
         #if CPY_STM32L4
         __HAL_RCC_ADC_CLK_ENABLE();
         #elif CPY_STM32H7
+        higherRes = true;
         __HAL_RCC_ADC12_CLK_ENABLE();
         #endif
     } else if (self->pin->adc_unit == 0x04) {
@@ -158,11 +161,14 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     */
     AdcHandle.Instance = ADCx;
     AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-    #if (CPY_STM32H7 && ADCx == ADC1)
-    AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
-    #else
-    AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
-    #endif
+    if (higherRes)
+    {
+        AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
+    }
+    else
+    {
+        AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
+    }
     AdcHandle.Init.ScanConvMode = DISABLE;
     AdcHandle.Init.ContinuousConvMode = DISABLE;
     AdcHandle.Init.DiscontinuousConvMode = DISABLE;
@@ -230,12 +236,15 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
-    #if (CPY_STM32H7 && ADCx == ADC1)
+    if (higherRes)
+    {
     return value;
-    #else
+    }
+    else
+    {
     // Stretch 12-bit ADC reading to 16-bit range
     return (value << 4) | (value >> 8);
-    #endif
+    }
 }
 
 float common_hal_analogio_analogin_get_reference_voltage(analogio_analogin_obj_t *self) {
