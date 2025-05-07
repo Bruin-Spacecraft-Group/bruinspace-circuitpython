@@ -147,9 +147,9 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     }
 
     LL_GPIO_SetPinMode(pin_port(self->pin->port), (uint32_t)pin_mask(self->pin->number), LL_GPIO_MODE_ANALOG);
-    // LL_GPIO_PIN_0
+//     // LL_GPIO_PIN_0
 
-    // HAL Implementation
+//     // HAL Implementation
     ADC_HandleTypeDef AdcHandle = {};
     ADC_MultiModeTypeDef multimode = {0};
     ADC_ChannelConfTypeDef sConfig = {0};
@@ -158,7 +158,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     */
     AdcHandle.Instance = ADCx;
     AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-    #if (CPY_STM32H7 && ADCx == ADC1)
+    #if (CPY_STM32H7 && ADCx == ADC12)
     AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
     #else
     AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
@@ -223,7 +223,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
-    #if (CPY_STM32H7 && ADCx == ADC1)
+    #if (CPY_STM32H7 && ADCx == ADC12)
     return value;
     #else
     // Stretch 12-bit ADC reading to 16-bit range
