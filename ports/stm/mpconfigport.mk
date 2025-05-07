@@ -35,6 +35,7 @@ endif
 
 ifeq ($(MCU_SERIES),H7)
         # Not yet implemented common-hal modules:
+        CIRCUITPY_ALARM ?= 1
         CIRCUITPY_ANALOGIO ?= 1
         CIRCUITPY_AUDIOBUSIO ?= 0
         CIRCUITPY_AUDIOIO ?= 0
