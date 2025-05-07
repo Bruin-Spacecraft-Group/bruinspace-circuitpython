@@ -75,7 +75,7 @@ void common_hal_analogio_analogin_deinit(analogio_analogin_obj_t *self) {
 }
 
 uint32_t adc_channel(uint32_t channel) {
-    #if (CPY_STM32L4 || CPY_STm32H7)
+    #if (CPY_STM32L4 || CPY_STM32H7)
     switch (channel) {
         case 0:
             return ADC_CHANNEL_0;
