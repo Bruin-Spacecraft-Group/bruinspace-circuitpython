@@ -158,7 +158,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     */
     AdcHandle.Instance = ADCx;
     AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-    #if (CPY_STM32H7 && ADCx == ADC12)
+    #if (CPY_STM32H7 && ADCx == ADC1)
     AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
     #else
     AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
@@ -203,17 +203,18 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     sConfig.Channel = adc_channel(self->pin->adc_channel); // ADC_CHANNEL_0 <-normal iteration, not mask
     sConfig.Rank = 1;
     sConfig.SamplingTime = ADC_SAMPLETIME;
-    #if CPY_STM32L4
+    #if (CPY_STM32L4 || CPY_STM32H7)
     sConfig.SingleDiff = ADC_SINGLE_ENDED;                   /* Single-ended input channel */
     sConfig.OffsetNumber = ADC_OFFSET_NONE;                  /* No offset subtraction */
     if (!IS_ADC_CHANNEL(&AdcHandle, sConfig.Channel)) {
         return 0;
     }
     #endif
+    
     if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK) {
         return 0;
     }
-
+    
     #if CPY_STM32H7
     HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, sConfig.SingleDiff);
     #endif
@@ -227,7 +228,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
-    #if (CPY_STM32H7 && ADCx == ADC12)
+    #if (CPY_STM32H7 && ADCx == ADC1)
     return value;
     #else
     // Stretch 12-bit ADC reading to 16-bit range
