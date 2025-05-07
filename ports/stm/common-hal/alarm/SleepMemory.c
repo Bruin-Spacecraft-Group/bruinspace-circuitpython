@@ -17,6 +17,10 @@
     #define STM_BKPSRAM_START 0
     #define HAL_PWREx_EnableBkUpReg()
 // backup RAM disabled for now. Will have the backup region at the top of SRAM3 which is retained.
+#elif CPY_STM32H7
+    #define __HAL_RCC_BKPSRAM_CLK_ENABLE()  __HAL_RCC_BKPRAM_CLK_ENABLE()
+    #define STM_BKPSRAM_SIZE    0xFA0
+    #define STM_BKPSRAM_START   BKPRAM_BASE
 #else
     #define STM_BKPSRAM_SIZE    0x1000
     #define STM_BKPSRAM_START   BKPSRAM_BASE
