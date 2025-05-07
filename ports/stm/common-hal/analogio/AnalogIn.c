@@ -200,13 +200,16 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     /** Configure Regular Channel
     */
 
-    sConfig.Channel = (self->pin)->p_adc->adc_channel;
-    sConfig.Rank = ADC_REGULAR_RANK_1;
-    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-    sConfig.SingleDiff = ADC_SINGLE_ENDED;
-    sConfig.OffsetNumber = ADC_OFFSET_NONE;
-    sConfig.Offset = 0;
-    sConfig.OffsetSignedSaturation = DISABLE;
+    sConfig.Channel = adc_channel(self->pin->adc_channel); // ADC_CHANNEL_0 <-normal iteration, not mask
+    sConfig.Rank = 1;
+    sConfig.SamplingTime = ADC_SAMPLETIME;
+    #if CPY_STM32L4
+    sConfig.SingleDiff = ADC_SINGLE_ENDED;                   /* Single-ended input channel */
+    sConfig.OffsetNumber = ADC_OFFSET_NONE;                  /* No offset subtraction */
+    if (!IS_ADC_CHANNEL(&AdcHandle, sConfig.Channel)) {
+        return 0;
+    }
+    #endif
     if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK) {
         return 0;
     }
