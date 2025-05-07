@@ -206,6 +206,8 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     #if (CPY_STM32L4 || CPY_STM32H7)
     sConfig.SingleDiff = ADC_SINGLE_ENDED;                   /* Single-ended input channel */
     sConfig.OffsetNumber = ADC_OFFSET_NONE;                  /* No offset subtraction */
+    #endif
+    #if CPY_STM32L4
     if (!IS_ADC_CHANNEL(&AdcHandle, sConfig.Channel)) {
         return 0;
     }
