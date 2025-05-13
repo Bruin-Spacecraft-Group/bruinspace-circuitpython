@@ -8,6 +8,8 @@
 #include "common-hal/analogio/AnalogIn.h"
 #include "py/runtime.h"
 
+#include <stdio.h> //remove this line when done bug testing
+
 #include "shared-bindings/microcontroller/Pin.h"
 
 #if CPY_STM32L4
