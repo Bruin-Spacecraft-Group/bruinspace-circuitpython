@@ -26,7 +26,6 @@
 #include "stm32h7xx_ll_adc.h"
 #include "stm32h7xx_ll_bus.h"
 #define ADC_SAMPLETIME ADC_SAMPLETIME_16CYCLES_5
-#define LL_APB2_GRP1_PERIPH_ADC1 LL_APB2_GRP1_PERIPH_DFSDM1
 
 #elif CPY_STM32F4
 #include "stm32f4xx_hal.h"
@@ -52,10 +51,14 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     // for dual conversion. For this basic application it is never used.
     LL_GPIO_SetPinMode(pin_port(pin->port), (uint32_t)pin_mask(pin->number), LL_GPIO_MODE_ANALOG);
     if (pin->adc_unit & 0x01) {
+        #if (!CPY_STM32H7)
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
+        #endif
     } else if (pin->adc_unit == 0x04) {
         #ifdef LL_APB2_GRP1_PERIPH_ADC3
+        #if (!CPY_STM32H7)
         LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC3);
+        #endif
         #endif
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
@@ -163,7 +166,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     */
     AdcHandle.Instance = ADCx;
     AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-    if (higherRes)
+    if (CPY_STM32H7 && self->pin->adc_unit & 0x01)
     {
         AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
     }
@@ -226,7 +229,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
         return 0;
     }
     
-    #if CPY_STM32H7
+    #if (CPY_STM32H7)
     HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, sConfig.SingleDiff);
     #endif
 
@@ -239,15 +242,14 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
-    if (higherRes)
+    #if (CPY_STM32H7)
+    if (self->pin->adc_unit & 0x01)
     {
     return value;
     }
-    else
-    {
+    #endif
     // Stretch 12-bit ADC reading to 16-bit range
     return (value << 4) | (value >> 8);
-    }
 }
 
 float common_hal_analogio_analogin_get_reference_voltage(analogio_analogin_obj_t *self) {
