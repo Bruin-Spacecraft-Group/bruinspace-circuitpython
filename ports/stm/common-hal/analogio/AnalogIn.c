@@ -8,7 +8,7 @@
 #include "common-hal/analogio/AnalogIn.h"
 #include "py/runtime.h"
 
-#include <stdio.h> //remove this line when done bug testing
+#include <stdio.h> // remove this line when done bug testing
 
 #include "shared-bindings/microcontroller/Pin.h"
 
@@ -133,14 +133,11 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // so we completely re-initialize it.
     ADC_TypeDef *ADCx;
 
-    bool higherRes = false;
-
     if (self->pin->adc_unit & 0x01) {
         ADCx = ADC1;
         #if CPY_STM32L4
         __HAL_RCC_ADC_CLK_ENABLE();
         #elif CPY_STM32H7
-        higherRes = true;
         __HAL_RCC_ADC12_CLK_ENABLE();
         #endif
     } else if (self->pin->adc_unit == 0x04) {
@@ -166,12 +163,10 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     */
     AdcHandle.Instance = ADCx;
     AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-    if (CPY_STM32H7 && self->pin->adc_unit & 0x01)
-    {
+    if (CPY_STM32H7 && self->pin->adc_unit & 0x01) {
         AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
     }
-    else
-    {
+    else {
         AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
     }
     AdcHandle.Init.ScanConvMode = DISABLE;
@@ -219,7 +214,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     sConfig.SingleDiff = ADC_SINGLE_ENDED;                   /* Single-ended input channel */
     sConfig.OffsetNumber = ADC_OFFSET_NONE;                  /* No offset subtraction */
     #endif
-    #if CPY_STM32L4
+    #if (CPY_STM32L4)
     if (!IS_ADC_CHANNEL(&AdcHandle, sConfig.Channel)) {
         return 0;
     }
@@ -243,8 +238,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     HAL_ADC_Stop(&AdcHandle);
 
     #if (CPY_STM32H7)
-    if (self->pin->adc_unit & 0x01)
-    {
+    if (self->pin->adc_unit & 0x01) {
     return value;
     }
     #endif
