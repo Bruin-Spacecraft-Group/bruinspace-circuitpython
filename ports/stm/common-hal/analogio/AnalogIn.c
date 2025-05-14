@@ -233,7 +233,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
     printf("VREFINT Cal: %lu\n", *VREFINT_CAL_ADDR);
-    printf("VREFINT Raw: %lu\n", HAL_ADCEx_Calibration_GetValue(&AdcHangle, ADC_CALIB_OFFSET));
+    printf("VREFINT Raw: %lu\n", HAL_ADCEx_Calibration_GetValue(&AdcHandle, ADC_CALIB_OFFSET));
     #endif
 
     
