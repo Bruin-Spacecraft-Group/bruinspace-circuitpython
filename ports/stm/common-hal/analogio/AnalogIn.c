@@ -63,6 +63,15 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
     } else {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Invalid ADC Unit value"));
     }
+
+    #if (CPY_STM32H7)
+    __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_PLL2);
+    HAL_ADCEx_Calibration_Start(&hadc, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
+
+    LL_ADC_EnableInternalRegulator(hadc.Instance);
+    HAL_Delay(10);
+    #endif
+
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
 }
