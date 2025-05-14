@@ -95,7 +95,16 @@ void stm32_peripherals_clocks_init(void) {
     #endif
 
     // ADC Clock init
-    PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL;
+    PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+
+    RCC_OscInitStruct.PLL2.PLL2M = 1;
+    RCC_OscInitStruct.PLL2.PLL2N = 12;
+    RCC_OscInitStruct.PLL2.PLL2P = 2;
+    RCC_OscInitStruct.PLL2.PLL2Q = 4;
+    RCC_OscInitStruct.PLL2.PLL2R = 2;
+    RCC_OscInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_1;
+    RCC_OscInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;;
+    RCC_OscInitStruct.PLL2.PLL2FRACN = 0;
 
     #ifdef STM32H750xx
     // USB
