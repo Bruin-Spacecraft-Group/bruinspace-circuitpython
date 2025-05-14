@@ -230,7 +230,13 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     LL_ADC_EnableInternalRegulator(AdcHandle.Instance);
     HAL_Delay(10);
+
+    printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
+    printf("VREFINT Cal: %lu\n", *VREFINT_CAL_ADDR);
+    printf("VREFINT Raw: %lu\n", HAL_ADCEx_Calibration_GetValue(&hadc, ADC_CALIB_OFFSET));
     #endif
+
+    
 
     if (HAL_ADC_Start(&AdcHandle) != HAL_OK) {
         return 0;
