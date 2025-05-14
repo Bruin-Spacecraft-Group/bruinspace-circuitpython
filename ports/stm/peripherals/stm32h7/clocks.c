@@ -95,7 +95,7 @@ void stm32_peripherals_clocks_init(void) {
     #endif
 
     // ADC Clock init
-    PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL;
 
     #ifdef STM32H750xx
     // USB
