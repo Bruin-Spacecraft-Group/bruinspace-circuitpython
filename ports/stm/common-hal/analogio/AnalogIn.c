@@ -234,7 +234,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
     printf("VREFINT Cal: %d\n", *VREFINT_CAL_ADDR);
     printf("VREFINT Raw: %lu\n", HAL_ADCEx_Calibration_GetValue(&AdcHandle, ADC_CALIB_OFFSET));
-    printf("LL_ADC_Is_Enabled:" %d\n, LL_ADC_IsEnabled(ADC1));
+    printf("LL_ADC_Is_Enabled: %d\n", LL_ADC_IsEnabled(ADC1));
     #endif
 
     
