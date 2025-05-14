@@ -248,13 +248,6 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     uint16_t value = (uint16_t)HAL_ADC_GetValue(&AdcHandle);
     HAL_ADC_Stop(&AdcHandle);
 
-    #if (CPY_STM32H7) // debugging, remove at end
-    sConfig.Channel = ADC_CHANNEL_0;
-    HAL_ADC_ConfigChannel(&AdcHandle, &sConfig);
-    uint16_t raw_gnd = read_adc(&ADC_Handle);
-    printf("GND pin reading: %u\n", raw_gnd);
-    #endif
-
     #if (CPY_STM32H7)
     if (self->pin->adc_unit & 0x01) {
         return value;
