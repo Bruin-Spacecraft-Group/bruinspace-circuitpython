@@ -163,7 +163,11 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     /** Common config
     */
     AdcHandle.Instance = ADCx;
+    #if (CPY_STM32H7)
+    AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+    #else
     AdcHandle.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+    #endif
     if (CPY_STM32H7 && self->pin->adc_unit & 0x01) {
         AdcHandle.Init.Resolution = ADC_RESOLUTION_16B;
     } else {
