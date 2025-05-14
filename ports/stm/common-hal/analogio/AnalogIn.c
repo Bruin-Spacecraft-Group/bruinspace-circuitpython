@@ -234,7 +234,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
     printf("VREFINT Cal: %d\n", *VREFINT_CAL_ADDR);
     printf("VREFINT Raw: %lu\n", HAL_ADCEx_Calibration_GetValue(&AdcHandle, ADC_CALIB_OFFSET));
-    printf("LL_ADC_Is_Enabled: %d\n", LL_ADC_IsEnabled(ADC1));
+    printf("LL_ADC_Is_Enabled: %ld\n", LL_ADC_IsEnabled(ADC1));
     #endif
 
     
@@ -250,7 +250,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     #if (CPY_STM32H7) // debugging, remove at end
     sConfig.Channel = ADC_CHANNEL_0;
-    HAL_ADC_ConfigChannel(&ADC_Handle, &sConfig);
+    HAL_ADC_ConfigChannel(&AdcHandle, &sConfig);
     uint16_t raw_gnd = read_adc(&ADC_Handle);
     printf("GND pin reading: %u\n", raw_gnd);
     #endif
