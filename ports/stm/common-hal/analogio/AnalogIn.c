@@ -132,7 +132,14 @@ uint32_t adc_channel(uint32_t channel) {
 uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // Something else might have used the ADC in a different way,
     // so we completely re-initialize it.
+
+    RCC_PeriphCLKInitTypeDef periph_clk = {0};
+    periph_clk.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    periph_clk.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+    HAL_RCCEx_PeriphCLKConfig(&periph_clk);
+
     ADC_TypeDef *ADCx;
+    
 
     if (self->pin->adc_unit & 0x01) {
         ADCx = ADC1;
@@ -230,10 +237,10 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     #if (CPY_STM32H7)
     __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_PLL2);
-    HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
     LL_ADC_EnableInternalRegulator(AdcHandle.Instance);
     HAL_Delay(10);
+    HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
     printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
     printf("VREFINT Cal: %d\n", *VREFINT_CAL_ADDR);
