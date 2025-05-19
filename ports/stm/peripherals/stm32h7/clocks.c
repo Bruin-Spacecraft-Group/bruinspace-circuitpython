@@ -4,6 +4,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include <stdio.h> // Remove this include when finished
+
 #include "stm32h7xx_hal.h"
 #include "supervisor/shared/safe_mode.h"
 #include <stdbool.h>
