@@ -135,4 +135,6 @@ void stm32_peripherals_clocks_init(void) {
     while (__HAL_RCC_GET_FLAG(RCC_FLAG_PLL2RDY) == RESET) {
     // Wait for PLL2 to stabilize
     }
+
+    printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
 }
