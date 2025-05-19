@@ -104,6 +104,9 @@ void stm32_peripherals_clocks_init(void) {
     PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
 
     __HAL_RCC_PLL2_ENABLE();
+    while (__HAL_RCC_GET_FLAG(RCC_FLAG_PLL2RDY) == RESET) {
+    // Wait for PLL2 to stabilize
+    }
 
     // ADC Clock init
     PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;

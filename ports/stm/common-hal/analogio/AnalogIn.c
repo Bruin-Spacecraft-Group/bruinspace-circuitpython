@@ -242,6 +242,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     HAL_Delay(10);
     HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
+    printf("PLL2 Ready: %d\n", __HAL_RCC_GET_FLAG(RCC_FLAG_PLL2RDY));
     printf("ADC Clock: %lu Hz\n", HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC));
     printf("ADC clock source: %lu\n", __HAL_RCC_GET_ADC_SOURCE());
     printf("VREFINT Cal: %d\n", *VREFINT_CAL_ADDR);
