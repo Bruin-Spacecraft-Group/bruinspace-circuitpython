@@ -133,6 +133,8 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // Something else might have used the ADC in a different way,
     // so we completely re-initialize it.
 
+
+
     RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
     PeriphClkInitStruct.PLL2.PLL2M = 5;
     PeriphClkInitStruct.PLL2.PLL2N = 160;
@@ -145,7 +147,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
 
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADC;
     PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
-    HAL_RCCEx_PeriphCLKConfig(&periph_clk);
+    HAL_RCCEx_PeriphCLKConfig(PeriphClkInitStruct);
 
     ADC_TypeDef *ADCx;
     
