@@ -66,6 +66,7 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
 
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
+    HAL_ADC_Init();
 }
 
 bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
@@ -134,7 +135,7 @@ uint16_t common_hal_analogio_analogin_get_value(analogio_analogin_obj_t *self) {
     // so we completely re-initialize it.
 
 
-
+    //remove clock config
     RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
     PeriphClkInitStruct.PLL2.PLL2M = 5;
     PeriphClkInitStruct.PLL2.PLL2N = 160;
