@@ -15,10 +15,10 @@ typedef struct {
 } mcu_pin_obj_t;
 
 #define PIN(p_number)       \
-        { \
-            { &mcu_pin_type }, \
-            .number = p_number \
-        }
+    { \
+        { &mcu_pin_type }, \
+        .number = p_number \
+    }
 
 extern const mcu_pin_obj_t pin_TOUCH1;
 extern const mcu_pin_obj_t pin_TOUCH2;

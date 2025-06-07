@@ -426,13 +426,13 @@ void mp_binary_set_val(char struct_type, char val_type, mp_obj_t val_in, byte *p
 
     mp_uint_t val;
     switch (val_type) {
-    // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
-    #if MICROPY_NONSTANDARD_TYPECODES
+        // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+        #if MICROPY_NONSTANDARD_TYPECODES
         case 'O':
             val = (mp_uint_t)val_in;
             break;
-    #endif
-    #if MICROPY_PY_BUILTINS_FLOAT
+        #endif
+        #if MICROPY_PY_BUILTINS_FLOAT
         case 'e':
             val = mp_encode_half_float(mp_obj_get_float_to_f(val_in));
             break;
@@ -462,7 +462,7 @@ void mp_binary_set_val(char struct_type, char val_type, mp_obj_t val_in, byte *p
             }
             break;
         }
-    #endif
+        #endif
         default: {
             // CIRCUITPY-CHANGE: add overflow checks
             bool signed_type = is_signed(val_type);
@@ -497,21 +497,21 @@ void mp_binary_set_val(char struct_type, char val_type, mp_obj_t val_in, byte *p
 
 void mp_binary_set_val_array(char typecode, void *p, size_t index, mp_obj_t val_in) {
     switch (typecode) {
-    #if MICROPY_PY_BUILTINS_FLOAT
+        #if MICROPY_PY_BUILTINS_FLOAT
         case 'f':
             ((float *)p)[index] = mp_obj_get_float_to_f(val_in);
             break;
         case 'd':
             ((double *)p)[index] = mp_obj_get_float_to_d(val_in);
             break;
-    #endif
-    // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
-    #if MICROPY_NONSTANDARD_TYPECODES
+        #endif
+        // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+        #if MICROPY_NONSTANDARD_TYPECODES
         // Extension to CPython: array of objects
         case 'O':
             ((mp_obj_t *)p)[index] = val_in;
             break;
-    #endif
+        #endif
         default: {
             // CIRCUITPY-CHANGE: add overflow checks
             size_t size = mp_binary_get_size('@', typecode, NULL);

@@ -12,4 +12,4 @@
 #include "py/mpconfig.h"
 
 #define INTERNAL_FLASH_SYSTICK_MASK     (0x1ff) // 512ms
-#define INTERNAL_FLASH_IDLE_TICK(tick)  (((tick)&INTERNAL_FLASH_SYSTICK_MASK) == 2)
+#define INTERNAL_FLASH_IDLE_TICK(tick)  (((tick) & INTERNAL_FLASH_SYSTICK_MASK) == 2)

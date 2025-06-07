@@ -39,7 +39,7 @@ mp_float_t common_hal_synthio_voct_to_hz_float(mp_float_t octave) {
 
 static int16_t convert_time_to_rate(uint32_t sample_rate, mp_obj_t time_in, int16_t difference) {
     mp_float_t time = mp_obj_get_float(time_in);
-    int num_samples = (int)MICROPY_FLOAT_C_FUN(round)(time *sample_rate);
+    int num_samples = (int)MICROPY_FLOAT_C_FUN(round)(time * sample_rate);
     if (num_samples == 0) {
         return 32767;
     }
@@ -272,12 +272,12 @@ static mp_obj_t synthio_synth_get_note_filter(mp_obj_t note_obj) {
 static void sum_with_loudness(int32_t *out_buffer32, int32_t *tmp_buffer32, int16_t loudness[2], size_t dur, int synth_chan) {
     if (synth_chan == 1) {
         for (size_t i = 0; i < dur; i++) {
-            *out_buffer32++ += (*tmp_buffer32++ * loudness[0]) >> 16;
+            *out_buffer32++ += (*tmp_buffer32++ *loudness[0]) >> 16;
         }
     } else {
         for (size_t i = 0; i < dur; i++) {
             *out_buffer32++ += (*tmp_buffer32 * loudness[0]) >> 16;
-            *out_buffer32++ += (*tmp_buffer32++ * loudness[1]) >> 16;
+            *out_buffer32++ += (*tmp_buffer32++ *loudness[1]) >> 16;
         }
     }
 }

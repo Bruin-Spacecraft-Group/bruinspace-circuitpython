@@ -205,7 +205,7 @@ static const uint8_t reg_local_table[MAX_REGS_FOR_LOCAL_VARS] = {REG_LOCAL_1, RE
 #define REG_LOCAL_LAST (reg_local_table[MAX_REGS_FOR_LOCAL_VARS - 1])
 
 #define EMIT_NATIVE_VIPER_TYPE_ERROR(emit, ...) do { \
-            *emit->error_slot = mp_obj_new_exception_msg_varg(&mp_type_ViperTypeError, __VA_ARGS__); \
+        *emit->error_slot = mp_obj_new_exception_msg_varg(&mp_type_ViperTypeError, __VA_ARGS__); \
 } while (0)
 
 typedef enum {
@@ -386,10 +386,10 @@ static void emit_native_mov_reg_qstr_obj(emit_t *emit, int reg_dest, qstr qst) {
 }
 
 #define emit_native_mov_state_imm_via(emit, local_num, imm, reg_temp) \
-        do { \
-            ASM_MOV_REG_IMM((emit)->as, (reg_temp), (imm)); \
-            emit_native_mov_state_reg((emit), (local_num), (reg_temp)); \
-        } while (false)
+    do { \
+        ASM_MOV_REG_IMM((emit)->as, (reg_temp), (imm)); \
+        emit_native_mov_state_reg((emit), (local_num), (reg_temp)); \
+    } while (false)
 
 static void emit_native_start_pass(emit_t *emit, pass_kind_t pass, scope_t *scope) {
     DEBUG_printf("start_pass(pass=%u, scope=%p)\n", pass, scope);

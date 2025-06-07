@@ -320,6 +320,7 @@ static const mp_stream_p_t espnow_stream_p = {
 //|         This is an easy way to check if the buffer is empty.
 //|         """
 //|         ...
+//|
 //|     def __len__(self) -> int:
 //|         """Return the number of `bytes` available to read. Used to implement ``len()``."""
 //|         ...

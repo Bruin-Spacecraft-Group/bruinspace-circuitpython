@@ -55,6 +55,7 @@ static MP_DEFINE_CONST_DICT(nvm_bytearray_locals_dict, nvm_bytearray_locals_dict
 //|     def __getitem__(self, index: int) -> int:
 //|         """Returns the value at the given index."""
 //|         ...
+//|
 //|     @overload
 //|     def __setitem__(self, index: slice, value: ReadableBuffer) -> None: ...
 //|     @overload

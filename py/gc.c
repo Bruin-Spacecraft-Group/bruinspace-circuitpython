@@ -84,10 +84,10 @@
 #define ATB_MASK_2 (0x30)
 #define ATB_MASK_3 (0xc0)
 
-#define ATB_0_IS_FREE(a) (((a)&ATB_MASK_0) == 0)
-#define ATB_1_IS_FREE(a) (((a)&ATB_MASK_1) == 0)
-#define ATB_2_IS_FREE(a) (((a)&ATB_MASK_2) == 0)
-#define ATB_3_IS_FREE(a) (((a)&ATB_MASK_3) == 0)
+#define ATB_0_IS_FREE(a) (((a) & ATB_MASK_0) == 0)
+#define ATB_1_IS_FREE(a) (((a) & ATB_MASK_1) == 0)
+#define ATB_2_IS_FREE(a) (((a) & ATB_MASK_2) == 0)
+#define ATB_3_IS_FREE(a) (((a) & ATB_MASK_3) == 0)
 
 #if MICROPY_GC_SPLIT_HEAP
 #define NEXT_AREA(area) ((area)->next)

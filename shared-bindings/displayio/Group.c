@@ -261,6 +261,7 @@ static mp_obj_t group_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
 //|
 //|           print(group[0])"""
 //|         ...
+//|
 //|     def __setitem__(
 //|         self,
 //|         index: int,
@@ -272,6 +273,7 @@ static mp_obj_t group_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
 //|
 //|           group[0] = sprite"""
 //|         ...
+//|
 //|     def __delitem__(self, index: int) -> None:
 //|         """Deletes the value at the given index.
 //|
