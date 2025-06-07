@@ -38,10 +38,10 @@
 
 // For use with mp_call_function_1_from_nlr_jump_callback.
 #define MP_DEFINE_NLR_JUMP_CALLBACK_FUNCTION_1(ctx, f, a) \
-    nlr_jump_callback_node_call_function_1_t ctx = { \
-        .func = (void (*)(void *))(f), \
-        .arg = (a), \
-    }
+        nlr_jump_callback_node_call_function_1_t ctx = { \
+            .func = (void (*)(void *))(f), \
+            .arg = (a), \
+        }
 
 typedef enum {
     MP_VM_RETURN_NORMAL,

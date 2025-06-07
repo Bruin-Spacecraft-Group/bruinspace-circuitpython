@@ -53,8 +53,8 @@ static void make_empty_file(FATFS *fatfs, const char *path) {
 
 #if CIRCUITPY_FULL_BUILD
 #define MAKE_FILE_WITH_OPTIONAL_CONTENTS(fatfs, filename, string_literal) do { \
-        const byte buffer[] = string_literal; \
-        make_file_with_contents(fatfs, filename, buffer, sizeof(buffer) - 1); \
+            const byte buffer[] = string_literal; \
+            make_file_with_contents(fatfs, filename, buffer, sizeof(buffer) - 1); \
 } while (0)
 
 static void make_file_with_contents(FATFS *fatfs, const char *filename, const byte *content, UINT size) {
@@ -66,7 +66,7 @@ static void make_file_with_contents(FATFS *fatfs, const char *filename, const by
 }
 #else
 #define MAKE_FILE_WITH_OPTIONAL_CONTENTS(fatfs, filename, string_literal) \
-    make_empty_file(fatfs, filename)
+        make_empty_file(fatfs, filename)
 #endif
 
 // we don't make this function static because it needs a lot of stack and we

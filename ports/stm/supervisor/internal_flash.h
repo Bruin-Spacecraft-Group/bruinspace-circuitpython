@@ -92,4 +92,4 @@
 #define STM32_FLASH_OFFSET 0x8000000 // All STM32 chips map to this flash location
 
 #define INTERNAL_FLASH_SYSTICK_MASK     (0x1ff) // 512ms
-#define INTERNAL_FLASH_IDLE_TICK(tick)  (((tick) & INTERNAL_FLASH_SYSTICK_MASK) == 2)
+#define INTERNAL_FLASH_IDLE_TICK(tick)  (((tick)&INTERNAL_FLASH_SYSTICK_MASK) == 2)

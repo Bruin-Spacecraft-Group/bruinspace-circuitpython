@@ -50,4 +50,3 @@ jobs:
         name: ${{ matrix.board }}
         path: ports/stm/build-${{ matrix.board }}/firmware.*
         overwrite: true
-

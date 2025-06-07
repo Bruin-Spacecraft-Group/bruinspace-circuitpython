@@ -33,13 +33,11 @@
 //|     def __init__(self) -> None:
 //|         """Not used. Access the sole instance through `alarm.sleep_memory`."""
 //|         ...
-//|
 //|     def __bool__(self) -> bool:
 //|         """``sleep_memory`` is ``True`` if its length is greater than zero.
 //|         This is an easy way to check for its existence.
 //|         """
 //|         ...
-//|
 //|     def __len__(self) -> int:
 //|         """Return the length. This is used by (`len`)"""
 //|         ...
@@ -67,7 +65,6 @@ static MP_DEFINE_CONST_DICT(alarm_sleep_memory_locals_dict, alarm_sleep_memory_l
 //|     def __getitem__(self, index: int) -> int:
 //|         """Returns the value at the given index."""
 //|         ...
-//|
 //|     @overload
 //|     def __setitem__(self, index: slice, value: ReadableBuffer) -> None: ...
 //|     @overload

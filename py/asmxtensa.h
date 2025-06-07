@@ -84,27 +84,27 @@
 
 // macros for encoding instructions (little endian versions)
 #define ASM_XTENSA_ENCODE_RRR(op0, op1, op2, r, s, t) \
-    ((((uint32_t)op2) << 20) | (((uint32_t)op1) << 16) | ((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
+        ((((uint32_t)op2) << 20) | (((uint32_t)op1) << 16) | ((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_RRI4(op0, op1, r, s, t, imm4) \
-    (((imm4) << 20) | ((op1) << 16) | ((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
+        (((imm4) << 20) | ((op1) << 16) | ((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_RRI8(op0, r, s, t, imm8) \
-    ((((uint32_t)imm8) << 16) | ((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
+        ((((uint32_t)imm8) << 16) | ((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_RI16(op0, t, imm16) \
-    (((imm16) << 8) | ((t) << 4) | (op0))
+        (((imm16) << 8) | ((t) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_RSR(op0, op1, op2, rs, t) \
-    (((op2) << 20) | ((op1) << 16) | ((rs) << 8) | ((t) << 4) | (op0))
+        (((op2) << 20) | ((op1) << 16) | ((rs) << 8) | ((t) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_CALL(op0, n, offset) \
-    (((offset) << 6) | ((n) << 4) | (op0))
+        (((offset) << 6) | ((n) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_CALLX(op0, op1, op2, r, s, m, n) \
-    ((((uint32_t)op2) << 20) | (((uint32_t)op1) << 16) | ((r) << 12) | ((s) << 8) | ((m) << 6) | ((n) << 4) | (op0))
+        ((((uint32_t)op2) << 20) | (((uint32_t)op1) << 16) | ((r) << 12) | ((s) << 8) | ((m) << 6) | ((n) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_BRI8(op0, r, s, m, n, imm8) \
-    (((imm8) << 16) | ((r) << 12) | ((s) << 8) | ((m) << 6) | ((n) << 4) | (op0))
+        (((imm8) << 16) | ((r) << 12) | ((s) << 8) | ((m) << 6) | ((n) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_BRI12(op0, s, m, n, imm12) \
-    (((imm12) << 12) | ((s) << 8) | ((m) << 6) | ((n) << 4) | (op0))
+        (((imm12) << 12) | ((s) << 8) | ((m) << 6) | ((n) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_RRRN(op0, r, s, t) \
-    (((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
+        (((r) << 12) | ((s) << 8) | ((t) << 4) | (op0))
 #define ASM_XTENSA_ENCODE_RI7(op0, s, imm7) \
-    ((((imm7) & 0xf) << 12) | ((s) << 8) | ((imm7) & 0x70) | (op0))
+        ((((imm7) & 0xf) << 12) | ((s) << 8) | ((imm7) & 0x70) | (op0))
 
 // Number of registers saved on the stack upon entry to function
 #define ASM_XTENSA_NUM_REGS_SAVED (5)
@@ -363,11 +363,11 @@ void asm_xtensa_call_ind_win(asm_xtensa_t *as, uint idx);
 
 #define ASM_JUMP            asm_xtensa_j_label
 #define ASM_JUMP_IF_REG_ZERO(as, reg, label, bool_test) \
-    asm_xtensa_bccz_reg_label(as, ASM_XTENSA_CCZ_EQ, reg, label)
+        asm_xtensa_bccz_reg_label(as, ASM_XTENSA_CCZ_EQ, reg, label)
 #define ASM_JUMP_IF_REG_NONZERO(as, reg, label, bool_test) \
-    asm_xtensa_bccz_reg_label(as, ASM_XTENSA_CCZ_NE, reg, label)
+        asm_xtensa_bccz_reg_label(as, ASM_XTENSA_CCZ_NE, reg, label)
 #define ASM_JUMP_IF_REG_EQ(as, reg1, reg2, label) \
-    asm_xtensa_bcc_reg_reg_label(as, ASM_XTENSA_CC_EQ, reg1, reg2, label)
+        asm_xtensa_bcc_reg_reg_label(as, ASM_XTENSA_CC_EQ, reg1, reg2, label)
 #define ASM_JUMP_REG(as, reg) asm_xtensa_op_jx((as), (reg))
 
 #define ASM_MOV_LOCAL_REG(as, local_num, reg_src) asm_xtensa_mov_local_reg((as), ASM_NUM_REGS_SAVED + (local_num), (reg_src))
@@ -379,20 +379,20 @@ void asm_xtensa_call_ind_win(asm_xtensa_t *as, uint idx);
 
 #define ASM_NEG_REG(as, reg_dest) asm_xtensa_op_neg((as), (reg_dest), (reg_dest))
 #define ASM_LSL_REG_REG(as, reg_dest, reg_shift) \
-    do { \
-        asm_xtensa_op_ssl((as), (reg_shift)); \
-        asm_xtensa_op_sll((as), (reg_dest), (reg_dest)); \
-    } while (0)
+        do { \
+            asm_xtensa_op_ssl((as), (reg_shift)); \
+            asm_xtensa_op_sll((as), (reg_dest), (reg_dest)); \
+        } while (0)
 #define ASM_LSR_REG_REG(as, reg_dest, reg_shift) \
-    do { \
-        asm_xtensa_op_ssr((as), (reg_shift)); \
-        asm_xtensa_op_srl((as), (reg_dest), (reg_dest)); \
-    } while (0)
+        do { \
+            asm_xtensa_op_ssr((as), (reg_shift)); \
+            asm_xtensa_op_srl((as), (reg_dest), (reg_dest)); \
+        } while (0)
 #define ASM_ASR_REG_REG(as, reg_dest, reg_shift) \
-    do { \
-        asm_xtensa_op_ssr((as), (reg_shift)); \
-        asm_xtensa_op_sra((as), (reg_dest), (reg_dest)); \
-    } while (0)
+        do { \
+            asm_xtensa_op_ssr((as), (reg_shift)); \
+            asm_xtensa_op_sra((as), (reg_dest), (reg_dest)); \
+        } while (0)
 #define ASM_OR_REG_REG(as, reg_dest, reg_src) asm_xtensa_op_or((as), (reg_dest), (reg_dest), (reg_src))
 #define ASM_XOR_REG_REG(as, reg_dest, reg_src) asm_xtensa_op_xor((as), (reg_dest), (reg_dest), (reg_src))
 #define ASM_AND_REG_REG(as, reg_dest, reg_src) asm_xtensa_op_and((as), (reg_dest), (reg_dest), (reg_src))
