@@ -66,7 +66,6 @@ void common_hal_analogio_analogin_construct(analogio_analogin_obj_t *self,
 
     common_hal_mcu_pin_claim(pin);
     self->pin = pin;
-    HAL_ADC_Init();
 }
 
 bool common_hal_analogio_analogin_deinited(analogio_analogin_obj_t *self) {
