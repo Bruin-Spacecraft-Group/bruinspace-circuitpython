@@ -47,9 +47,9 @@ struct bt_hci_evt_hdr {
 #define BT_ACL_POINT_TO_POINT           0x00
 #define BT_ACL_BROADCAST                0x01
 
-#define bt_acl_handle(h)                ((h) & BIT_MASK(12))
+#define bt_acl_handle(h)                ((h)&BIT_MASK(12))
 #define bt_acl_flags(h)                 ((h) >> 12)
-#define bt_acl_flags_pb(f)              ((f) & BIT_MASK(2))
+#define bt_acl_flags_pb(f)              ((f)&BIT_MASK(2))
 #define bt_acl_flags_bc(f)              ((f) >> 2)
 #define bt_acl_handle_pack(h, f)        ((h) | ((f) << 12))
 
@@ -66,10 +66,10 @@ struct bt_hci_cmd_hdr {
 #define BT_HCI_CMD_HDR_SIZE             3
 
 /* Supported Commands */
-#define BT_CMD_TEST(cmd, octet, bit)            (cmd[octet] & BIT(bit))
+#define BT_CMD_TEST(cmd, octet, bit)            (cmd[octet] &BIT(bit))
 #define BT_CMD_LE_STATES(cmd)                   BT_CMD_TEST(cmd, 28, 3)
 
-#define BT_FEAT_TEST(feat, page, octet, bit)    (feat[page][octet] & BIT(bit))
+#define BT_FEAT_TEST(feat, page, octet, bit)    (feat[page][octet] &BIT(bit))
 
 #define BT_FEAT_BREDR(feat)                     !BT_FEAT_TEST(feat, 0, 4, 5)
 #define BT_FEAT_LE(feat)                        BT_FEAT_TEST(feat, 0, 4, 6)
@@ -216,9 +216,9 @@ struct bt_hci_cmd_hdr {
 #define BT_OP_NOP                               0x0000
 
 /* Obtain OGF from OpCode */
-#define BT_OGF(opcode)                          (((opcode) >> 10) & BIT_MASK(6))
+#define BT_OGF(opcode)                          (((opcode) >> 10)&BIT_MASK(6))
 /* Obtain OCF from OpCode */
-#define BT_OCF(opcode)                          ((opcode) & BIT_MASK(10))
+#define BT_OCF(opcode)                          ((opcode)&BIT_MASK(10))
 
 #define BT_HCI_OP_INQUIRY                       BT_OP(BT_OGF_LINK_CTRL, 0x0001)
 struct bt_hci_op_inquiry {

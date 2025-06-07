@@ -165,35 +165,35 @@ camera_fb_t *common_hal_espcamera_camera_take(espcamera_camera_obj_t *self, int 
 }
 
 #define SENSOR_GETSET(type, name, field_name, setter_function_name) \
-    SENSOR_GET(type, name, field_name, setter_function_name) \
-    SENSOR_SET(type, name, setter_function_name)
+        SENSOR_GET(type, name, field_name, setter_function_name) \
+        SENSOR_SET(type, name, setter_function_name)
 
 #define SENSOR_STATUS_GETSET(type, name, status_field_name, setter_function_name) \
-    SENSOR_GETSET(type, name, status.status_field_name, setter_function_name)
+        SENSOR_GETSET(type, name, status.status_field_name, setter_function_name)
 
 #define SENSOR_GET(type, name, status_field_name, setter_function_name) \
-    type common_hal_espcamera_camera_get_##name(espcamera_camera_obj_t * self) { \
-        i2c_lock(self); \
-        sensor_t *sensor = esp_camera_sensor_get(); \
-        i2c_unlock(self); \
-        if (!sensor->setter_function_name) { \
-            mp_raise_AttributeError(MP_ERROR_TEXT("no such attribute")); \
-        } \
-        return sensor->status_field_name; \
-    }
+        type common_hal_espcamera_camera_get_##name(espcamera_camera_obj_t * self) { \
+            i2c_lock(self); \
+            sensor_t *sensor = esp_camera_sensor_get(); \
+            i2c_unlock(self); \
+            if (!sensor->setter_function_name) { \
+                mp_raise_AttributeError(MP_ERROR_TEXT("no such attribute")); \
+            } \
+            return sensor->status_field_name; \
+        }
 
 #define SENSOR_SET(type, name, setter_function_name) \
-    void common_hal_espcamera_camera_set_##name(espcamera_camera_obj_t * self, type value) { \
-        i2c_lock(self); \
-        sensor_t *sensor = esp_camera_sensor_get(); \
-        i2c_unlock(self); \
-        if (!sensor->setter_function_name) { \
-            mp_raise_AttributeError(MP_ERROR_TEXT("no such attribute")); \
-        } \
-        if (sensor->setter_function_name(sensor, value) < 0) { \
-            mp_raise_ValueError(MP_ERROR_TEXT("invalid setting")); \
-        } \
-    }
+        void common_hal_espcamera_camera_set_##name(espcamera_camera_obj_t * self, type value) { \
+            i2c_lock(self); \
+            sensor_t *sensor = esp_camera_sensor_get(); \
+            i2c_unlock(self); \
+            if (!sensor->setter_function_name) { \
+                mp_raise_AttributeError(MP_ERROR_TEXT("no such attribute")); \
+            } \
+            if (sensor->setter_function_name(sensor, value) < 0) { \
+                mp_raise_ValueError(MP_ERROR_TEXT("invalid setting")); \
+            } \
+        }
 
 pixformat_t common_hal_espcamera_camera_get_pixel_format(espcamera_camera_obj_t *self) {
     return self->camera_config.pixel_format;

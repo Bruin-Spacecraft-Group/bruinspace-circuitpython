@@ -157,8 +157,8 @@ typedef long mp_off_t;
 #undef MICROPY_ALLOC_PATH_MAX
 #define MICROPY_ALLOC_PATH_MAX      260
 #define PATH_MAX                    MICROPY_ALLOC_PATH_MAX
-#define S_ISREG(m)                  (((m) & S_IFMT) == S_IFREG)
-#define S_ISDIR(m)                  (((m) & S_IFMT) == S_IFDIR)
+#define S_ISREG(m)                  (((m)&S_IFMT) == S_IFREG)
+#define S_ISDIR(m)                  (((m)&S_IFMT) == S_IFDIR)
 #ifdef _WIN64
 #define SSIZE_MAX                   _I64_MAX
 typedef __int64 ssize_t;

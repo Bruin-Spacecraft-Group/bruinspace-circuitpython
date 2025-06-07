@@ -53,7 +53,7 @@
 //|         clock: microcontroller.Pin,
 //|         MOSI: Optional[microcontroller.Pin] = None,
 //|         MISO: Optional[microcontroller.Pin] = None,
-//|         half_duplex: bool = False
+//|         half_duplex: bool = False,
 //|     ) -> None:
 //|         """Construct an SPI object on the given pins.
 //|

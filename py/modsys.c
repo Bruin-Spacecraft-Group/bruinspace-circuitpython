@@ -89,13 +89,13 @@ static const mp_rom_obj_tuple_t mp_sys_implementation_version_info_obj = {
 static const MP_DEFINE_STR_OBJ(mp_sys_implementation_machine_obj, MICROPY_BANNER_MACHINE);
 // CIRCUITPY-CHANGE: MP_QSTR_circuitpython
 #define SYS_IMPLEMENTATION_ELEMS_BASE \
-    MP_ROM_QSTR(MP_QSTR_circuitpython), \
-    MP_ROM_PTR(&mp_sys_implementation_version_info_obj), \
-    MP_ROM_PTR(&mp_sys_implementation_machine_obj)
+        MP_ROM_QSTR(MP_QSTR_circuitpython), \
+        MP_ROM_PTR(&mp_sys_implementation_version_info_obj), \
+        MP_ROM_PTR(&mp_sys_implementation_machine_obj)
 
 #if MICROPY_PERSISTENT_CODE_LOAD
 #define SYS_IMPLEMENTATION_ELEMS__MPY \
-    , MP_ROM_INT(MPY_FILE_HEADER_INT)
+        , MP_ROM_INT(MPY_FILE_HEADER_INT)
 #else
 #define SYS_IMPLEMENTATION_ELEMS__MPY
 #endif
@@ -103,7 +103,7 @@ static const MP_DEFINE_STR_OBJ(mp_sys_implementation_machine_obj, MICROPY_BANNER
 #if MICROPY_PY_ATTRTUPLE
 #if MICROPY_PREVIEW_VERSION_2
 #define SYS_IMPLEMENTATION_ELEMS__V2 \
-    , MP_ROM_TRUE
+        , MP_ROM_TRUE
 #else
 #define SYS_IMPLEMENTATION_ELEMS__V2
 #endif
