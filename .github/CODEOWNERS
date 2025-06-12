@@ -1,4 +1,5 @@
-# RAPID-0 Policy: Firmware changes are managed by PM, CE, 
-# and relevant subteam leads
+# RAPID-0 Policy: All firmware is owned by the PM, CE, software 
+# lead, and any other subteam leads who are considered qualified 
+# to manage firmware project-wide by the former.
 
-* @Touwfoo @Randall-Scharpf @anniexiang01 @sethferrell
+* @theancientpoop @AlexanderSHartman @astropancake72 @connorperrone 
