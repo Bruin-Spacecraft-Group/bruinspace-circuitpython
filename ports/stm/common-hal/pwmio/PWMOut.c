@@ -13,7 +13,7 @@
 #include STM32_HAL_H
 #include "shared-bindings/microcontroller/Pin.h"
 
-#include "timers.h"
+#include "peripherals/timers.h"
 
 // Bitmask of channels taken.
 static uint8_t tim_channels_taken[TIM_BANK_ARRAY_LEN];
