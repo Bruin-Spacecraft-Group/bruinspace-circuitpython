@@ -63,7 +63,7 @@ pwmout_result_t common_hal_pwmio_pwmout_construct(pwmio_pwmout_obj_t *self,
             // check if the timer has a channel active, or is reserved by main timer system
             if (tim_index < TIM_BANK_ARRAY_LEN && tim_channels_taken[tim_index] != 0) {
                 // Timer has already been reserved by an internal module
-                if (stm_peripherals_timer_is_reserved(&mcu_tim_banks[tim_index])) {
+                if (stm_peripherals_timer_is_reserved(mcu_tim_banks[tim_index])) {
                     last_failure = PWMOUT_INTERNAL_RESOURCES_IN_USE;
                     continue; // keep looking
                 }
@@ -95,7 +95,7 @@ pwmout_result_t common_hal_pwmio_pwmout_construct(pwmio_pwmout_obj_t *self,
     // handle valid/invalid timer instance
     if (self->tim != NULL) {
         // create instance
-        TIMx = &mcu_tim_banks[tim_index];
+        TIMx = mcu_tim_banks[tim_index];
         // reserve timer/channel
         if (variable_frequency) {
             // Take all the channels.

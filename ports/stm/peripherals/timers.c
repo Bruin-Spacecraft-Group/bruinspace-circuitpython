@@ -12,7 +12,7 @@
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/microcontroller/Pin.h"
 
-#if !(CPY_STM32H7)
+// #if !(CPY_STM32H7)
 
 #define ALL_CLOCKS 0xFFFF
 #define NULL_IRQ 0xFF
@@ -492,4 +492,4 @@ void TIM17_IRQHandler(void) {
 }
 #endif
 
-#endif
+// #endif
