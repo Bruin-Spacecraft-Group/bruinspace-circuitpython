@@ -14,7 +14,6 @@
 #include "shared-bindings/microcontroller/Pin.h"
 
 #include "timers.h"
-#include <iostream>
 
 // Bitmask of channels taken.
 static uint8_t tim_channels_taken[TIM_BANK_ARRAY_LEN];
