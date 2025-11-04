@@ -162,7 +162,7 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
         source = HAL_RCC_GetPCLK2Freq();
         #if (CPY_STM32H7)
         // 0b0xx means not divided; 0b100 is divide by 2; 0b101 by 4; 0b110 by 8; 0b111 by 16.
-        clk_div = (RCC->CFGR & RCC_D2CFGR_D2PPRE2) >> RCC_D2FGR_D2PPRE2_Pos;
+        clk_div = (RCC->CFGR & RCC_D2CFGR_D2PPRE2) >> RCC_D2CFGR_D2PPRE2_Pos;
         #else
         clk_div = (RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos;
         #endif
@@ -179,7 +179,11 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
 
     // Only some STM32's have TIMPRE.
     #if defined(RCC_CFGR_TIMPRE)
+    #if (CPY_STM32H7)
+    uint32_t timpre = RCC->CFGR & RCC_CFGR_TIMPRE;
+    #else
     uint32_t timpre = RCC->DCKCFGR & RCC_CFGR_TIMPRE;
+    #endif
     if (timpre == 0) {
         if (clk_div >= 0b100) {
             source *= 2;
