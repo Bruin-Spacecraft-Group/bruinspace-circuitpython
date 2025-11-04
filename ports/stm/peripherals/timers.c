@@ -160,13 +160,21 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
     if (tim_id == 1 || (8 <= tim_id && tim_id <= 11)) {
         // TIM{1,8,9,10,11} are on APB2
         source = HAL_RCC_GetPCLK2Freq();
+        #if (CPY_STM32H7)
         // 0b0xx means not divided; 0b100 is divide by 2; 0b101 by 4; 0b110 by 8; 0b111 by 16.
+        clk_div = (RCC->CFGR & RCC_D2CFGR_D2PPRE2) >> RCC_D2FGR_D2PPRE2_Pos;
+        #else
         clk_div = (RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos;
+        #endif
     } else {
         // TIM{2,3,4,5,6,7,12,13,14} are on APB1
         source = HAL_RCC_GetPCLK1Freq();
         // 0b0xx means not divided; 0b100 is divide by 2; 0b101 by 4; 0b110 by 8; 0b111 by 16.
+        #if (CPY_STM32H7)
+        clk_div = (RCC->CFGR & RCC_D2CFGR_D2PPRE1) >> RCC_D2CFGR_D2PPRE1_Pos;
+        #else
         clk_div = (RCC->CFGR & RCC_CFGR_PPRE1) >> RCC_CFGR_PPRE1_Pos;
+        #endif
     }
 
     // Only some STM32's have TIMPRE.
