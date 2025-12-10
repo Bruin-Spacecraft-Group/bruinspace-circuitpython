@@ -23,7 +23,7 @@ typedef struct {
 
     uint16_t capture_period;
 
-    volatile uint32_t last_capture;        
-    volatile uint32_t frequency;           
-    volatile bool is_first_capture;     
+    volatile uint32_t last_capture;
+    volatile uint32_t frequency;
+    volatile bool is_first_capture;
 } frequencyio_frequencyin_obj_t;

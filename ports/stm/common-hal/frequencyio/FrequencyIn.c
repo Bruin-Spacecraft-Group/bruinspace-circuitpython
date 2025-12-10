@@ -124,14 +124,14 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     // Enable clocks and IRQ, set callback that updates frequency reading
     // TODO: Check priority
-    stm_peripherals_timer_preinit(TIMx, 4, frequencyin_timer_event_handler)
+    stm_peripherals_timer_preinit(TIMx, 4, frequencyin_timer_event_handler);
 
     // translate channel into handle value: TIM_CHANNEL_1, _2, _3, _4.
-    self->tim_channel = 4 * tim_channel_index; 
+    self->tim_channel = 4 * tim_channel_index;
 
     // Timer init
     self->handle.Instance = TIMx;
-    self->handle.Init.Period = ;
+    self->handle.Init.Period = TIM_PERIOD;
     self->handle.Init.Prescaler = 0;
     self->handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     self->handle.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -218,7 +218,3 @@ void common_hal_frequencyio_frequencyin_set_capture_period(frequencyio_frequency
 uint32_t common_hal_frequencyio_frequencyin_get_item(frequencyio_frequencyin_obj_t *self){
     return self->frequency;
 }
-
-
-
-
