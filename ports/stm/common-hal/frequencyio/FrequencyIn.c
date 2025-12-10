@@ -109,7 +109,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
                 if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
                     continue; // keep looking, might be another viable option
                 }
-                
+
                 first_time_setup = false; // skip setting up the timer
             }
             // No problems taken, so set it up
