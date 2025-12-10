@@ -26,7 +26,18 @@
     #error unknown MCU for DigitalInOut
 #endif
 
-#define TIM_PERIOD 65535
+#define FULL_16 0xFFFF
+#define FULL_32 0xFFFFFFFF
+
+static const timer_info_t gp_tim_bank[6] = {
+    {TIM2, FULL_32},
+    {TIM3, FULL_16},
+    {TIM4, FULL_16}
+    {TIM5, FULL_32},
+    {TIM23, FULL_32},
+    {TIM24, FULL_32}
+};
+
 #define STM32_GPIO_PORT_SIZE 16
 static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
 
@@ -52,7 +63,7 @@ void frequencyin_timer_event_handler(void) {
                 if (capture >= last_capture) {
                     difference = capture - last_capture;
                 } else {
-                    difference = (0xffffffff - IC_Val1) + IC_Val2;
+                    difference = (&self->handle.Init.Period - last_capture) + capture + 1;
                 }
 
                 // freq is timer clock / (prescaler * difference)
@@ -81,8 +92,8 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     uint8_t tim_channel_index;
 
     self->tim = NULL;
-    for (uint i = 0; i < MP_ARRAY_SIZE(mcu_tim_pin_list); i++) {
-        const mcu_tim_pin_obj_t *tim = &mcu_tim_pin_list[i];
+    for (uint i = 0; i < MP_ARRAY_SIZE(gp_tim_bank); i++) {
+        const mcu_tim_pin_obj_t *tim = &gp_tim_bank[i].instance;
         tim_index = tim->tim_index;
         tim_channel_index = tim->channel_index;
 
@@ -91,14 +102,14 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             // check if the timer has a channel active, or is reserved by main timer system
             if (tim_index < TIM_BANK_ARRAY_LEN && tim_channels_taken[tim_index] != 0) {
                 // Timer has already been reserved by an internal module
-                if (stm_peripherals_timer_is_reserved(mcu_tim_banks[tim_index])) {
+                if (stm_peripherals_timer_is_reserved(gp_tim_bank[tim_index].instance)) {
                     continue; // keep looking
                 }
                 // is it the same channel? (or all channels reserved by a var-freq)
                 if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
                     continue; // keep looking, might be another viable option
                 }
-
+                
                 first_time_setup = false; // skip setting up the timer
             }
             // No problems taken, so set it up
@@ -112,7 +123,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     // handle valid/invalid timer instance
     if (self->tim != NULL) {
         // create instance
-        TIMx = mcu_tim_banks[tim_index];
+        TIMx = gp_tim_bank[tim_index].instance;
 
         tim_channels_taken[tim_index] |= 1 << tim_channel_index;
         stm_peripherals_timer_reserve(TIMx);
@@ -137,7 +148,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     // Timer init
     self->handle.Instance = TIMx;
-    self->handle.Init.Period = TIM_PERIOD;
+    self->handle.Init.Period = gp_tim_bank[tim_index].max_value;
     self->handle.Init.Prescaler = 0;
     self->handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     self->handle.Init.CounterMode = TIM_COUNTERMODE_UP;

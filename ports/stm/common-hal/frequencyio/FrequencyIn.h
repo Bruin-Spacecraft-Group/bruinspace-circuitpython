@@ -27,3 +27,8 @@ typedef struct {
     volatile uint32_t frequency;
     volatile bool rising_edge;
 } frequencyio_frequencyin_obj_t;
+
+typedef struct {
+    TIM_TypeDef *instance
+    uint32_t max_value;
+} timer_info_t
