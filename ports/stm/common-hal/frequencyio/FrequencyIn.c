@@ -92,7 +92,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
                 if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
                     continue; // keep looking, might be another viable option
                 }
-                
+
                 first_time_setup = false; // skip setting up the timer
             }
             // No problems taken, so set it up
@@ -107,7 +107,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     if (self->tim != NULL) {
         // create instance
         TIMx = mcu_tim_banks[tim_index];
-       
+
         tim_channels_taken[tim_index] |= 1 << tim_channel_index;
         stm_peripherals_timer_reserve(TIMx);
     } else {
@@ -193,7 +193,7 @@ void common_hal_frequencyio_frequencyin_pause(frequencyio_frequencyin_obj_t *sel
     HAL_TIM_IC_Stop_IT(&self->tim_handle, self->tim_channel);
     self->paused = true;
 }
- 
+
 void common_hal_frequencyio_frequencyin_resume(frequencyio_frequencyin_obj_t *self) {
     self->paused = false;
     self->is_first_capture = true;  // Reset measurement state
