@@ -43,7 +43,7 @@ static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
 
 void frequencyin_timer_event_handler(void) {
     // iterate through all object refs to find ours
-    for (uint8_t i = 0; i < TIM_BANK_ARRAY_LEN; i++) {
+    for (uint8_t i = 0; i < STM32_GPIO_PORT_SIZE; i++) {
         frequencyio_frequencyin_obj_t *self = callback_obj_ref[i];
         if (self == NULL) continue;
 
@@ -92,7 +92,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     uint8_t tim_channel_index;
 
     self->tim = NULL;
-    for (uint i = 0; i < MP_ARRAY_SIZE(gp_tim_bank); i++) {
+    for (uint8_t i = 0; i < MP_ARRAY_SIZE(gp_tim_bank); i++) {
         const mcu_tim_pin_obj_t *tim = &gp_tim_bank[i].instance;
         tim_index = tim->tim_index;
         tim_channel_index = tim->channel_index;
@@ -102,7 +102,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             // check if the timer has a channel active, or is reserved by main timer system
             if (tim_index < TIM_BANK_ARRAY_LEN && tim_channels_taken[tim_index] != 0) {
                 // Timer has already been reserved by an internal module
-                if (stm_peripherals_timer_is_reserved(gp_tim_bank[tim_index].instance)) {
+                if (stm_peripherals_timer_is_reserved(&mcu_tim_banks[tim_index])) {
                     continue; // keep looking
                 }
                 // is it the same channel? (or all channels reserved by a var-freq)
@@ -123,7 +123,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     // handle valid/invalid timer instance
     if (self->tim != NULL) {
         // create instance
-        TIMx = gp_tim_bank[tim_index].instance;
+        TIMx = &mcu_tim_banks[tim_index];
 
         tim_channels_taken[tim_index] |= 1 << tim_channel_index;
         stm_peripherals_timer_reserve(TIMx);
