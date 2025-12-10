@@ -42,14 +42,18 @@ void frequencyin_timer_event_handler(void) {
             uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
 
             // check for rising-edge
-            if (self->is_first_capture){
+            if (self->rising_edge){
                 self->last_capture = capture;
-                self->is_first_capture = false;
+                self->rising_edge = false;
             } else { // falling edge, calculate frequency
                 capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
+                uint32_t difference = 0;
 
-                uint32_t difference = capture - last_capture;
-                // TODO: is there overflow? last_capture > capture?
+                if (capture >= last_capture) {
+                    difference = capture - last_capture;
+                } else {
+                    difference = (0xffffffff - IC_Val1) + IC_Val2;
+                }
 
                 // freq is timer clock / (prescaler * difference)
                 if (difference > 0) {
@@ -57,6 +61,8 @@ void frequencyin_timer_event_handler(void) {
                     uint32_t prescaler = self->handle.Init.Prescaler + 1; // prevent divide by zero
                     self->frequency = timer_clock/(prescaler * difference);
                 }
+
+                self->rising_edge = true;
             }
 
             // clear interrupt bc this is a custom ISR
@@ -161,7 +167,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     self->capture_period = capture_period;
     self->last_capture = 0;
     self->frequency = 0;
-    self->is_first_capture = true;
+    self->rising_edge = true;
 
     // store self for callback
     callback_obj_ref[pin->number] = self;
@@ -196,7 +202,7 @@ void common_hal_frequencyio_frequencyin_pause(frequencyio_frequencyin_obj_t *sel
 
 void common_hal_frequencyio_frequencyin_resume(frequencyio_frequencyin_obj_t *self) {
     self->paused = false;
-    self->is_first_capture = true;  // Reset measurement state
+    self->rising_edge = true;  // Reset measurement state
     HAL_TIM_IC_Start_IT(&self->tim_handle, self->tim_channel);
 }
 
@@ -204,7 +210,7 @@ void common_hal_frequencyio_frequencyin_clear(frequencyio_frequencyin_obj_t* sel
     // concerned about race conditions?
     self->last_capture = 0;
     self->frequency = 0;
-    self->is_first_capture = true;
+    self->rising_edge = true;
 }
 
 uint16_t common_hal_frequencyio_frequencyin_get_capture_period(frequencyio_frequencyin_obj_t *self) {
