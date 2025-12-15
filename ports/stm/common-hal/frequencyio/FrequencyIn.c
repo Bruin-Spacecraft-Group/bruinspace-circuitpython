@@ -42,7 +42,7 @@ static const timer_info_t gp_tim_bank[6] = {
 static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
 
 void frequencyin_timer_event_handler(void) {
-    // iterate through all object refs to find ours
+    // iterate through all object refs to find all frequencyio instances
     for (uint8_t i = 0; i < STM32_GPIO_PORT_SIZE; i++) {
         frequencyio_frequencyin_obj_t *self = callback_obj_ref[i];
         if (self == NULL) continue;
@@ -52,7 +52,7 @@ void frequencyin_timer_event_handler(void) {
 
             uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
 
-            // check for rising-edge
+            // check for rising-edge 
             if (self->rising_edge){
                 self->last_capture = capture;
                 self->rising_edge = false;
@@ -63,14 +63,14 @@ void frequencyin_timer_event_handler(void) {
                 if (capture >= last_capture) {
                     difference = capture - last_capture;
                 } else {
-                    difference = (&self->handle.Init.Period - last_capture) + capture + 1;
+                    difference = (&self->handle.Init.Period - last_capture) + capture;
                 }
 
                 // freq is timer clock / (prescaler * difference)
                 if (difference > 0) {
                     uint32_t timer_clock = stm_peripherals_timer_get_source_freq(self->handle.Instance);
-                    uint32_t prescaler = self->handle.Init.Prescaler + 1; // prevent divide by zero
-                    self->frequency = timer_clock/(prescaler * difference);
+                    uint32_t prescaler = self->handle.Init.Prescaler;
+                    self->frequency = timer_clock/(prescaler * difference + 1); // prevent div by 0
                 }
 
                 self->rising_edge = true;
@@ -90,6 +90,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     uint8_t tim_index;
     uint8_t tim_channel_index;
+    uint32_t tim_period;
 
     self->tim = NULL;
     for (uint8_t i = 0; i < MP_ARRAY_SIZE(gp_tim_bank); i++) {
@@ -114,6 +115,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             }
             // No problems taken, so set it up
             self->tim = tim;
+            tim_period = gp_tim_bank[i].max_value; 
             break;
         }
     }
@@ -148,7 +150,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     // Timer init
     self->handle.Instance = TIMx;
-    self->handle.Init.Period = gp_tim_bank[tim_index].max_value;
+    self->handle.Init.Period = tim_period;
     self->handle.Init.Prescaler = 0;
     self->handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     self->handle.Init.CounterMode = TIM_COUNTERMODE_UP;

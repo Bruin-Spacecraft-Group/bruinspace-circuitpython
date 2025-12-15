@@ -21,7 +21,7 @@ typedef struct {
     const mcu_tim_pin_obj_t *tim;
     uint8_t tim_channel;
 
-    uint16_t capture_period;
+    uint16_t capture_period; // not implemented, directly reacts to rising/falling edges of signal
 
     volatile uint32_t last_capture;
     volatile uint32_t frequency;
@@ -29,6 +29,6 @@ typedef struct {
 } frequencyio_frequencyin_obj_t;
 
 typedef struct {
-    TIM_TypeDef *instance
+    TIM_TypeDef *instance;
     uint32_t max_value;
-} timer_info_t
+} timer_info_t;
