@@ -44,7 +44,7 @@ ifeq ($(MCU_SERIES),H7)
         CIRCUITPY_NEOPIXEL_WRITE ?= 0
         CIRCUITPY_NVM ?= 0
         CIRCUITPY_PULSEIO ?= 0
-        CIRCUITPY_PWMIO ?= 0
+        CIRCUITPY_PWMIO ?= 1
         CIRCUITPY_ROTARYIO ?= 0
         CIRCUITPY_RTC ?= 1
 
