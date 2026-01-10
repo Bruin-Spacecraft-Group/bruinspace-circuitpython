@@ -9,7 +9,7 @@
 #include "shared-bindings/frequencyio/FrequencyIn.h"
 #include "py/mpconfig.h"
 #include "py/runtime.h"
-#include "shared-bindings/microcontroller/pin.h"
+#include "shared-bindings/microcontroller/Pin.h"
 
 #include "timers.h"
 
