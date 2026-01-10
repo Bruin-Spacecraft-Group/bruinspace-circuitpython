@@ -52,7 +52,7 @@ void frequencyin_timer_event_handler(void) {
 
             uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
 
-            // check for rising-edge 
+            // check for rising-edge
             if (self->rising_edge){
                 self->last_capture = capture;
                 self->rising_edge = false;
@@ -115,7 +115,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             }
             // No problems taken, so set it up
             self->tim = tim;
-            tim_period = gp_tim_bank[i].max_value; 
+            tim_period = gp_tim_bank[i].max_value;
             break;
         }
     }
