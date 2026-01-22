@@ -30,10 +30,10 @@
 #define FULL_32 0xFFFFFFFF
 
 static const timer_info_t gp_tim_bank[6] = {
-    {TIM2, FULL_32},
-    {TIM3, FULL_16},
-    {TIM4, FULL_16}
-    {TIM5, FULL_32},
+    {1, FULL_32},
+    {2, FULL_16},
+    {3, FULL_16},
+    {4, FULL_32},
     {TIM23, FULL_32},
     {TIM24, FULL_32}
 };
@@ -47,8 +47,8 @@ void frequencyin_timer_event_handler(void) {
         frequencyio_frequencyin_obj_t *self = callback_obj_ref[i];
         if (self == NULL) continue;
 
-        if (__HAL_TIM_GET_FLAG(&htim, TIM_FLAG_CC1) != RESET &&
-            __HAL_TIM_GET_IT_SOURCE(&htim, TIM_IT_CC1) != RESET) {
+        if (__HAL_TIM_GET_FLAG(&self->handle, TIM_FLAG_CC1) != RESET &&
+            __HAL_TIM_GET_IT_SOURCE(&self->handle, TIM_IT_CC1) != RESET) {
 
             uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
 
@@ -60,10 +60,10 @@ void frequencyin_timer_event_handler(void) {
                 capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
                 uint32_t difference = 0;
 
-                if (capture >= last_capture) {
-                    difference = capture - last_capture;
+                if (capture >= self->last_capture) {
+                    difference = capture - self->last_capture;
                 } else {
-                    difference = (&self->handle.Init.Period - last_capture) + capture;
+                    difference = (&self->handle.Init.Period - self->last_capture) + capture;
                 }
 
                 // freq is timer clock / (prescaler * difference)
@@ -93,8 +93,8 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     uint32_t tim_period;
 
     self->tim = NULL;
-    for (uint8_t i = 0; i < MP_ARRAY_SIZE(gp_tim_bank); i++) {
-        const mcu_tim_pin_obj_t *tim = &gp_tim_bank[i].instance;
+    for (uint8_t i = 0; i < MP_ARRAY_SIZE(mcu_tim_pin_list); i++) {
+        const mcu_tim_pin_obj_t *tim = &mcu_tim_pin_list[i];
         tim_index = tim->tim_index;
         tim_channel_index = tim->channel_index;
 

@@ -29,6 +29,6 @@ typedef struct {
 } frequencyio_frequencyin_obj_t;
 
 typedef struct {
-    TIM_TypeDef *instance;
+    uint8_t index;
     uint32_t max_value;
 } timer_info_t;
