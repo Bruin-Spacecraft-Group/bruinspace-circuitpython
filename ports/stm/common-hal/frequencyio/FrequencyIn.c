@@ -32,6 +32,9 @@
 #define STM32_GPIO_PORT_SIZE 16
 static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
 
+// Bitmask of channels taken.
+static uint8_t tim_channels_taken[TIM_BANK_ARRAY_LEN];
+
 static uint32_t timer_check_period(TIM_TypeDef *tim) {
     // reserve initial value in counter
     uint32_t res_counter = tim->CNT;
@@ -44,9 +47,9 @@ static uint32_t timer_check_period(TIM_TypeDef *tim) {
 
     // test value still has upper 16 bits, 32 bits. else, 16
     if (test_value = FULL_32) {
-        return FULL_32
+        return FULL_32;
     }
-    return FULL_16
+    return FULL_16;
 }
 
 void frequencyin_timer_event_handler(void) {
@@ -71,7 +74,7 @@ void frequencyin_timer_event_handler(void) {
                 if (capture >= self->last_capture) {
                     difference = capture - self->last_capture;
                 } else {
-                    difference = (&self->handle.Init.Period - self->last_capture) + capture;
+                    difference = (self->handle.Init.Period - self->last_capture) + capture;
                 }
 
                 // freq is timer clock / (prescaler * difference)
@@ -99,7 +102,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     uint8_t tim_index;
     uint8_t tim_channel_index;
     uint32_t tim_period;
-    
+
     // find free timer
     self->tim = NULL;
     for (uint8_t i = 0; i < MP_ARRAY_SIZE(mcu_tim_pin_list); i++) {
@@ -110,13 +113,15 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
         // if pin is same
         if (tim->pin == pin) {
             // check if the timer has a channel active, or is reserved by main timer system
-            if (tim_index < TIM_BANK_ARRAY_LEN) {
+            if (tim_index < TIM_BANK_ARRAY_LEN && tim_channels_taken[tim_index] != 0) {
                 // Timer has already been reserved by an internal module
-                if (stm_peripherals_timer_is_reserved(&mcu_tim_banks[tim_index])) {
+                if (stm_peripherals_timer_is_reserved(mcu_tim_banks[tim_index])) {
                     continue; // keep looking
                 }
-                // is it the same channel?
-                if (1 << tim_channel_index) {
+
+                // is it the same channel? (or all channels reserved by a var-freq)
+                if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
+                    last_failure = PWMOUT_INTERNAL_RESOURCES_IN_USE;
                     continue; // keep looking, might be another viable option
                 }
 
@@ -124,7 +129,6 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             }
             // No problems taken, so set it up
             self->tim = tim;
-            tim_period = timer_check_period(tim);
             break;
         }
     }
@@ -135,6 +139,11 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     if (self->tim != NULL) {
         // create instance
         TIMx = &mcu_tim_banks[tim_index];
+
+        // reserve timer channel
+        tim_channels_taken[tim_index] |= 1 << tim_channel_index;
+
+        tim_period = timer_check_period(TIMx);
 
         stm_peripherals_timer_reserve(TIMx);
     } else {
@@ -171,13 +180,13 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     }
 
     // setting up input capture
-    TIM_IC_InitTypeDef TIM_IC_InitStruct = {0}
+    TIM_IC_InitTypeDef TIM_IC_InitStruct = {0};
     TIM_IC_InitStruct.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
     TIM_IC_InitStruct.ICSelection = TIM_ICSELECTION_DIRECTTI;
     TIM_IC_InitStruct.ICPrescaler = TIM_ICPSC_DIV1;
     TIM_IC_InitStruct.ICFilter = 0;
 
-    if(HAL_TIM_IC_ConfigChannel(&self->handle, TIM_IC_InitStruct, self->tim_channel) != HAL_OK) {
+    if(HAL_TIM_IC_ConfigChannel(&self->handle, &TIM_IC_InitStruct, self->tim_channel) != HAL_OK) {
         return;
     }
     if(HAL_TIM_IC_Start(&self->handle, self->tim_channel) != HAL_OK){
@@ -206,8 +215,11 @@ void common_hal_frequencyio_frequencyin_deinit(frequencyio_frequencyin_obj_t *se
     HAL_TIM_IC_Stop(&self->handle, self->tim_channel);
     common_hal_reset_pin(self->pin);
 
-    HAL_TIM_IC_DeInit(&self->handle);
-    stm_peripherals_timer_free(self->handle.Instance);
+    // if reserved timer has no active channels, we can disable it
+    if (tim_channels_taken[self->tim->tim_index] == 0) {
+        HAL_TIM_IC_DeInit(&self->handle);
+        stm_peripherals_timer_free(self->handle.Instance);
+    }
 
     self->tim = NULL;
 }
