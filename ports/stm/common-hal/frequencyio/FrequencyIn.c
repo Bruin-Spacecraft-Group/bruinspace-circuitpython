@@ -46,7 +46,7 @@ static uint32_t timer_check_period(TIM_TypeDef *tim) {
     tim->CNT = res_counter;
 
     // test value still has upper 16 bits, 32 bits. else, 16
-    if (test_value = FULL_32) {
+    if (test_value == FULL_32) {
         return FULL_32;
     }
     return FULL_16;
@@ -121,7 +121,6 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
                 // is it the same channel? (or all channels reserved by a var-freq)
                 if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
-                    last_failure = PWMOUT_INTERNAL_RESOURCES_IN_USE;
                     continue; // keep looking, might be another viable option
                 }
 
@@ -138,7 +137,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     // handle valid/invalid timer instance
     if (self->tim != NULL) {
         // create instance
-        TIMx = &mcu_tim_banks[tim_index];
+        TIMx = mcu_tim_banks[tim_index];
 
         // reserve timer channel
         tim_channels_taken[tim_index] |= 1 << tim_channel_index;
