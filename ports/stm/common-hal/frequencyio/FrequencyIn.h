@@ -26,9 +26,5 @@ typedef struct {
     volatile uint32_t last_capture;
     volatile uint32_t frequency;
     volatile bool rising_edge;
+    volatile bool paused;
 } frequencyio_frequencyin_obj_t;
-
-typedef struct {
-    uint8_t index;
-    uint32_t max_value;
-} timer_info_t;

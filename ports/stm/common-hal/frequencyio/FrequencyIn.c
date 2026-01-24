@@ -29,17 +29,25 @@
 #define FULL_16 0xFFFF
 #define FULL_32 0xFFFFFFFF
 
-static const timer_info_t gp_tim_bank[6] = {
-    {1, FULL_32},
-    {2, FULL_16},
-    {3, FULL_16},
-    {4, FULL_32},
-    {TIM23, FULL_32},
-    {TIM24, FULL_32}
-};
-
 #define STM32_GPIO_PORT_SIZE 16
 static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
+
+static uint32_t timer_check_period(TIM_TypeDef *tim) {
+    // reserve initial value in counter
+    uint32_t res_counter = tim->CNT;
+
+    // Attempt to write 32 bits to the timer
+    tim->CNT = FULL_32;
+    uint32_t test_value = tim->CNT;
+
+    tim->CNT = res_counter;
+
+    // test value still has upper 16 bits, 32 bits. else, 16
+    if (test_value = FULL_32) {
+        return FULL_32
+    }
+    return FULL_16
+}
 
 void frequencyin_timer_event_handler(void) {
     // iterate through all object refs to find all frequencyio instances
@@ -91,7 +99,8 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     uint8_t tim_index;
     uint8_t tim_channel_index;
     uint32_t tim_period;
-
+    
+    // find free timer
     self->tim = NULL;
     for (uint8_t i = 0; i < MP_ARRAY_SIZE(mcu_tim_pin_list); i++) {
         const mcu_tim_pin_obj_t *tim = &mcu_tim_pin_list[i];
@@ -101,13 +110,13 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
         // if pin is same
         if (tim->pin == pin) {
             // check if the timer has a channel active, or is reserved by main timer system
-            if (tim_index < TIM_BANK_ARRAY_LEN && tim_channels_taken[tim_index] != 0) {
+            if (tim_index < TIM_BANK_ARRAY_LEN) {
                 // Timer has already been reserved by an internal module
                 if (stm_peripherals_timer_is_reserved(&mcu_tim_banks[tim_index])) {
                     continue; // keep looking
                 }
-                // is it the same channel? (or all channels reserved by a var-freq)
-                if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
+                // is it the same channel?
+                if (1 << tim_channel_index) {
                     continue; // keep looking, might be another viable option
                 }
 
@@ -115,7 +124,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             }
             // No problems taken, so set it up
             self->tim = tim;
-            tim_period = gp_tim_bank[i].max_value;
+            tim_period = timer_check_period(tim);
             break;
         }
     }
@@ -127,7 +136,6 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
         // create instance
         TIMx = &mcu_tim_banks[tim_index];
 
-        tim_channels_taken[tim_index] |= 1 << tim_channel_index;
         stm_peripherals_timer_reserve(TIMx);
     } else {
         return;
@@ -195,28 +203,24 @@ void common_hal_frequencyio_frequencyin_deinit(frequencyio_frequencyin_obj_t *se
         return;
     }
 
-    tim_channels_taken[self->tim->tim_index] &= ~(1 << self->tim->channel_index);
     HAL_TIM_IC_Stop(&self->handle, self->tim_channel);
     common_hal_reset_pin(self->pin);
 
-    // if reserved timer has no active channels, we can disable it
-    if (tim_channels_taken[self->tim->tim_index] == 0) {
-        HAL_TIM_IC_DeInit(&self->handle);
-        stm_peripherals_timer_free(self->handle.Instance);
-    }
+    HAL_TIM_IC_DeInit(&self->handle);
+    stm_peripherals_timer_free(self->handle.Instance);
 
     self->tim = NULL;
 }
 
 void common_hal_frequencyio_frequencyin_pause(frequencyio_frequencyin_obj_t *self) {
-    HAL_TIM_IC_Stop_IT(&self->tim_handle, self->tim_channel);
+    HAL_TIM_IC_Stop_IT(&self->handle, self->tim_channel);
     self->paused = true;
 }
 
 void common_hal_frequencyio_frequencyin_resume(frequencyio_frequencyin_obj_t *self) {
     self->paused = false;
     self->rising_edge = true;  // Reset measurement state
-    HAL_TIM_IC_Start_IT(&self->tim_handle, self->tim_channel);
+    HAL_TIM_IC_Start_IT(&self->handle, self->tim_channel);
 }
 
 void common_hal_frequencyio_frequencyin_clear(frequencyio_frequencyin_obj_t* self){
