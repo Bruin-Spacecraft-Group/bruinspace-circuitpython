@@ -214,6 +214,13 @@ void common_hal_frequencyio_frequencyin_deinit(frequencyio_frequencyin_obj_t *se
     HAL_TIM_IC_Stop(&self->handle, self->tim_channel);
     common_hal_reset_pin(self->pin);
 
+    callback_obj_ref[self->pin->number] = NULL;
+
+    uint8_t tim_index = self->tim->tim_index;
+    uint8_t tim_channel_index = self->tim->channel_index;
+
+    tim_channels_taken[tim_index] &= ~(1 << tim_channel_index);
+
     // if reserved timer has no active channels, we can disable it
     if (tim_channels_taken[self->tim->tim_index] == 0) {
         HAL_TIM_IC_DeInit(&self->handle);
