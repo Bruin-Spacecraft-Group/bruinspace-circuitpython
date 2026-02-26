@@ -12,6 +12,7 @@
 #include "shared-bindings/microcontroller/Pin.h"
 
 #include "timers.h"
+#include "peripherals/exti.h"
 
 // The HAL is sparse on obtaining register information, so we use the LLs here.
 #if (CPY_STM32H7)
@@ -135,7 +136,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             }
             // No problems taken, so set it up
             self->tim = tim;
-            
+
             break;
         }
     }
@@ -217,7 +218,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     // store self for callback
     callback_obj_ref[pin->number] = self;
-    stm_peripherals_exti_enable(pin->number)
+    stm_peripherals_exti_enable(pin->number);
 }
 
 bool common_hal_frequencyio_frequencyin_deinited(frequencyio_frequencyin_obj_t *self) {
