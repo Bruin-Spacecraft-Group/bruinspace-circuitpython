@@ -32,6 +32,8 @@
 #define STM32_GPIO_PORT_SIZE 16
 static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
 
+static TIM_HandleTypeDef tim_handle; // for timer callback (TEST ITS NECESSITY NEXT)
+
 // Bitmask of channels taken.
 static uint8_t tim_channels_taken[TIM_BANK_ARRAY_LEN];
 
@@ -53,44 +55,47 @@ static uint32_t timer_check_period(TIM_TypeDef *tim) {
 }
 
 void frequencyin_timer_event_handler(void) {
-    // iterate through all object refs to find all frequencyio instances
-    for (uint8_t i = 0; i < STM32_GPIO_PORT_SIZE; i++) {
-        frequencyio_frequencyin_obj_t *self = callback_obj_ref[i];
-        if (self == NULL) continue;
-
-        if (__HAL_TIM_GET_FLAG(&self->handle, TIM_FLAG_CC1) != RESET &&
-            __HAL_TIM_GET_IT_SOURCE(&self->handle, TIM_IT_CC1) != RESET) {
-
-            uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
-
-            // check for rising-edge
-            if (self->rising_edge){
-                self->last_capture = capture;
-                self->rising_edge = false;
-            } else { // falling edge, calculate frequency
-                capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
-                uint32_t difference = 0;
-
-                if (capture >= self->last_capture) {
-                    difference = capture - self->last_capture;
-                } else {
-                    difference = (self->handle.Init.Period - self->last_capture) + capture;
-                }
-
-                // freq is timer clock / (prescaler * difference)
-                if (difference > 0) {
-                    uint32_t timer_clock = stm_peripherals_timer_get_source_freq(self->handle.Instance);
-                    uint32_t prescaler = self->handle.Init.Prescaler;
-                    self->frequency = timer_clock/(prescaler * difference + 1); // prevent div by 0
-                }
-
-                self->rising_edge = true;
-            }
-
-            // clear interrupt bc this is a custom ISR
-            __HAL_TIM_CLEAR_IT(&self->handle, TIM_IT_CC1);
-        }
+    if (__HAL_TIM_GET_FLAG(&tim_handle, TIM_FLAG_CC1) != RESET &&
+        __HAL_TIM_GET_IT_SOURCE(&tim_handle, TIM_IT_CC1) != RESET) {
+            __HAL_TIM_CLEAR_IT(&tim_handle, TIM_IT_UPDATE);
     }
+}
+
+void frequencyin_exti_event_handler(uint8_t num) {
+    // this callback object needs work
+    frequencyio_frequencyin_obj_t *self = callback_obj_ref[num];
+    if (!self) return;
+
+    // current time
+    uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
+
+    // check for rising-edge
+    if (self->rising_edge){
+        // save time of rising edge
+        self->last_capture = capture;
+        self->rising_edge = false;
+    } else { // falling edge, calculate frequency from pulse length
+        capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
+        uint32_t difference = 0;
+
+        if (capture >= self->last_capture) {
+            difference = capture - self->last_capture;
+        } else {
+            difference = (self->handle.Init.Period - self->last_capture) + capture;
+        }
+
+        // freq is timer clock / (prescaler * difference)
+        if (difference > 0) {
+            uint32_t timer_clock = stm_peripherals_timer_get_source_freq(self->handle.Instance);
+            uint32_t prescaler = self->handle.Init.Prescaler;
+            self->frequency = timer_clock/(prescaler * difference + 1); // prevent div by 0
+        }
+
+        self->rising_edge = true;
+    }
+
+    // clear interrupt bc this is a custom ISR
+    __HAL_TIM_CLEAR_IT(&self->handle, TIM_IT_CC1);
 }
 
 void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t *self,
@@ -98,6 +103,8 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     uint16_t capture_period) {
 
     bool first_time_setup = true;
+
+    self->pin = pin;
 
     uint8_t tim_index;
     uint8_t tim_channel_index;
@@ -128,6 +135,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
             }
             // No problems taken, so set it up
             self->tim = tim;
+            
             break;
         }
     }
@@ -149,6 +157,10 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
         return;
     }
 
+    // EXTI, GPIO setup
+    if (!stm_peripherals_exti_reserve(pin->number)) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Pin interrupt already in use"));
+    }
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = pin_mask(pin->number);
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;        // Alternate function
@@ -157,8 +169,10 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     GPIO_InitStruct.Alternate = self->tim->altfn_index;  // Timer alternate function
     HAL_GPIO_Init(pin_port(pin->port), &GPIO_InitStruct);
 
-    // Enable clocks and IRQ, set callback that updates frequency reading
-    // TODO: Check priority
+    // this callback is for EXTI changes (rising edge, falling edge) that takes an arg
+    stm_peripherals_exti_set_callback(frequencyin_exti_event_handler, pin->number);
+
+    // This callback is for timer changes
     stm_peripherals_timer_preinit(TIMx, 4, frequencyin_timer_event_handler);
 
     // translate channel into handle value: TIM_CHANNEL_1, _2, _3, _4.
@@ -171,6 +185,9 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     self->handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     self->handle.Init.CounterMode = TIM_COUNTERMODE_UP;
     self->handle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+
+    // TODO: Either have this static variable (timer event handler is necessary) or parameter of self struct
+    tim_handle = self->handle;
 
     if (first_time_setup) {
         if (HAL_TIM_IC_Init(&self->handle) != HAL_OK) {
@@ -200,6 +217,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     // store self for callback
     callback_obj_ref[pin->number] = self;
+    stm_peripherals_exti_enable(pin->number)
 }
 
 bool common_hal_frequencyio_frequencyin_deinited(frequencyio_frequencyin_obj_t *self) {
