@@ -12,7 +12,7 @@
 #include "shared-bindings/microcontroller/Pin.h"
 
 #include "timers.h"
-#include "peripherals/exti.h"
+#include "exti.h"
 
 // The HAL is sparse on obtaining register information, so we use the LLs here.
 #if (CPY_STM32H7)
