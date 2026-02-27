@@ -70,7 +70,7 @@ void stm32_peripherals_clocks_init(void) {
         | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2
         | RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-    RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV8;
+    RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV4;
     RCC_ClkInitStruct.AHBCLKDivider = CPY_CLK_AHBDIV;
     RCC_ClkInitStruct.APB1CLKDivider = CPY_CLK_APB1DIV;
     RCC_ClkInitStruct.APB2CLKDivider = CPY_CLK_APB2DIV;
