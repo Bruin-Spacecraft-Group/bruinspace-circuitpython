@@ -99,7 +99,7 @@ void EXTI4_IRQHandler(void) {
     stm_exti_callback[4](4);
 }
 
-#ifdef STM32L4 || STM32H7
+#ifdef (STM32L4 || STM32H7)
 #define PR PR1
 #endif
 void EXTI9_5_IRQHandler(void) {
@@ -119,6 +119,6 @@ void EXTI15_10_IRQHandler(void) {
         }
     }
 }
-#ifdef STM32L4 || STM32H7
+#ifdef (STM32L4 || STM32H7)
 #undef PR
 #endif
