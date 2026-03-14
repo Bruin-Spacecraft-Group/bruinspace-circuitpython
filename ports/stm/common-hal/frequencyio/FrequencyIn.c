@@ -25,7 +25,7 @@
 #elif (CPY_STM32L4)
 #include "stm32l4xx_ll_gpio.h"
 #else
-    #error unknown MCU for DigitalInOut
+    #error unknown MCU for FreqencyIn
 #endif
 
 #define FULL_16 0xFFFF
@@ -59,6 +59,7 @@ static uint32_t timer_check_period(TIM_TypeDef *tim) {
 void frequencyin_timer_event_handler(void) {
     if (__HAL_TIM_GET_FLAG(&tim_handle, TIM_FLAG_CC1) != RESET &&
         __HAL_TIM_GET_IT_SOURCE(&tim_handle, TIM_IT_CC1) != RESET) {
+            
             __HAL_TIM_CLEAR_IT(&tim_handle, TIM_IT_UPDATE);
     }
 }
@@ -175,7 +176,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     stm_peripherals_exti_set_callback(frequencyin_exti_event_handler, pin->number);
 
     // This callback is for timer changes
-    stm_peripherals_timer_preinit(TIMx, 4, frequencyin_timer_event_handler);
+    stm_peripherals_timer_preinit(TIMx, 7, frequencyin_timer_event_handler);
 
     // translate channel into handle value: TIM_CHANNEL_1, _2, _3, _4.
     self->tim_channel = 4 * tim_channel_index;
@@ -214,7 +215,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     // internal variables
     self->capture_period = capture_period;
     self->last_capture = 0;
-    self->frequency = 0;
+    self->frequency = 2; // this is checking if something is going wrong with 
     self->rising_edge = true;
 
     // store self for callback
