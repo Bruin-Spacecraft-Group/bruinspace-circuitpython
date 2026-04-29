@@ -57,6 +57,7 @@ static uint32_t timer_check_period(TIM_TypeDef *tim) {
 }
 
 void frequencyin_timer_event_handler(void) {
+    self->frequency = 4;
     if (__HAL_TIM_GET_FLAG(&tim_handle, TIM_FLAG_CC1) != RESET &&
         __HAL_TIM_GET_IT_SOURCE(&tim_handle, TIM_IT_CC1) != RESET) {
             
@@ -65,6 +66,7 @@ void frequencyin_timer_event_handler(void) {
 }
 
 void frequencyin_exti_event_handler(uint8_t num) {
+    self->frequency = 3; 
     // this callback object needs work
     frequencyio_frequencyin_obj_t *self = callback_obj_ref[num];
     if (!self) return;
@@ -91,7 +93,7 @@ void frequencyin_exti_event_handler(uint8_t num) {
         if (difference > 0) {
             uint32_t timer_clock = stm_peripherals_timer_get_source_freq(self->handle.Instance);
             uint32_t prescaler = self->handle.Init.Prescaler;
-            self->frequency = timer_clock/(prescaler * difference + 1); // prevent div by 0
+            // self->frequency = timer_clock/(prescaler * difference + 1); // prevent div by 0
         }
 
         self->rising_edge = true;
@@ -174,6 +176,8 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
 
     // this callback is for EXTI changes (rising edge, falling edge) that takes an arg
     stm_peripherals_exti_set_callback(frequencyin_exti_event_handler, pin->number);
+
+    self->frequency = 1;
 
     // This callback is for timer changes
     stm_peripherals_timer_preinit(TIMx, 7, frequencyin_timer_event_handler);
