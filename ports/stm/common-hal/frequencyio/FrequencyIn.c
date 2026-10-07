@@ -7,224 +7,162 @@
 #include <stdint.h>
 #include "common-hal/frequencyio/FrequencyIn.h"
 #include "shared-bindings/frequencyio/FrequencyIn.h"
-#include "py/mpconfig.h"
-#include "py/runtime.h"
-#include STM32_HAL_H
 #include "shared-bindings/microcontroller/Pin.h"
+#include "py/runtime.h"
+#include "supervisor/shared/tick.h"
+#include STM32_HAL_H
 
 #include "timers.h"
-#include "exti.h"
 
-// The HAL is sparse on obtaining register information, so we use the LLs here.
-#if (CPY_STM32H7)
-#include "stm32h7xx_ll_gpio.h"
-#elif (CPY_STM32F7)
-#include "stm32f7xx_ll_gpio.h"
-#elif (CPY_STM32F4)
-#include "stm32f4xx_ll_gpio.h"
-#elif (CPY_STM32L4)
-#include "stm32l4xx_ll_gpio.h"
-#else
-    #error unknown MCU for FreqencyIn
-#endif
+#define CHANNELS_PER_TIMER 4
 
-#define FULL_16 0xFFFF
-#define FULL_32 0xFFFFFFFF
-
-#define STM32_GPIO_PORT_SIZE 16
-static frequencyio_frequencyin_obj_t *callback_obj_ref[STM32_GPIO_PORT_SIZE];
-
-static TIM_HandleTypeDef tim_handle; // for timer callback (TEST ITS NECESSITY NEXT)
-
-// Bitmask of channels taken.
+// Channels claimed on each timer by THIS module. A nonzero entry means the timer is ours.
 static uint8_t tim_channels_taken[TIM_BANK_ARRAY_LEN];
+static frequencyio_frequencyin_obj_t *instances[TIM_BANK_ARRAY_LEN][CHANNELS_PER_TIMER];
 
-static uint32_t timer_check_period(TIM_TypeDef *tim) {
-    // reserve initial value in counter
-    uint32_t res_counter = tim->CNT;
-
-    // Attempt to write 32 bits to the timer
-    tim->CNT = FULL_32;
-    uint32_t test_value = tim->CNT;
-
-    tim->CNT = res_counter;
-
-    // test value still has upper 16 bits, 32 bits. else, 16
-    if (test_value == FULL_32) {
-        return FULL_32;
-    }
-    return FULL_16;
-}
-
-void frequencyin_timer_event_handler(void) {
-    self->frequency = 4;
-    if (__HAL_TIM_GET_FLAG(&tim_handle, TIM_FLAG_CC1) != RESET &&
-        __HAL_TIM_GET_IT_SOURCE(&tim_handle, TIM_IT_CC1) != RESET) {
-            
-            __HAL_TIM_CLEAR_IT(&tim_handle, TIM_IT_UPDATE);
-    }
-}
-
-void frequencyin_exti_event_handler(uint8_t num) {
-    self->frequency = 3; 
-    // this callback object needs work
-    frequencyio_frequencyin_obj_t *self = callback_obj_ref[num];
-    if (!self) return;
-
-    // current time
-    uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
-
-    // check for rising-edge
-    if (self->rising_edge){
-        // save time of rising edge
-        self->last_capture = capture;
-        self->rising_edge = false;
-    } else { // falling edge, calculate frequency from pulse length
-        capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
-        uint32_t difference = 0;
-
-        if (capture >= self->last_capture) {
-            difference = capture - self->last_capture;
-        } else {
-            difference = (self->handle.Init.Period - self->last_capture) + capture;
+// timers.h only gives us a void(void) callback, so one handler scans every timer we own.
+static void frequencyin_timer_event_handler(void) {
+    for (size_t t = 0; t < TIM_BANK_ARRAY_LEN; t++) {
+        if (tim_channels_taken[t] == 0) {
+            continue;
         }
+        TIM_TypeDef *TIMx = mcu_tim_banks[t];
+        for (size_t c = 0; c < CHANNELS_PER_TIMER; c++) {
+            frequencyio_frequencyin_obj_t *self = instances[t][c];
+            if (!self) {
+                continue;
+            }
+            uint32_t flag = TIM_SR_CC1IF << c;
+            if (!(TIMx->SR & flag) || !(TIMx->DIER & (TIM_DIER_CC1IE << c))) {
+                continue;
+            }
+            // Read CCRx (this also clears CCxIF), then clear explicitly and drop any overcapture flag.
+            uint32_t capture = HAL_TIM_ReadCapturedValue(&self->handle, self->tim_channel);
+            TIMx->SR = ~(flag | (TIM_SR_CC1OF << c));
 
-        // freq is timer clock / (prescaler * difference)
-        if (difference > 0) {
-            uint32_t timer_clock = stm_peripherals_timer_get_source_freq(self->handle.Instance);
-            uint32_t prescaler = self->handle.Init.Prescaler;
-            // self->frequency = timer_clock/(prescaler * difference + 1); // prevent div by 0
+            if (self->have_last) {
+                self->period_ticks = (capture - self->last_capture) & self->counter_mask;
+            }
+            self->last_capture = capture;
+            self->have_last = true;
+            self->last_edge_ms = supervisor_ticks_ms32();
         }
-
-        self->rising_edge = true;
     }
-
-    // clear interrupt bc this is a custom ISR
-    __HAL_TIM_CLEAR_IT(&self->handle, TIM_IT_CC1);
 }
 
 void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t *self,
-    const mcu_pin_obj_t *pin,
-    uint16_t capture_period) {
+    const mcu_pin_obj_t *pin, uint16_t capture_period) {
 
-    bool first_time_setup = true;
+    const mcu_tim_pin_obj_t *found = NULL;
+    bool pin_has_timer = false;
 
-    self->pin = pin;
-
-    uint8_t tim_index;
-    uint8_t tim_channel_index;
-    uint32_t tim_period;
-
-    // find free timer
-    self->tim = NULL;
-    for (uint8_t i = 0; i < MP_ARRAY_SIZE(mcu_tim_pin_list); i++) {
-        const mcu_tim_pin_obj_t *tim = &mcu_tim_pin_list[i];
-        tim_index = tim->tim_index;
-        tim_channel_index = tim->channel_index;
-
-        // if pin is same
-        if (tim->pin == pin) {
-            // check if the timer has a channel active, or is reserved by main timer system
-            if (tim_index < TIM_BANK_ARRAY_LEN && tim_channels_taken[tim_index] != 0) {
-                // Timer has already been reserved by an internal module
-                if (stm_peripherals_timer_is_reserved(mcu_tim_banks[tim_index])) {
-                    continue; // keep looking
-                }
-
-                // is it the same channel? (or all channels reserved by a var-freq)
-                if (tim_channels_taken[tim_index] & (1 << tim_channel_index)) {
-                    continue; // keep looking, might be another viable option
-                }
-
-                first_time_setup = false; // skip setting up the timer
-            }
-            // No problems taken, so set it up
-            self->tim = tim;
-
-            break;
+    for (size_t i = 0; i < MP_ARRAY_SIZE(mcu_tim_pin_list); i++) {
+        const mcu_tim_pin_obj_t *cand = &mcu_tim_pin_list[i];
+        if (cand->pin != pin) {
+            continue;
         }
+        pin_has_timer = true;
+        size_t idx = cand->tim_index;
+        if (idx >= TIM_BANK_ARRAY_LEN) {
+            continue;
+        }
+        if (tim_channels_taken[idx] == 0) {
+            // Not ours yet: skip if anyone else (PWM, internal use) holds it.
+            if (stm_peripherals_timer_is_reserved(mcu_tim_banks[idx])) {
+                continue;
+            }
+        } else if (tim_channels_taken[idx] & (1 << cand->channel_index)) {
+            continue; // this channel is already in use by us
+        }
+        found = cand;
+        break;
+    }
+    if (!pin_has_timer) {
+        raise_ValueError_invalid_pin();   // or your tree's equivalent
+    }
+    if (!found) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("All timers in use"));
     }
 
-    TIM_TypeDef *TIMx;
+    size_t tim_index = found->tim_index;
+    uint8_t ch = found->channel_index;
+    TIM_TypeDef *TIMx = mcu_tim_banks[tim_index];
+    bool first_time_setup = (tim_channels_taken[tim_index] == 0);
 
-    // handle valid/invalid timer instance
-    if (self->tim != NULL) {
-        // create instance
-        TIMx = mcu_tim_banks[tim_index];
-
-        // reserve timer channel
-        tim_channels_taken[tim_index] |= 1 << tim_channel_index;
-
-        tim_period = timer_check_period(TIMx);
-
-        stm_peripherals_timer_reserve(TIMx);
-    } else {
-        return;
-    }
-
-    // EXTI, GPIO setup
-    if (!stm_peripherals_exti_reserve(pin->number)) {
-        mp_raise_RuntimeError(MP_ERROR_TEXT("Pin interrupt already in use"));
-    }
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = pin_mask(pin->number);
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;        // Alternate function
-    GPIO_InitStruct.Pull = GPIO_NOPULL; // clean signal?
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Alternate = self->tim->altfn_index;  // Timer alternate function
-    HAL_GPIO_Init(pin_port(pin->port), &GPIO_InitStruct);
-
-    // this callback is for EXTI changes (rising edge, falling edge) that takes an arg
-    stm_peripherals_exti_set_callback(frequencyin_exti_event_handler, pin->number);
-
-    self->frequency = 1;
-
-    // This callback is for timer changes
-    stm_peripherals_timer_preinit(TIMx, 7, frequencyin_timer_event_handler);
-
-    // translate channel into handle value: TIM_CHANNEL_1, _2, _3, _4.
-    self->tim_channel = 4 * tim_channel_index;
-
-    // Timer init
-    self->handle.Instance = TIMx;
-    self->handle.Init.Period = tim_period;
-    self->handle.Init.Prescaler = 0;
-    self->handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    self->handle.Init.CounterMode = TIM_COUNTERMODE_UP;
-    self->handle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-
-    // TODO: Either have this static variable (timer event handler is necessary) or parameter of self struct
-    tim_handle = self->handle;
+    claim_pin(pin);
+    self->pin = pin;
+    self->tim = found;
+    self->capture_period = capture_period;
+    self->have_last = false;
+    self->paused = false;
+    self->period_ticks = 0;
+    self->last_capture = 0;
+    self->last_edge_ms = 0;
 
     if (first_time_setup) {
+        stm_peripherals_timer_reserve(TIMx);
+        // Presumably enables the RCC clock and the NVIC line.
+        stm_peripherals_timer_preinit(TIMx, 7, frequencyin_timer_event_handler);
+    }
+    tim_channels_taken[tim_index] |= 1 << ch;
+    instances[tim_index][ch] = self;
+
+    // Counter width: use the HAL macro, not a CNT write test.
+    #if defined(IS_TIM_32B_COUNTER_INSTANCE)
+    self->counter_mask = IS_TIM_32B_COUNTER_INSTANCE(TIMx) ? 0xFFFFFFFFU : 0xFFFFU;
+    #else
+    self->counter_mask = 0xFFFFU;
+    #endif
+
+    uint32_t timer_clock = stm_peripherals_timer_get_source_freq(TIMx);
+
+    self->handle.Instance = TIMx;
+    if (first_time_setup) {
+        // 32-bit: full resolution. 16-bit: ~1 us ticks (lowest measurable ~15 Hz).
+        uint32_t psc = (self->counter_mask == 0xFFFFFFFFU) ? 0 : (timer_clock / 1000000U) - 1;
+        self->handle.Init.Prescaler = psc;
+        self->handle.Init.Period = self->counter_mask;
+        self->handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+        self->handle.Init.CounterMode = TIM_COUNTERMODE_UP;
+        self->handle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
         if (HAL_TIM_IC_Init(&self->handle) != HAL_OK) {
-            return;
+            common_hal_frequencyio_frequencyin_deinit(self);
+            mp_raise_RuntimeError(MP_ERROR_TEXT("Timer init failed"));   // string: check translations
         }
+    } else {
+        // Shared timer: adopt the live timebase, don't re-init (that would glitch other channels).
+        self->handle.Init.Prescaler = TIMx->PSC;
+        self->handle.Init.Period = TIMx->ARR;
+    }
+    self->tick_hz = timer_clock / (TIMx->PSC + 1);
+
+    GPIO_InitTypeDef gpio = {0};
+    gpio.Pin = pin_mask(pin->number);
+    gpio.Mode = GPIO_MODE_AF_PP;
+    gpio.Pull = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FREQ_HIGH;
+    gpio.Alternate = found->altfn_index;
+    HAL_GPIO_Init(pin_port(pin->port), &gpio);
+
+    // HAL_TIM_IC_Start* is skipped on purpose: newer HALs refuse it on a fresh handle for a
+    // shared timer. We enable the channel and interrupt directly below.
+    self->tim_channel = TIM_CHANNEL_1 + 4 * ch;   // TIM_CHANNEL_x = 0, 4, 8, 12
+    TIM_IC_InitTypeDef ic = {0};
+    ic.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+    ic.ICSelection = TIM_ICSELECTION_DIRECTTI;
+    ic.ICPrescaler = TIM_ICPSC_DIV1;
+    ic.ICFilter = 0;
+    if (HAL_TIM_IC_ConfigChannel(&self->handle, &ic, self->tim_channel) != HAL_OK) {
+        common_hal_frequencyio_frequencyin_deinit(self);
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Timer init failed"));
     }
 
-    // setting up input capture
-    TIM_IC_InitTypeDef TIM_IC_InitStruct = {0};
-    TIM_IC_InitStruct.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-    TIM_IC_InitStruct.ICSelection = TIM_ICSELECTION_DIRECTTI;
-    TIM_IC_InitStruct.ICPrescaler = TIM_ICPSC_DIV1;
-    TIM_IC_InitStruct.ICFilter = 0;
-
-    if(HAL_TIM_IC_ConfigChannel(&self->handle, &TIM_IC_InitStruct, self->tim_channel) != HAL_OK) {
-        return;
+    TIMx->SR = ~((TIM_SR_CC1IF | TIM_SR_CC1OF) << ch);
+    TIMx->CCER |= TIM_CCER_CC1E << (4 * ch);
+    TIMx->DIER |= TIM_DIER_CC1IE << ch;
+    if (first_time_setup) {
+        TIMx->CR1 |= TIM_CR1_CEN;
     }
-    if(HAL_TIM_IC_Start(&self->handle, self->tim_channel) != HAL_OK){
-        return;
-    }
-
-    // internal variables
-    self->capture_period = capture_period;
-    self->last_capture = 0;
-    self->frequency = 2; // this is checking if something is going wrong with 
-    self->rising_edge = true;
-
-    // store self for callback
-    callback_obj_ref[pin->number] = self;
-    stm_peripherals_exti_enable(pin->number);
 }
 
 bool common_hal_frequencyio_frequencyin_deinited(frequencyio_frequencyin_obj_t *self) {
@@ -232,45 +170,48 @@ bool common_hal_frequencyio_frequencyin_deinited(frequencyio_frequencyin_obj_t *
 }
 
 void common_hal_frequencyio_frequencyin_deinit(frequencyio_frequencyin_obj_t *self) {
-    if(common_hal_frequencyio_frequencyin_deinited(self)) {
+    if (common_hal_frequencyio_frequencyin_deinited(self)) {
         return;
     }
+    size_t tim_index = self->tim->tim_index;
+    uint8_t ch = self->tim->channel_index;
+    TIM_TypeDef *TIMx = mcu_tim_banks[tim_index];
 
-    HAL_TIM_IC_Stop(&self->handle, self->tim_channel);
-    common_hal_reset_pin(self->pin);
+    TIMx->DIER &= ~(TIM_DIER_CC1IE << ch);
+    TIMx->CCER &= ~(TIM_CCER_CC1E << (4 * ch));
+    instances[tim_index][ch] = NULL;
+    tim_channels_taken[tim_index] &= ~(1 << ch);
 
-    callback_obj_ref[self->pin->number] = NULL;
-
-    uint8_t tim_index = self->tim->tim_index;
-    uint8_t tim_channel_index = self->tim->channel_index;
-
-    tim_channels_taken[tim_index] &= ~(1 << tim_channel_index);
-
-    // if reserved timer has no active channels, we can disable it
-    if (tim_channels_taken[self->tim->tim_index] == 0) {
+    if (tim_channels_taken[tim_index] == 0) {
+        TIMx->CR1 &= ~TIM_CR1_CEN;
         HAL_TIM_IC_DeInit(&self->handle);
-        stm_peripherals_timer_free(self->handle.Instance);
+        stm_peripherals_timer_free(TIMx);
     }
-
+    common_hal_reset_pin(self->pin);
     self->tim = NULL;
+    self->pin = NULL;
 }
 
 void common_hal_frequencyio_frequencyin_pause(frequencyio_frequencyin_obj_t *self) {
-    HAL_TIM_IC_Stop_IT(&self->handle, self->tim_channel);
+    TIM_TypeDef *TIMx = self->handle.Instance;
+    TIMx->DIER &= ~(TIM_DIER_CC1IE << self->tim->channel_index);
     self->paused = true;
 }
 
 void common_hal_frequencyio_frequencyin_resume(frequencyio_frequencyin_obj_t *self) {
+    TIM_TypeDef *TIMx = self->handle.Instance;
+    uint8_t ch = self->tim->channel_index;
+    self->have_last = false;
+    self->period_ticks = 0;
+    self->last_edge_ms = supervisor_ticks_ms32();
+    TIMx->SR = ~((TIM_SR_CC1IF | TIM_SR_CC1OF) << ch);
+    TIMx->DIER |= TIM_DIER_CC1IE << ch;
     self->paused = false;
-    self->rising_edge = true;  // Reset measurement state
-    HAL_TIM_IC_Start_IT(&self->handle, self->tim_channel);
 }
 
-void common_hal_frequencyio_frequencyin_clear(frequencyio_frequencyin_obj_t* self){
-    // concerned about race conditions?
-    self->last_capture = 0;
-    self->frequency = 0;
-    self->rising_edge = true;
+void common_hal_frequencyio_frequencyin_clear(frequencyio_frequencyin_obj_t *self) {
+    self->have_last = false;
+    self->period_ticks = 0;
 }
 
 uint16_t common_hal_frequencyio_frequencyin_get_capture_period(frequencyio_frequencyin_obj_t *self) {
@@ -281,6 +222,14 @@ void common_hal_frequencyio_frequencyin_set_capture_period(frequencyio_frequency
     self->capture_period = capture_period;
 }
 
-uint32_t common_hal_frequencyio_frequencyin_get_item(frequencyio_frequencyin_obj_t *self){
-    return self->frequency;
+uint32_t common_hal_frequencyio_frequencyin_get_item(frequencyio_frequencyin_obj_t *self) {
+    uint32_t period = self->period_ticks;
+    if (period == 0 || self->paused) {
+        return 0;
+    }
+    // No edges within the window: report 0 instead of the stale value.
+    if ((uint32_t)(supervisor_ticks_ms32() - self->last_edge_ms) > self->capture_period) {
+        return 0;
+    }
+    return self->tick_hz / period;
 }
