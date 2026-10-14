@@ -89,7 +89,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     TIM_TypeDef *TIMx = mcu_tim_banks[tim_index];
     bool first_time_setup = (tim_channels_taken[tim_index] == 0);
 
-    claim_pin(pin);
+    claim_pin(pin->port, pin->number);
     self->pin = pin;
     self->tim = found;
     self->capture_period = capture_period;
