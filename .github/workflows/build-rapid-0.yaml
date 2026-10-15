@@ -11,13 +11,13 @@ jobs:
         board: [nucleo_h743zi_2, rapid_0]
     steps:
     - name: Set up repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: false
         show-progress: false
         fetch-depth: 1
     - name: Set up python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: 3.x
     - name: Set up ports
@@ -45,7 +45,7 @@ jobs:
     - name: Build boards
       run: make -j4 -C ports/stm BOARD=${{ matrix.board }}
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.board }}
         path: ports/stm/build-${{ matrix.board }}/firmware.*
