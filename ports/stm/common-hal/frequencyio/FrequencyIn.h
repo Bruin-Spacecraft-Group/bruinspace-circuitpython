@@ -28,3 +28,5 @@ typedef struct {
     volatile bool have_last;
     volatile bool paused;
 } frequencyio_frequencyin_obj_t;
+
+void frequencyin_reset(void);

@@ -12,9 +12,13 @@
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/microcontroller/Pin.h"
 
-// #if !(CPY_STM32H7)
-
+#if !(CPY_STM32H7)
 #define ALL_CLOCKS 0xFFFF
+#else
+// STM32h7 has some 32-bit clocks
+#define ALL_CLOCKS 0xFFFFFFFF
+#endif
+
 #define NULL_IRQ 0xFF
 
 static bool stm_timer_reserved[MP_ARRAY_SIZE(mcu_tim_banks)];
@@ -157,12 +161,16 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
     // The timer index starts at 0, but the timer numbers start at TIM1.
     size_t tim_id = stm_peripherals_timer_get_index(timer) + 1;
     uint32_t source, clk_div;
-    if (tim_id == 1 || (8 <= tim_id && tim_id <= 11)) {
+    if (tim_id == 1 || (8 <= tim_id && tim_id <= 11) 
+    #if (CPY_STM32H7) 
+        || (15 <= tim_id && tim_id <= 17) // TIM{15,16,17} are on APB2 for the STM32H7, too
+    #endif
+    ) {
         // TIM{1,8,9,10,11} are on APB2
         source = HAL_RCC_GetPCLK2Freq();
         #if (CPY_STM32H7)
         // 0b0xx means not divided; 0b100 is divide by 2; 0b101 by 4; 0b110 by 8; 0b111 by 16.
-        clk_div = (RCC->CFGR & RCC_D2CFGR_D2PPRE2) >> RCC_D2CFGR_D2PPRE2_Pos;
+        clk_div = (RCC->D2CFGR & RCC_D2CFGR_D2PPRE2) >> RCC_D2CFGR_D2PPRE2_Pos;
         #else
         clk_div = (RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos;
         #endif
@@ -170,8 +178,8 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
         // TIM{2,3,4,5,6,7,12,13,14} are on APB1
         source = HAL_RCC_GetPCLK1Freq();
         // 0b0xx means not divided; 0b100 is divide by 2; 0b101 by 4; 0b110 by 8; 0b111 by 16.
-        #if (CPY_STM32H7)
-        clk_div = (RCC->CFGR & RCC_D2CFGR_D2PPRE1) >> RCC_D2CFGR_D2PPRE1_Pos;
+        #if (CPY_STM32H7) 
+        clk_div = (RCC->D2CFGR & RCC_D2CFGR_D2PPRE1) >> RCC_D2CFGR_D2PPRE1_Pos;;
         #else
         clk_div = (RCC->CFGR & RCC_CFGR_PPRE1) >> RCC_CFGR_PPRE1_Pos;
         #endif
@@ -234,9 +242,10 @@ TIM_TypeDef *stm_peripherals_find_timer(void) {
     // TODO: secondary search for timers outside the pins in the board profile
 
     // Work backwards - higher index timers have fewer pin allocations
-    for (size_t i = (MP_ARRAY_SIZE(mcu_tim_banks) - 1); i >= 0; i--) {
-        if ((!stm_timer_reserved[i]) && (mcu_tim_banks[i] != NULL)) {
-            return mcu_tim_banks[i];
+    for (size_t i = MP_ARRAY_SIZE(mcu_tim_banks); i > 0; i--) {
+        size_t idx = i - 1;
+        if (!stm_timer_reserved[idx] && mcu_tim_banks[idx] != NULL) {
+            return mcu_tim_banks[idx];
         }
     }
     mp_raise_RuntimeError(MP_ERROR_TEXT("All timers in use"));
@@ -299,7 +308,7 @@ size_t stm_peripherals_timer_get_index(TIM_TypeDef *instance) {
     return ~(size_t)0;
 }
 
-void tim_clock_enable(uint16_t mask) {
+void tim_clock_enable(uint32_t mask) {
     #ifdef TIM1
     if (mask & (1 << 0)) {
         __HAL_RCC_TIM1_CLK_ENABLE();
@@ -361,9 +370,24 @@ void tim_clock_enable(uint16_t mask) {
         __HAL_RCC_TIM14_CLK_ENABLE();
     }
     #endif
+    #ifdef TIM15
+    if (mask & (1 << 14)) {
+        __HAL_RCC_TIM14_CLK_ENABLE();
+    }
+    #endif
+    #ifdef TIM16
+    if (mask & (1 << 15)) {
+        __HAL_RCC_TIM14_CLK_ENABLE();
+    }
+    #endif
+    #ifdef TIM17
+    if (mask & (1 << 16)) {
+        __HAL_RCC_TIM14_CLK_ENABLE();
+    }
+    #endif
 }
 
-void tim_clock_disable(uint16_t mask) {
+void tim_clock_disable(uint32_t mask) {
     #ifdef TIM1
     if (mask & (1 << 0)) {
         __HAL_RCC_TIM1_CLK_DISABLE();
@@ -423,6 +447,21 @@ void tim_clock_disable(uint16_t mask) {
     #ifdef TIM14
     if (mask & (1 << 13)) {
         __HAL_RCC_TIM14_CLK_DISABLE();
+    }
+    #endif
+    #ifdef TIM15
+    if (mask & (1 << 14)) {
+        __HAL_RCC_TIM15_CLK_DISABLE();
+    }
+    #endif
+    #ifdef TIM16
+    if (mask & (1 << 15)) {
+        __HAL_RCC_TIM16_CLK_DISABLE();
+    }
+    #endif
+    #ifdef TIM17
+    if (mask & (1 << 16)) {
+        __HAL_RCC_TIM17_CLK_DISABLE();
     }
     #endif
 }
