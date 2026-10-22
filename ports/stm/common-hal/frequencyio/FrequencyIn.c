@@ -49,6 +49,7 @@ static void frequencyin_timer_event_handler(void) {
         }
     }
 }
+
 void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t *self,
     const mcu_pin_obj_t *pin, uint16_t capture_period) {
 
@@ -232,5 +233,3 @@ uint32_t common_hal_frequencyio_frequencyin_get_item(frequencyio_frequencyin_obj
     }
     return self->tick_hz / period;
 }
-
-

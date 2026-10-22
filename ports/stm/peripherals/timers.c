@@ -161,8 +161,8 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
     // The timer index starts at 0, but the timer numbers start at TIM1.
     size_t tim_id = stm_peripherals_timer_get_index(timer) + 1;
     uint32_t source, clk_div;
-    if (tim_id == 1 || (8 <= tim_id && tim_id <= 11) 
-    #if (CPY_STM32H7) 
+    if (tim_id == 1 || (8 <= tim_id && tim_id <= 11)
+    #if (CPY_STM32H7)
         || (15 <= tim_id && tim_id <= 17) // TIM{15,16,17} are on APB2 for the STM32H7, too
     #endif
     ) {
@@ -178,7 +178,7 @@ uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer) {
         // TIM{2,3,4,5,6,7,12,13,14} are on APB1
         source = HAL_RCC_GetPCLK1Freq();
         // 0b0xx means not divided; 0b100 is divide by 2; 0b101 by 4; 0b110 by 8; 0b111 by 16.
-        #if (CPY_STM32H7) 
+        #if (CPY_STM32H7)
         clk_div = (RCC->D2CFGR & RCC_D2CFGR_D2PPRE1) >> RCC_D2CFGR_D2PPRE1_Pos;;
         #else
         clk_div = (RCC->CFGR & RCC_CFGR_PPRE1) >> RCC_CFGR_PPRE1_Pos;
