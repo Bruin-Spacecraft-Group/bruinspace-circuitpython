@@ -127,7 +127,7 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
         self->handle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
         if (HAL_TIM_IC_Init(&self->handle) != HAL_OK) {
             common_hal_frequencyio_frequencyin_deinit(self);
-            mp_raise_RuntimeError(MP_ERROR_TEXT("Timer init failed"));   // string: check translations
+            mp_raise_RuntimeError(MP_ERROR_TEXT("Timer init failed"));
         }
     } else {
         // Shared timer: adopt the live timebase, don't re-init (that would glitch other channels).
