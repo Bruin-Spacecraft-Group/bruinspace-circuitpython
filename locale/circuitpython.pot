@@ -543,6 +543,7 @@ msgstr ""
 #: ports/nordic/common-hal/pulseio/PulseIn.c
 #: ports/nordic/peripherals/nrf/timers.c
 #: ports/raspberrypi/common-hal/audiopwmio/PWMAudioOut.c
+#: ports/stm/common-hal/frequencyio/FrequencyIn.c
 msgid "All timers in use"
 msgstr ""
 
@@ -2065,6 +2066,10 @@ msgstr ""
 #: ports/nordic/common-hal/_bleio/Adapter.c
 #, c-format
 msgid "Timeout is too long: Maximum timeout length is %d seconds"
+msgstr ""
+
+#: ports/stm/common-hal/frequencyio/FrequencyIn.c
+msgid "Timer init failed"
 msgstr ""
 
 #: ports/atmel-samd/common-hal/audiobusio/I2SOut.c

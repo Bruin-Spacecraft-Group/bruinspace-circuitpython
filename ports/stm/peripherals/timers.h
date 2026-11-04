@@ -12,8 +12,8 @@
 
 #include STM32_HAL_H
 
-void tim_clock_enable(uint16_t mask);
-void tim_clock_disable(uint16_t mask);
+void tim_clock_enable(uint32_t mask); // most chips only require uint16_t however h7 requires uint32_t
+void tim_clock_disable(uint32_t mask); // regardless this is safer than using compile flags
 uint32_t stm_peripherals_timer_get_source_freq(TIM_TypeDef *timer);
 size_t stm_peripherals_timer_get_irqnum(TIM_TypeDef *instance);
 void timers_reset(void);

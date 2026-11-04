@@ -23,7 +23,7 @@ ifeq ($(MCU_SERIES),F4)
         # Not yet implemented common-hal modules:
         CIRCUITPY_AUDIOBUSIO ?= 0
         CIRCUITPY_COUNTIO ?= 0
-        CIRCUITPY_FREQUENCYIO ?= 0
+        CIRCUITPY_FREQUENCYIO ?= 1
         CIRCUITPY_I2CTARGET ?= 0
         CIRCUITPY_NVM ?= 0
         CIRCUITPY_ROTARYIO ?= 0
@@ -39,7 +39,7 @@ ifeq ($(MCU_SERIES),H7)
         CIRCUITPY_AUDIOBUSIO ?= 0
         CIRCUITPY_AUDIOIO ?= 0
         CIRCUITPY_COUNTIO ?= 0
-        CIRCUITPY_FREQUENCYIO ?= 0
+        CIRCUITPY_FREQUENCYIO ?= 1
         CIRCUITPY_I2CTARGET ?= 0
         CIRCUITPY_NEOPIXEL_WRITE ?= 0
         CIRCUITPY_NVM ?= 0
