@@ -19,6 +19,48 @@
 // Channels claimed on each timer by THIS module. A nonzero entry means the timer is ours.
 static uint8_t tim_channels_taken[TIM_BANK_ARRAY_LEN];
 static frequencyio_frequencyin_obj_t *instances[TIM_BANK_ARRAY_LEN][CHANNELS_PER_TIMER];
+static void frequencyin_check_stability(
+    frequencyio_frequencyin_obj_t *self) {
+
+    if (self->history_count < PERIOD_HISTORY_SIZE) {
+        return;
+    }
+
+    uint32_t min_period = self->period_history[0];
+    uint32_t max_period = self->period_history[0];
+    uint64_t sum = 0;
+
+    for (size_t i = 0; i < PERIOD_HISTORY_SIZE; i++) {
+        uint32_t p = self->period_history[i];
+
+        if (p < min_period) {
+            min_period = p;
+        }
+
+        if (p > max_period) {
+            max_period = p;
+        }
+
+        sum += p;
+    }
+
+    uint32_t avg_period = sum / PERIOD_HISTORY_SIZE;
+    uint32_t jitter = max_period - min_period;
+
+    if (avg_period > 0 &&
+        jitter > ((avg_period * UNSTABLE_THRESHOLD_PERCENT) / 100)) {
+
+        if (self->unstable_count < 255) {
+            self->unstable_count++;
+        }
+
+    } else {
+        self->unstable_count = 0;
+    }
+
+    self->measurement_unreliable =
+        (self->unstable_count >= UNSTABLE_COUNT_LIMIT);
+}
 
 // timers.h only gives us a void(void) callback, so one handler scans every timer we own.
 static void frequencyin_timer_event_handler(void) {
@@ -42,6 +84,19 @@ static void frequencyin_timer_event_handler(void) {
 
             if (self->have_last) {
                 self->period_ticks = (capture - self->last_capture) & self->counter_mask;
+
+                uint32_t period = self->period_ticks;
+
+                self->period_history[self->history_index] = period;
+
+                self->history_index =
+                    (self->history_index + 1) % PERIOD_HISTORY_SIZE;
+
+                if (self->history_count < PERIOD_HISTORY_SIZE) {
+                    self->history_count++;
+                }
+
+                frequencyin_check_stability(self);
             }
             self->last_capture = capture;
             self->have_last = true;
@@ -98,6 +153,14 @@ void common_hal_frequencyio_frequencyin_construct(frequencyio_frequencyin_obj_t 
     self->period_ticks = 0;
     self->last_capture = 0;
     self->last_edge_ms = 0;
+    self->history_index = 0;
+    self->history_count = 0;
+    self->unstable_count = 0;
+    self->measurement_unreliable = false;
+
+    for (size_t i = 0; i < PERIOD_HISTORY_SIZE; i++) {
+        self->period_history[i] = 0;
+    }
 
     if (first_time_setup) {
         stm_peripherals_timer_reserve(TIMx);
@@ -203,6 +266,10 @@ void common_hal_frequencyio_frequencyin_resume(frequencyio_frequencyin_obj_t *se
     uint8_t ch = self->tim->channel_index;
     self->have_last = false;
     self->period_ticks = 0;
+    self->history_index = 0;
+    self->history_count = 0;
+    self->unstable_count = 0;
+    self->measurement_unreliable = false;
     self->last_edge_ms = supervisor_ticks_ms32();
     TIMx->SR = ~((TIM_SR_CC1IF | TIM_SR_CC1OF) << ch);
     TIMx->DIER |= TIM_DIER_CC1IE << ch;
@@ -212,6 +279,11 @@ void common_hal_frequencyio_frequencyin_resume(frequencyio_frequencyin_obj_t *se
 void common_hal_frequencyio_frequencyin_clear(frequencyio_frequencyin_obj_t *self) {
     self->have_last = false;
     self->period_ticks = 0;
+
+    self->history_index = 0;
+    self->history_count = 0;
+    self->unstable_count = 0;
+    self->measurement_unreliable = false;
 }
 
 uint16_t common_hal_frequencyio_frequencyin_get_capture_period(frequencyio_frequencyin_obj_t *self) {
@@ -229,6 +301,9 @@ uint32_t common_hal_frequencyio_frequencyin_get_item(frequencyio_frequencyin_obj
     }
     // No edges within the window: report 0 instead of the stale value.
     if ((uint32_t)(supervisor_ticks_ms32() - self->last_edge_ms) > self->capture_period) {
+        return 0;
+    }
+    if (self->measurement_unreliable) {
         return 0;
     }
     return self->tick_hz / period;

@@ -12,6 +12,9 @@
 #include "peripherals/periph.h"
 
 #include "py/obj.h"
+#define PERIOD_HISTORY_SIZE 8
+#define UNSTABLE_THRESHOLD_PERCENT 20
+#define UNSTABLE_COUNT_LIMIT 4
 
 typedef struct {
     mp_obj_base_t base;
@@ -27,6 +30,12 @@ typedef struct {
     volatile uint32_t last_edge_ms;
     volatile bool have_last;
     volatile bool paused;
+    
+    volatile uint32_t period_history[PERIOD_HISTORY_SIZE];
+    volatile uint8_t history_index;
+    volatile uint8_t history_count;
+    volatile uint8_t unstable_count;
+    volatile bool measurement_unreliable;
 } frequencyio_frequencyin_obj_t;
 
 void frequencyin_reset(void);
