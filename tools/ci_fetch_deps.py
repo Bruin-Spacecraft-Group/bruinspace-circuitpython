@@ -59,15 +59,17 @@ PORT_DEPS = {
     "espressif": [
         "extmod/ulab/",
         "lib/certificates/",
+        "lib/mp3/",
         "lib/protomatter/",
         "lib/quirc/",
         "lib/tlsf",
         "lib/tinyusb/",
     ],
     "litex": ["extmod/ulab/", "lib/tinyusb/", "lib/tlsf"],
-    "mimxrt10xx": ["extmod/ulab/", "lib/tinyusb/", "lib/tlsf", "data/nvm.toml/"],
+    "mimxrt10xx": ["extmod/ulab/", "lib/mp3/", "lib/tinyusb/", "lib/tlsf", "data/nvm.toml/"],
     "nordic": [
         "extmod/ulab/",
+        "lib/mbedtls/",
         "lib/mp3/",
         "lib/protomatter/",
         "lib/tinyusb/",
@@ -141,6 +143,22 @@ def fetch(where):
         )
         for s in matching_submodules([w for w in where if w.startswith("frozen")]):
             run(f"Ensure tags exist in {s}", "git fetch --tags --depth 1", cwd=TOP / s)
+
+    # mbedtls 4.x keeps its crypto in a nested tf-psa-crypto submodule, and the PSA
+    # driver-wrapper generator needs the framework submodule. Init them by name rather
+    # than with --recursive, which would also pull tf-psa-crypto's own framework copy
+    # and drivers/pqcp/mldsa-native. Those are not needed to build.
+    # Keyed off the checkout rather than off `where`, because the targets that pull
+    # lib/mbedtls name it several different ways ("lib/mbedtls/", "lib/", or "." for
+    # the `all` target).
+    mbedtls = TOP / "lib" / "mbedtls"
+    if (mbedtls / ".gitmodules").exists():
+        depth_maybe = "" if clone_supports_filter else "--depth 1"
+        run(
+            "Init mbedtls nested submodules",
+            f"git submodule update --init {filter_maybe} {depth_maybe} tf-psa-crypto framework",
+            cwd=mbedtls,
+        )
 
 
 def set_output(name, value):

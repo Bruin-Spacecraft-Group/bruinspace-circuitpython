@@ -55,6 +55,9 @@ __pycache__/
 ######################
 GNUmakefile
 user.props
+user_pre_mpconfigport.mk
+user_post_mpconfigport.mk
+user_post_circuitpy_defns.mk
 
 # Sphinx output
 ###############
@@ -107,3 +110,10 @@ TAGS
 
 # windsurf rules
 .windsurfrules
+
+# git-review-web outputs
+.review
+
+# Zephyr trace files
+**/channel0_0
+**/*.perfetto-trace

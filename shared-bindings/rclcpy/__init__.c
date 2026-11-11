@@ -112,7 +112,8 @@ static mp_obj_t rclcpy_create_node(size_t n_args, const mp_obj_t *pos_args, mp_m
 
     rclcpy_node_obj_t *self = mp_obj_malloc_with_finaliser(rclcpy_node_obj_t, &rclcpy_node_type);
     common_hal_rclcpy_node_construct(self, node_name, namespace);
-    return (mp_obj_t)self;
+
+    return MP_OBJ_FROM_PTR(self);
 }
 static MP_DEFINE_CONST_FUN_OBJ_KW(rclcpy_create_node_obj, 2, rclcpy_create_node);
 

@@ -60,10 +60,8 @@ static mp_obj_t analogbufio_bufferedin_make_new(const mp_obj_type_t *type, size_
     // Validate Pin
     const mcu_pin_obj_t *pin = validate_obj_is_free_pin(args[ARG_pin].u_obj, MP_QSTR_pin);
 
-    // Create local object
-    analogbufio_bufferedin_obj_t *self = mp_obj_malloc_with_finaliser(analogbufio_bufferedin_obj_t, &analogbufio_bufferedin_type);
-
-    // Call local interface in ports/common-hal/analogbufio
+    analogbufio_bufferedin_obj_t *self =
+        mp_obj_malloc_with_finaliser(analogbufio_bufferedin_obj_t, &analogbufio_bufferedin_type);
     common_hal_analogbufio_bufferedin_construct(self, pin, args[ARG_sample_rate].u_int);
 
     return MP_OBJ_FROM_PTR(self);

@@ -27,9 +27,9 @@
 
 static mp_obj_t ssl_create_default_context(void) {
     ssl_sslcontext_obj_t *s = mp_obj_malloc(ssl_sslcontext_obj_t, &ssl_sslcontext_type);
-
     common_hal_ssl_create_default_context(s);
-    return s;
+
+    return MP_OBJ_FROM_PTR(s);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(ssl_create_default_context_obj, ssl_create_default_context);
 

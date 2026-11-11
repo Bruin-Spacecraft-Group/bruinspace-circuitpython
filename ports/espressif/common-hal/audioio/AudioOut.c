@@ -573,6 +573,8 @@ void common_hal_audioio_audioout_play(audioio_audioout_obj_t *self,
         mp_raise_RuntimeError(MP_ERROR_TEXT("already playing"));
     }
 
+    audiosample_check(sample);
+
     size_t samples_size;
     uint8_t channel_count;
     bool samples_signed;

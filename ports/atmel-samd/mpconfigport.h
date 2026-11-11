@@ -66,6 +66,8 @@
 #define CIRCUITPY_MCU_FAMILY                        samd51
 #ifdef SAMD51
 #define MICROPY_PY_SYS_PLATFORM                     "MicroChip SAMD51"
+#elif defined(SAME51)
+#define MICROPY_PY_SYS_PLATFORM                     "MicroChip SAME51"
 #elif defined(SAME54)
 #define MICROPY_PY_SYS_PLATFORM                     "MicroChip SAME54"
 #endif

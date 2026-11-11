@@ -42,7 +42,7 @@ static mp_uint_t usb_midi_portout_write(mp_obj_t self_in, const void *buf_in, mp
     return common_hal_usb_midi_portout_write(self, buf, size, errcode);
 }
 
-static mp_uint_t usb_midi_portout_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
+static mp_uint_t usb_midi_portout_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     usb_midi_portout_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_uint_t ret;
     if (request == MP_STREAM_POLL) {

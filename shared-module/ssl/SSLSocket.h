@@ -15,15 +15,11 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
 #include "mbedtls/pk.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
 
 typedef struct ssl_sslsocket_obj {
     mp_obj_base_t base;
     mp_obj_t sock_obj;
     ssl_sslcontext_obj_t *ssl_context;
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
     mbedtls_ssl_context ssl;
     mbedtls_ssl_config conf;
     mbedtls_x509_crt cacert;

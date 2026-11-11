@@ -136,6 +136,8 @@ static void send_error(uint16_t conn_handle, uint8_t opcode, uint16_t handle, ui
                   .code = BT_ATT_OP_ERROR_RSP,
               }, {
                   .request = opcode,
+                  .handle = handle,
+                  .error = code,
               }};
 
     hci_send_acl_pkt(conn_handle, BT_L2CAP_CID_ATT, sizeof(rsp), (uint8_t *)&rsp);

@@ -179,7 +179,7 @@ static void check_for_deinit(espcamera_camera_obj_t *self) {
 static mp_obj_t espcamera_camera_frame_available_get(const mp_obj_t self_in) {
     espcamera_camera_obj_t *self = MP_OBJ_TO_PTR(self_in);
     check_for_deinit(self);
-    return mp_obj_new_bool(esp_camera_fb_available());
+    return mp_obj_new_bool(common_hal_espcamera_camera_available(self));
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(espcamera_camera_frame_available_get_obj, espcamera_camera_frame_available_get);
 
@@ -261,7 +261,7 @@ static mp_obj_t espcamera_camera_reconfigure(mp_uint_t n_args, const mp_obj_t *p
         args[ARG_grab_mode].u_obj != MP_ROM_NONE
         ?  validate_grab_mode(args[ARG_grab_mode].u_obj, MP_QSTR_grab_mode)
         : common_hal_espcamera_camera_get_grab_mode(self);
-    bool framebuffer_count =
+    mp_int_t framebuffer_count =
         args[ARG_framebuffer_count].u_obj != MP_ROM_NONE
         ?  mp_obj_get_int(args[ARG_framebuffer_count].u_obj)
         : common_hal_espcamera_camera_get_framebuffer_count(self);

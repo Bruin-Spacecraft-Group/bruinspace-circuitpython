@@ -17,6 +17,10 @@
 #include "py/runtime.h"
 #include "shared-bindings/os/__init__.h"
 
+#if CIRCUITPY_SETTINGS_TOML
+#include "supervisor/shared/settings.h"
+#endif
+
 // This provides all VFS related OS functions so that ports can share the code
 // as needed.
 
@@ -118,8 +122,14 @@ const char *common_hal_os_path_abspath(const char *path) {
                 // Remove the dot
                 output_len = slashes[slash_count - 1];
             } else if (component_len == 2 && full_path[i - 1] == '.' && full_path[i - 2] == '.') {
-                // Remove the double dot and the previous component if it exists
-                slash_count--;
+                // Remove the double dot and the previous component if it exists.
+                // Never rewind past the root: if the root is the only recorded
+                // boundary (slash_count == 1), ".." at the root is a no-op instead of
+                // underflowing slash_count to SIZE_MAX and reading slashes[SIZE_MAX]
+                // out of bounds (matches POSIX "cd .. from / stays at /" semantics).
+                if (slash_count > 1) {
+                    slash_count--;
+                }
                 output_len = slashes[slash_count - 1];
             } else {
                 slashes[slash_count] = output_len;
@@ -280,5 +290,18 @@ void common_hal_os_utime(const char *path, mp_obj_t times) {
     args[1] = times;
     mp_vfs_proxy_call(vfs, MP_QSTR_utime, 2, args);
 }
+
+#if CIRCUITPY_SETTINGS_TOML
+mp_obj_t common_hal_os_getenv(const char *key, mp_obj_t default_) {
+    vstr_t vstr;
+    vstr_init(&vstr, 64);
+
+    settings_err_t result = settings_get_raw_vstr(key, &vstr);
+    if (result == SETTINGS_OK) {
+        return mp_obj_new_str_from_vstr(&vstr);
+    }
+    return default_;
+}
+#endif
 
 MP_REGISTER_ROOT_POINTER(const char *cwd_path);

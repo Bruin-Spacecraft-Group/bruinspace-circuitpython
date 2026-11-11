@@ -10,6 +10,7 @@
 #include "driver/sdmmc_host.h"
 #include "ports/espressif/esp-idf/components/sdmmc/include/sdmmc_cmd.h"
 
+#include "extmod/vfs.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/util.h"
 #include "shared-bindings/sdioio/SDCard.h"
@@ -21,6 +22,7 @@ static const char *TAG = "SDCard.c";
 
 static bool slot_in_use[2];
 static bool never_reset_sdio[2] = { false, false };
+static bool host_initialized = false;
 
 static void common_hal_sdioio_sdcard_check_for_deinit(sdioio_sdcard_obj_t *self) {
     if (common_hal_sdioio_sdcard_deinited(self)) {
@@ -109,21 +111,22 @@ void common_hal_sdioio_sdcard_construct(sdioio_sdcard_obj_t *self,
     if (!slot_in_use[0] && !slot_in_use[1]) {
         err = sdmmc_host_init();
         if (err != ESP_OK) {
-            mp_raise_OSError_msg_varg(MP_ERROR_TEXT("SDIO Init Error %x"), err);
+            mp_raise_OSError_msg_varg(MP_ERROR_TEXT("SDIO Init Error 0x%02x"), err);
         }
+        host_initialized = true;
     }
 
     err = sdmmc_host_init_slot(sd_slot, &slot_config);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to initialize SDMMC slot: %x", err);
-        mp_raise_OSError_msg_varg(MP_ERROR_TEXT("SDIO Init Error %x"), err);
+        mp_raise_OSError_msg_varg(MP_ERROR_TEXT("SDIO Init Error 0x%02x"), err);
     }
     // sdmmc_card_t card;
     // self->card = malloc(sizeof(sdmmc_card_t));
     err = sdmmc_card_init(&host, &self->card);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to initialize SDMMC card: %x", err);
-        mp_raise_OSError_msg_varg(MP_ERROR_TEXT("SDIO Init Error %x"), err);
+        mp_raise_OSError_msg_varg(MP_ERROR_TEXT("SDIO Init Error 0x%02x"), err);
     }
 
     common_hal_sdioio_sdcard_check_for_deinit(self);
@@ -168,30 +171,71 @@ static void check_whole_block(mp_buffer_info_t *bufinfo, int sector_size) {
     }
 }
 
-int common_hal_sdioio_sdcard_writeblocks(sdioio_sdcard_obj_t *self, uint32_t start_block, mp_buffer_info_t *bufinfo) {
-    common_hal_sdioio_sdcard_check_for_deinit(self);
-    check_whole_block(bufinfo, self->card.csd.sector_size);
-    esp_err_t err;
-    ESP_LOGI(TAG, "in common_hal_sdioio_sdcard_writeblocks");
-    // err = sdmmc_io_write_blocks(&self->card, 1, start_block, bufinfo->buf, bufinfo->len);
-    err = sdmmc_write_sectors(&self->card, bufinfo->buf, start_block, bufinfo->len / self->card.csd.sector_size);
+mp_negative_errno_t sdioio_sdcard_writeblocks(mp_obj_t self_in, uint8_t *buf,
+    uint32_t start_block, uint32_t num_blocks) {
+    sdioio_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ESP_LOGI(TAG, "in sdioio_sdcard_writeblocks");
+    esp_err_t err = sdmmc_write_sectors(&self->card, buf, start_block, num_blocks);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to write blocks with err 0x%X", err);
+        return -MP_EIO;
     }
     return 0;
 }
 
-int common_hal_sdioio_sdcard_readblocks(sdioio_sdcard_obj_t *self, uint32_t start_block, mp_buffer_info_t *bufinfo) {
+mp_negative_errno_t common_hal_sdioio_sdcard_writeblocks(sdioio_sdcard_obj_t *self, uint32_t start_block, mp_buffer_info_t *bufinfo) {
     common_hal_sdioio_sdcard_check_for_deinit(self);
     check_whole_block(bufinfo, self->card.csd.sector_size);
-    esp_err_t err;
-    ESP_LOGI(TAG, "in common_hal_sdioio_sdcard_readblocks");
-    // err = sdmmc_io_read_blocks(&self->card, 1, start_block, bufinfo->buf, bufinfo->len);
-    err = sdmmc_read_sectors(&self->card, bufinfo->buf, start_block, bufinfo->len / self->card.csd.sector_size);
+
+    uint32_t num_blocks = bufinfo->len / self->card.csd.sector_size;
+    return sdioio_sdcard_writeblocks(MP_OBJ_FROM_PTR(self), bufinfo->buf,
+        start_block, num_blocks);
+}
+
+mp_negative_errno_t sdioio_sdcard_readblocks(mp_obj_t self_in, uint8_t *buf,
+    uint32_t start_block, uint32_t num_blocks) {
+    sdioio_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ESP_LOGI(TAG, "in sdioio_sdcard_readblocks");
+    esp_err_t err = sdmmc_read_sectors(&self->card, buf, start_block, num_blocks);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to read blocks with err 0x%X", err);
+        return -MP_EIO;
     }
     return 0;
+}
+
+mp_negative_errno_t common_hal_sdioio_sdcard_readblocks(sdioio_sdcard_obj_t *self, uint32_t start_block, mp_buffer_info_t *bufinfo) {
+    common_hal_sdioio_sdcard_check_for_deinit(self);
+    check_whole_block(bufinfo, self->card.csd.sector_size);
+
+    uint32_t num_blocks = bufinfo->len / self->card.csd.sector_size;
+    return sdioio_sdcard_readblocks(MP_OBJ_FROM_PTR(self), bufinfo->buf,
+        start_block, num_blocks);
+}
+
+// Native function for VFS blockdev layer
+bool sdioio_sdcard_ioctl(mp_obj_t self_in, size_t cmd, size_t arg,
+    mp_int_t *out_value) {
+    sdioio_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    *out_value = 0;
+
+    switch (cmd) {
+        case MP_BLOCKDEV_IOCTL_DEINIT:
+        case MP_BLOCKDEV_IOCTL_SYNC:
+            // SDIO operations are synchronous, no action needed
+            return true;
+
+        case MP_BLOCKDEV_IOCTL_BLOCK_COUNT:
+            *out_value = common_hal_sdioio_sdcard_get_count(self);
+            return true;
+
+        case MP_BLOCKDEV_IOCTL_BLOCK_SIZE:
+            *out_value = 512;  // SD cards use 512-byte sectors
+            return true;
+
+        default:
+            return false;  // Unsupported command
+    }
 }
 
 bool common_hal_sdioio_sdcard_configure(sdioio_sdcard_obj_t *self, uint32_t frequency, uint8_t bits) {
@@ -210,8 +254,9 @@ void common_hal_sdioio_sdcard_deinit(sdioio_sdcard_obj_t *self) {
     never_reset_sdio[get_slot_index(self)] = false;
     slot_in_use[get_slot_index(self)] = false;
 
-    if (!slot_in_use[0] && !slot_in_use[1]) {
+    if (!slot_in_use[0] && !slot_in_use[1] && host_initialized) {
         sdmmc_host_deinit();
+        host_initialized = false;
     }
 
     reset_pin_number(self->command);
@@ -251,8 +296,9 @@ void sdioio_reset(void) {
             slot_in_use[i] = false;
         }
     }
-    if (!slot_in_use[0] && !slot_in_use[1]) {
+    if (!slot_in_use[0] && !slot_in_use[1] && host_initialized) {
         sdmmc_host_deinit();
+        host_initialized = false;
     }
 
     return;

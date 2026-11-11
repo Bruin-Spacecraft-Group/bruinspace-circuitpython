@@ -48,7 +48,6 @@ static mp_obj_t memorymonitor_allocationalarm_make_new(const mp_obj_type_t *type
 
     memorymonitor_allocationalarm_obj_t *self =
         mp_obj_malloc(memorymonitor_allocationalarm_obj_t, &memorymonitor_allocationalarm_type);
-
     common_hal_memorymonitor_allocationalarm_construct(self, minimum_block_count);
 
     return MP_OBJ_FROM_PTR(self);

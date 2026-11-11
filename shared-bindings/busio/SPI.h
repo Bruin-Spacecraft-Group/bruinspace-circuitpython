@@ -22,6 +22,10 @@ extern void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 extern void common_hal_busio_spi_deinit(busio_spi_obj_t *self);
 extern bool common_hal_busio_spi_deinited(busio_spi_obj_t *self);
 
+// Mark as deinit without deiniting. This is used by displayio after copying the
+// object elsewhere and prevents the heap from deiniting the object.
+extern void common_hal_busio_spi_mark_deinit(busio_spi_obj_t *self);
+
 extern bool common_hal_busio_spi_configure(busio_spi_obj_t *self, uint32_t baudrate, uint8_t polarity, uint8_t phase, uint8_t bits);
 
 extern bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self);
@@ -50,3 +54,7 @@ uint8_t common_hal_busio_spi_get_polarity(busio_spi_obj_t *self);
 extern void common_hal_busio_spi_never_reset(busio_spi_obj_t *self);
 
 extern busio_spi_obj_t *validate_obj_is_spi_bus(mp_obj_t obj_in, qstr arg_name);
+
+// Wait as long as needed for the lock. This is used by SD card access from USB.
+// For most ports, busy-wait while running the background tasks.
+MP_WEAK bool common_hal_busio_spi_wait_for_lock(busio_spi_obj_t *self, uint32_t timeout_ms);

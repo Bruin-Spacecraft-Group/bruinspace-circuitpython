@@ -4,6 +4,7 @@
 //
 // SPDX-License-Identifier: MIT
 #include "shared-bindings/audiodelays/Chorus.h"
+#include "shared-bindings/audiocore/__init__.h"
 
 #include <stdint.h>
 #include <math.h>
@@ -104,9 +105,7 @@ bool common_hal_audiodelays_chorus_deinited(audiodelays_chorus_obj_t *self) {
 }
 
 void common_hal_audiodelays_chorus_deinit(audiodelays_chorus_obj_t *self) {
-    if (common_hal_audiodelays_chorus_deinited(self)) {
-        return;
-    }
+    audiosample_mark_deinit(&self->base);
     self->chorus_buffer = NULL;
     self->buffer[0] = NULL;
     self->buffer[1] = NULL;
@@ -219,9 +218,15 @@ audioio_get_buffer_result_t audiodelays_chorus_get_buffer(audiodelays_chorus_obj
             if (self->sample) {
                 // Load another sample buffer to play
                 audioio_get_buffer_result_t result = audiosample_get_buffer(self->sample, false, 0, (uint8_t **)&self->sample_remaining_buffer, &self->sample_buffer_length);
-                // Track length in terms of words.
-                self->sample_buffer_length /= (self->base.bits_per_sample / 8);
-                self->more_data = result == GET_BUFFER_MORE_DATA;
+                if (result == GET_BUFFER_ERROR) {
+                    self->sample = NULL;
+                    self->sample_buffer_length = 0;
+                    self->more_data = false;
+                } else {
+                    // Track length in terms of words.
+                    self->sample_buffer_length /= (self->base.bits_per_sample / 8);
+                    self->more_data = result == GET_BUFFER_MORE_DATA;
+                }
             }
         }
 

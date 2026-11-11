@@ -42,7 +42,6 @@
 typedef enum {
     SPI_FREE = 0,
     SPI_BUSY,
-    SPI_NEVER_RESET,
 } spi_status_t;
 
 // Set each bit to indicate an active SPI
@@ -60,6 +59,9 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
 
     // Check for NULL Pointer
     assert(self);
+
+    // Ensure the object starts in its deinit state.
+    common_hal_busio_spi_mark_deinit(self);
 
     // Assign SPI ID based on pins
     int spi_id = pinsToSpi(mosi, miso, sck);
@@ -118,13 +120,15 @@ void common_hal_busio_spi_never_reset(busio_spi_obj_t *self) {
     common_hal_never_reset_pin(self->miso);
     common_hal_never_reset_pin(self->sck);
     common_hal_never_reset_pin(self->nss);
-
-    spi_status[self->spi_id] = SPI_NEVER_RESET;
 }
 
 // Check SPI status, deinited or not
 bool common_hal_busio_spi_deinited(busio_spi_obj_t *self) {
     return self->sck == NULL;
+}
+
+void common_hal_busio_spi_mark_deinit(busio_spi_obj_t *self) {
+    self->sck = NULL;
 }
 
 // Deinit SPI obj
@@ -138,8 +142,9 @@ void common_hal_busio_spi_deinit(busio_spi_obj_t *self) {
 
     self->mosi = NULL;
     self->miso = NULL;
-    self->sck = NULL;
     self->nss = NULL;
+
+    common_hal_busio_spi_mark_deinit(self);
 }
 
 // Configures the SPI bus. The SPI object must be locked.
@@ -152,7 +157,6 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
     mxc_spi_clkmode_t clk_mode;
     int ret;
 
-    self->baudrate = baudrate;
     self->polarity = polarity;
     self->phase = phase;
     self->bits = bits;
@@ -180,6 +184,29 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
         mp_raise_ValueError_varg(MP_ERROR_TEXT("%q out of range"), MP_QSTR_baudrate);
         return false;
     }
+
+    // MXC_SPI_SetFrequency() floors the clock divisor, so the actual rate can be
+    // HIGHER than requested. Treat baudrate as a ceiling: if the hardware
+    // overshoots, bisect downward on the requested target for the highest rate
+    // that does not exceed baudrate. MXC_SPI_GetFrequency() reports the actual
+    // configured rate, so we don't depend on the divisor internals.
+    uint32_t actual = MXC_SPI_GetFrequency(self->spi_regs);
+    if (actual > baudrate) {
+        uint32_t lo = 1;         // f(lo) <= baudrate
+        uint32_t hi = baudrate;  // f(hi) > baudrate (just measured)
+        while (hi - lo > 1) {
+            uint32_t mid = lo + (hi - lo) / 2;
+            MXC_SPI_SetFrequency(self->spi_regs, mid);
+            if (MXC_SPI_GetFrequency(self->spi_regs) <= baudrate) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        MXC_SPI_SetFrequency(self->spi_regs, lo);
+        actual = MXC_SPI_GetFrequency(self->spi_regs);
+    }
+    self->baudrate = actual;
     ret = MXC_SPI_SetDataSize(self->spi_regs, bits);
     if (ret == E_BAD_PARAM) {
         mp_raise_ValueError_varg(MP_ERROR_TEXT("%q out of range"), MP_QSTR_bits);

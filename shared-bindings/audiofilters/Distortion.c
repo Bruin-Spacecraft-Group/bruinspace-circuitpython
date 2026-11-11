@@ -145,8 +145,21 @@ static mp_obj_t audiofilters_distortion_make_new(const mp_obj_type_t *type, size
         mode = validate_distortion_mode(args[ARG_mode].u_obj, MP_QSTR_mode);
     }
 
-    audiofilters_distortion_obj_t *self = mp_obj_malloc(audiofilters_distortion_obj_t, &audiofilters_distortion_type);
-    common_hal_audiofilters_distortion_construct(self, args[ARG_drive].u_obj, args[ARG_pre_gain].u_obj, args[ARG_post_gain].u_obj, mode, args[ARG_soft_clip].u_obj, args[ARG_mix].u_obj, args[ARG_buffer_size].u_int, bits_per_sample, args[ARG_samples_signed].u_bool, channel_count, sample_rate);
+    audiofilters_distortion_obj_t *self =
+        mp_obj_malloc(audiofilters_distortion_obj_t, &audiofilters_distortion_type);
+    common_hal_audiofilters_distortion_construct(self,
+        args[ARG_drive].u_obj,
+        args[ARG_pre_gain].u_obj,
+        args[ARG_post_gain].u_obj,
+        mode,
+        args[ARG_soft_clip].u_bool,
+        args[ARG_mix].u_obj,
+        args[ARG_buffer_size].u_int,
+        bits_per_sample,
+        args[ARG_samples_signed].u_bool,
+        channel_count,
+        sample_rate);
+
     return MP_OBJ_FROM_PTR(self);
 }
 

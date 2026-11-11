@@ -8,3 +8,6 @@ CHIP_PACKAGE = A
 CHIP_FAMILY = rp2
 
 EXTERNAL_FLASH_DEVICES = "GD25Q64C,W25Q64JVxQ"
+
+# GPIO12-19 needed for picodvi, but many are not available.
+CIRCUITPY_PICODVI = 0

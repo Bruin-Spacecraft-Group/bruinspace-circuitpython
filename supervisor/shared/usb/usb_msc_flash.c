@@ -5,7 +5,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "tusb.h"
-// // #include "supervisor/flash.h"
 
 // For updating fatfs's cache
 #include "extmod/vfs.h"
@@ -14,10 +13,12 @@
 #include "lib/oofatfs/ff.h"
 #include "py/gc.h"
 #include "py/mpstate.h"
+#include "py/runtime.h"
 
 #include "shared-module/storage/__init__.h"
 #include "supervisor/filesystem.h"
 #include "supervisor/shared/reload.h"
+#include "supervisor/shared/settings.h"
 
 #define MSC_FLASH_BLOCK_SIZE    512
 
@@ -28,7 +29,7 @@
 #define SAVES_COUNT 0
 #endif
 
-#if CIRCUITPY_SDCARDIO
+#if CIRCUITPY_SDCARD_USB
 #include "shared-module/sdcardio/__init__.h"
 
 #define SDCARD_COUNT 1
@@ -37,7 +38,16 @@
 #define SDCARD_COUNT 0
 #endif
 
-#define LUN_COUNT (1 + SAVES_COUNT + SDCARD_COUNT)
+#if CIRCUITPY_EMMC_USB
+#include "shared-module/emmcio/__init__.h"
+
+#define EMMC_COUNT 1
+#define EMMC_LUN (1 + SAVES_COUNT + SDCARD_COUNT)
+#else
+#define EMMC_COUNT 0
+#endif
+
+#define LUN_COUNT (1 + SAVES_COUNT + SDCARD_COUNT + EMMC_COUNT)
 
 // The ellipsis range in the designated initializer of `ejected` is not standard C,
 // but it works in both gcc and clang.
@@ -72,7 +82,7 @@ static const uint8_t usb_msc_descriptor_template[] = {
     0xFF,        // 11 bEndpointAddress (IN/D2H) [SET AT RUNTIME: 0x80 | number]
 #define MSC_IN_ENDPOINT_INDEX (11)
     0x02,        // 12 bmAttributes (Bulk)
-    #if USB_HIGHSPEED
+    #if CIRCUITPY_USB_DEVICE_HIGH_SPEED == 1
     0x00, 0x02,  // 13,14 wMaxPacketSize 512
     #else
     0x40, 0x00,  // 13,14 wMaxPacketSize 64
@@ -85,7 +95,7 @@ static const uint8_t usb_msc_descriptor_template[] = {
     0xFF,        // 18 bEndpointAddress (OUT/H2D) [SET AT RUNTIME]
 #define MSC_OUT_ENDPOINT_INDEX (18)
     0x02,        // 19 bmAttributes (Bulk)
-    #if USB_HIGHSPEED
+    #if CIRCUITPY_USB_DEVICE_HIGH_SPEED == 1
     0x00, 0x02,  // 20,21 wMaxPacketSize 512
     #else
     0x40, 0x00,  // 20,21 wMaxPacketSize 64
@@ -137,7 +147,8 @@ static fs_user_mount_t *get_vfs(int lun) {
     if (lun == SAVES_LUN) {
         const char *path_under_mount;
         fs_user_mount_t *saves = filesystem_for_path("/saves", &path_under_mount);
-        if (saves != root && (saves->blockdev.flags & MP_BLOCKDEV_FLAG_NATIVE) != 0 && !gc_ptr_on_heap(saves)) {
+        if (saves != root &&
+            (saves->blockdev.flags & MP_BLOCKDEV_FLAG_NATIVE) != 0 && !gc_ptr_on_heap(saves)) {
             return saves;
         }
     }
@@ -146,13 +157,40 @@ static fs_user_mount_t *get_vfs(int lun) {
     if (lun == SDCARD_LUN) {
         const char *path_under_mount;
         fs_user_mount_t *sdcard = filesystem_for_path("/sd", &path_under_mount);
-        // If "/sd" is on the root filesystem, nothing has been mounted there.
-        if (sdcard != root && (sdcard->blockdev.flags & MP_BLOCKDEV_FLAG_NATIVE) != 0) {
+        // If sdcard ("/sd") is on the root filesystem, nothing has been mounted there, so don't
+        // return it as a separate filesystem.
+        // If the SD card was automounted at startup, then it persists across VMs and its fs_user_mount_t is
+        // not on the heap.
+        // If the SD card filesystem was mounted by the user using heap objects,
+        // it should not be used when the VM has stopped running.
+        if ((sdcard != root) &&
+            ((sdcard->blockdev.flags & MP_BLOCKDEV_FLAG_NATIVE) != 0) &&
+            (vm_is_running() || !gc_ptr_on_heap(sdcard))) {
             return sdcard;
         } else {
             // Clear any ejected state so that a re-insert causes it to reappear.
             ejected[SDCARD_LUN] = false;
             locked[SDCARD_LUN] = false;
+        }
+    }
+    #endif
+    #ifdef EMMC_LUN
+    if (lun == EMMC_LUN) {
+        const char *path_under_mount;
+
+        fs_user_mount_t *emmc = filesystem_for_path(CIRCUITPY_EMMC_MOUNT_PATH, &path_under_mount);
+        // Unlike the SD card there is no heap-mount case to allow: the eMMC's
+        // drive exists only when the supervisor mounted it, and
+        // that mount is static. A user mount made by code.py stays a Python
+        // filesystem and never becomes a LUN.
+        if (emmc != root &&
+            ((emmc->blockdev.flags & MP_BLOCKDEV_FLAG_NATIVE) != 0) &&
+            !gc_ptr_on_heap(emmc)) {
+            return emmc;
+        } else {
+            // Clear any ejected state so that a remount causes it to reappear.
+            ejected[EMMC_LUN] = false;
+            locked[EMMC_LUN] = false;
         }
     }
     #endif
@@ -196,20 +234,25 @@ uint8_t tud_msc_get_maxlun_cb(void) {
     return LUN_COUNT;
 }
 
+// PREVENT ALLOW MEDIUM REMOVAL: TinyUSB routes this to its own dedicated callback,
+// NOT tud_msc_scsi_cb. Reply unsupported on all LUNs so the host keeps TUR polling
+// on every LUN — eject/storage.remount() works uniformly across CIRCUITPY, SAVES, SD.
+bool tud_msc_prevent_allow_medium_removal_cb(uint8_t lun, uint8_t prohibit_removal, uint8_t control) {
+    (void)prohibit_removal;
+    (void)control;
+    tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x20, 0x00);
+    return false;
+}
+
 // Callback invoked when received an SCSI command not in built-in list below
 // - READ_CAPACITY10, READ_FORMAT_CAPACITY, INQUIRY, TEST_UNIT_READY, START_STOP_UNIT, MODE_SENSE6, REQUEST_SENSE
-// - READ10 and WRITE10 have their own callbacks
+// - PREVENT_ALLOW_MEDIUM_REMOVAL, READ10, WRITE10 have their own callbacks
 int32_t tud_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize) {
     // Note that no command uses a response right now.
     const void *response = NULL;
     int32_t resplen = 0;
 
     switch (scsi_cmd[0]) {
-        case SCSI_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL:
-            // Host is about to read/write etc ... better not to disconnect disk
-            resplen = 0;
-            break;
-
         default:
             // Set Sense = Invalid Command Operation
             tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x20, 0x00);
@@ -352,6 +395,33 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
     memcpy(product_rev, CFG_TUD_MSC_PRODUCT_REV, strlen(CFG_TUD_MSC_PRODUCT_REV));
 }
 
+#ifdef SDCARD_LUN
+#if CIRCUITPY_SETTINGS_TOML
+typedef enum {
+    SDCARD_USB_SETTING_NOT_YET_READ = 0,
+    SDCARD_USB_SETTING_TRUE,
+    SDCARD_USB_SETTING_FALSE,
+} sdcard_usb_setting_state_t;
+
+static sdcard_usb_setting_state_t _sdcard_usb_setting_state = SDCARD_USB_SETTING_NOT_YET_READ;
+
+// Read only once to save file access time.
+static bool sdcard_usb_enabled(void) {
+    if (_sdcard_usb_setting_state == SDCARD_USB_SETTING_NOT_YET_READ) {
+        // Can be changed per board. Most boards would leave this as true (default in circuitpy_mpconfig.h).
+        bool setting = CIRCUITPY_SDCARD_USB_DEFAULT;
+        (void)settings_get_bool("CIRCUITPY_SDCARD_USB", &setting);
+        _sdcard_usb_setting_state = setting ? SDCARD_USB_SETTING_TRUE : SDCARD_USB_SETTING_FALSE;
+    }
+    return _sdcard_usb_setting_state == SDCARD_USB_SETTING_TRUE;
+}
+#else
+static bool sdcard_usb_enabled(void) {
+    return CIRCUITPY_SDCARD_USB;
+}
+#endif
+#endif
+
 // Invoked when received Test Unit Ready command.
 // return true allowing host to read/write this LUN e.g SD card inserted
 bool tud_msc_test_unit_ready_cb(uint8_t lun) {
@@ -359,17 +429,16 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun) {
         return false;
     }
 
-    #if CIRCUITPY_SDCARD_USB
-    if (lun == SDCARD_LUN) {
-        automount_sd_card();
-    }
-    #endif
-
     fs_user_mount_t *current_mount = get_vfs(lun);
     if (current_mount == NULL) {
         return false;
     }
-    if (ejected[lun] || eject_once[lun]) {
+
+    if (ejected[lun] || eject_once[lun] || (lun == 0 && !storage_usb_enabled())
+        #ifdef SDCARD_LUN
+        || (lun == SDCARD_LUN && !sdcard_usb_enabled())
+        #endif
+        ) {
         eject_once[lun] = false;
         // Set 0x3a for media not present.
         tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3A, 0x00);

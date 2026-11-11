@@ -41,7 +41,7 @@ Connecting to the ESP32-C3
 
 **USB Connection:**
 
-On ESP32-C3 REV3 chips, a USB Serial/JTAG Controller is available. Note: This USB connection cannot be used for a ``CIRCUITPY`` drive.
+On ESP32-C3 REV3 chips, a USB Serial/JTAG Controller is available. Note: This USB connection cannot be used for a **CIRCUITPY** drive.
 
 Depending on the board you have, the USB port may or may not be connected to native USB.
 

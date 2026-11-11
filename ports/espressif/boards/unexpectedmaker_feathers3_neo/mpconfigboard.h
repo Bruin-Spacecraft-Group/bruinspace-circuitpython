@@ -27,3 +27,6 @@
 #define DEFAULT_UART_BUS_TX (&pin_GPIO43)
 
 // #define DOUBLE_TAP_PIN (&pin_GPIO47)
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

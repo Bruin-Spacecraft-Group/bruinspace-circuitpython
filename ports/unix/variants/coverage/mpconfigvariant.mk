@@ -37,7 +37,9 @@ SRC_BITMAP := \
 	shared-bindings/audiodelays/Echo.c \
 	shared-bindings/audiodelays/Chorus.c \
 	shared-bindings/audiodelays/PitchShift.c \
+	shared-bindings/audiodelays/GranularPitchShift.c \
 	shared-bindings/audiodelays/MultiTapDelay.c \
+	shared-bindings/audiodelays/Flanger.c \
 	shared-bindings/audiodelays/__init__.c \
 	shared-bindings/audiofilters/Distortion.c \
 	shared-bindings/audiofilters/Filter.c \
@@ -85,7 +87,9 @@ SRC_BITMAP := \
 	shared-module/audiodelays/Echo.c \
 	shared-module/audiodelays/Chorus.c \
 	shared-module/audiodelays/PitchShift.c \
+	shared-module/audiodelays/GranularPitchShift.c \
 	shared-module/audiodelays/MultiTapDelay.c \
+	shared-module/audiodelays/Flanger.c \
 	shared-module/audiodelays/__init__.c \
 	shared-module/audiofilters/Distortion.c \
 	shared-module/audiofilters/Filter.c \
@@ -106,7 +110,6 @@ SRC_BITMAP := \
 	shared-module/floppyio/__init__.c \
 	shared-module/jpegio/__init__.c \
 	shared-module/jpegio/JpegDecoder.c \
-	shared-module/os/getenv.c \
 	shared-module/rainbowio/__init__.c \
 	shared-module/struct/__init__.c \
 	shared-module/synthio/__init__.c \
@@ -147,6 +150,10 @@ SRC_C += $(addprefix lib/mp3/src/, \
 
 $(BUILD)/lib/mp3/src/buffers.o: CFLAGS += -include "shared-module/audiomp3/__init__.h" -D'MPDEC_ALLOCATOR(x)=malloc(x)' -D'MPDEC_FREE(x)=free(x)' -fwrapv
 
+# mp3dec.h only recognizes a fixed list of platforms and errors out on anything
+# else, including aarch64. Ask for the portable C code path, like espressif does.
+CFLAGS += -DMP3DEC_GENERIC
+
 CFLAGS += \
 	-DCIRCUITPY_AESIO=1 \
 	-DCIRCUITPY_AUDIOCORE=1 \
@@ -164,8 +171,8 @@ CFLAGS += \
 	-DCIRCUITPY_GIFIO=1 \
 	-DCIRCUITPY_JPEGIO=1 \
 	-DCIRCUITPY_LOCALE=1 \
-	-DCIRCUITPY_OS_GETENV=1 \
 	-DCIRCUITPY_RAINBOWIO=1 \
+	-DCIRCUITPY_SETTINGS_TOML=1 \
 	-DCIRCUITPY_STRUCT=1 \
 	-DCIRCUITPY_SYNTHIO=1 \
 	-DCIRCUITPY_SYNTHIO_MAX_CHANNELS=14 \

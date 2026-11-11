@@ -20,3 +20,6 @@
 #define CIRCUITPY_BOARD_SPI         (2)
 #define CIRCUITPY_BOARD_SPI_PIN     {{.clock = &pin_GPIO40, .mosi = &pin_GPIO45}, \
                                      {.clock = &pin_GPIO14, .mosi = &pin_GPIO15, .miso = &pin_GPIO16}}
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

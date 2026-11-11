@@ -79,18 +79,16 @@ extern "C" {
 
 #if CIRCUITPY_USB_DEVICE
 
+#if CIRCUITPY_USB_DEVICE_HIGH_SPEED == 1
+#define _DEVICE_SPEED OPT_MODE_HIGH_SPEED
+#else
+#define _DEVICE_SPEED 0
+#endif
+
 #if CIRCUITPY_USB_DEVICE_INSTANCE == 0
-#if USB_HIGHSPEED
-#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_DEVICE | OPT_MODE_HIGH_SPEED)
-#else
-#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_DEVICE)
-#endif
+#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_DEVICE | _DEVICE_SPEED)
 #elif CIRCUITPY_USB_DEVICE_INSTANCE == 1
-#if USB_HIGHSPEED
-#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_DEVICE | OPT_MODE_HIGH_SPEED)
-#else
-#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_DEVICE)
-#endif
+#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_DEVICE | _DEVICE_SPEED)
 #endif
 
 // Use DMA with the USB peripheral.
@@ -117,7 +115,32 @@ extern "C" {
 #define CFG_TUD_HID                 CIRCUITPY_USB_HID
 #define CFG_TUD_MIDI                CIRCUITPY_USB_MIDI
 #define CFG_TUD_VENDOR              CIRCUITPY_USB_VENDOR
+#define CFG_TUD_AUDIO               CIRCUITPY_USB_AUDIO
 #define CFG_TUD_CUSTOM_CLASS        0
+
+// ------------- AUDIO CLASS (UAC2 microphone) -------------//
+#if CIRCUITPY_USB_AUDIO
+#include "shared-module/usb_audio/usb_audio_descriptors.h"
+
+// EP0 buffer for class-specific control requests (sample-freq range, volume range, ...).
+#define CFG_TUD_AUDIO_CTRL_BUF_SZ                   64
+
+#define CFG_TUD_AUDIO_ENABLE_EP_IN                  1
+// wMaxPacketSize, sized for the highest supported sample rate.
+#define CFG_TUD_AUDIO_FUNC_1_EP_IN_SZ_MAX           TUD_AUDIO_EP_SIZE(TUD_OPT_HIGH_SPEED, USB_AUDIO_MAX_SAMPLE_RATE, USB_AUDIO_N_BYTES_PER_SAMPLE, USB_AUDIO_N_CHANNELS)
+// Deep software FIFO so the 1 ms refill keeps clear of the underrun floor.
+#define CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ        (16 * CFG_TUD_AUDIO_FUNC_1_EP_IN_SZ_MAX)
+
+// OUT endpoint (host -> board speaker). Compiled into the class driver
+// unconditionally; whether it actually enumerates is decided by the emitted
+// descriptor (still mic-only until the speaker descriptor lands). Mirrors the
+// IN sizing above.
+#define CFG_TUD_AUDIO_ENABLE_EP_OUT                 1
+// wMaxPacketSize, sized for the highest supported sample rate.
+#define CFG_TUD_AUDIO_FUNC_1_EP_OUT_SZ_MAX          TUD_AUDIO_EP_SIZE(TUD_OPT_HIGH_SPEED, USB_AUDIO_MAX_SAMPLE_RATE, USB_AUDIO_N_BYTES_PER_SAMPLE, USB_AUDIO_N_CHANNELS)
+// Deep software FIFO so the 1 ms drain keeps clear of the overrun ceiling.
+#define CFG_TUD_AUDIO_FUNC_1_EP_OUT_SW_BUF_SZ       (16 * CFG_TUD_AUDIO_FUNC_1_EP_OUT_SZ_MAX)
+#endif
 
 /*------------------------------------------------------------------*/
 /* CLASS DRIVER
@@ -157,18 +180,16 @@ extern "C" {
 #define CFG_TUH_RPI_PIO_USB 1
 #endif
 
+#if CIRCUITPY_USB_DEVICE_HIGH_SPEED == 1
+#define _HOST_SPEED OPT_MODE_HIGH_SPEED
+#else
+#define _HOST_SPEED 0
+#endif
+
 #if CIRCUITPY_USB_HOST_INSTANCE == 0
-#if USB_HIGHSPEED
-#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_HOST | OPT_MODE_HIGH_SPEED)
-#else
-#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_HOST)
-#endif
+#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_HOST | _HOST_SPEED)
 #elif CIRCUITPY_USB_HOST_INSTANCE == 1
-#if USB_HIGHSPEED
-#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_HOST | OPT_MODE_HIGH_SPEED)
-#else
-#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_HOST)
-#endif
+#define CFG_TUSB_RHPORT1_MODE       (OPT_MODE_HOST | _HOST_SPEED)
 #endif
 
 // Size of buffer to hold descriptors and other data used for enumeration

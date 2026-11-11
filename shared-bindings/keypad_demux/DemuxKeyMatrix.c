@@ -80,7 +80,6 @@
 //|
 
 static mp_obj_t keypad_demux_demuxkeymatrix_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    keypad_demux_demuxkeymatrix_obj_t *self = mp_obj_malloc(keypad_demux_demuxkeymatrix_obj_t, &keypad_demux_demuxkeymatrix_type);
     enum { ARG_row_addr_pins, ARG_column_pins, ARG_columns_to_anodes, ARG_transpose, ARG_interval, ARG_max_events, ARG_debounce_threshold };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_row_addr_pins, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -123,8 +122,10 @@ static mp_obj_t keypad_demux_demuxkeymatrix_make_new(const mp_obj_type_t *type, 
         column_pins_array[column] = pin;
     }
 
+    keypad_demux_demuxkeymatrix_obj_t *self = mp_obj_malloc(keypad_demux_demuxkeymatrix_obj_t, &keypad_demux_demuxkeymatrix_type);
     // Last arg is use_gc_allocator, true during VM use.
     common_hal_keypad_demux_demuxkeymatrix_construct(self, num_row_addr_pins, row_addr_pins_array, num_column_pins, column_pins_array, args[ARG_columns_to_anodes].u_bool, args[ARG_transpose].u_bool, interval, max_events, debounce_threshold, true);
+
     return MP_OBJ_FROM_PTR(self);
 }
 

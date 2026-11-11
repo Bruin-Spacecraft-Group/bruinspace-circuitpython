@@ -65,6 +65,10 @@ static uint32_t get_valid_cpu_frequency(uint32_t requested_freq_mhz) {
     uint32_t valid_cpu_frequencies[] = {20, 40, 80, 120};
     #elif defined(CONFIG_IDF_TARGET_ESP32H2)
     uint32_t valid_cpu_frequencies[] = {32, 48, 64, 96};
+    #elif defined(CONFIG_IDF_TARGET_ESP32C5)
+    // C5's 48 MHz crystal does not divide evenly to 20 or 24 MHz, both of
+    // which esp_pm_configure() rejects.
+    uint32_t valid_cpu_frequencies[] = {40, 80, 160, 240};
     #else
     uint32_t valid_cpu_frequencies[] = {20, 40, 80, 160, 240};
     #endif
@@ -126,7 +130,7 @@ void common_hal_mcu_processor_get_uid(uint8_t raw_id[]) {
     uint32_t mac_address_part = REG_READ(EFUSE_RD_MAC_SYS_0_REG);
     #elif defined(CONFIG_IDF_TARGET_ESP32C2)
     uint32_t mac_address_part = REG_READ(EFUSE_RD_BLK2_DATA0_REG);
-    #elif defined(CONFIG_IDF_TARGET_ESP32C61)
+    #elif defined(CONFIG_IDF_TARGET_ESP32C61) || defined(CONFIG_IDF_TARGET_ESP32C5)
     uint32_t mac_address_part = REG_READ(EFUSE_RD_MAC_SYS0_REG);
     #else
     uint32_t mac_address_part = REG_READ(EFUSE_RD_MAC_SPI_SYS_0_REG);
@@ -147,7 +151,7 @@ void common_hal_mcu_processor_get_uid(uint8_t raw_id[]) {
     mac_address_part = REG_READ(EFUSE_RD_MAC_SYS_1_REG);
     #elif defined(CONFIG_IDF_TARGET_ESP32C2)
     mac_address_part = REG_READ(EFUSE_RD_BLK2_DATA1_REG);
-    #elif defined(CONFIG_IDF_TARGET_ESP32C61)
+    #elif defined(CONFIG_IDF_TARGET_ESP32C61) || defined(CONFIG_IDF_TARGET_ESP32C5)
     mac_address_part = REG_READ(EFUSE_RD_MAC_SYS1_REG);
     #else
     mac_address_part = REG_READ(EFUSE_RD_MAC_SPI_SYS_1_REG);
@@ -165,41 +169,41 @@ void common_hal_mcu_processor_get_uid(uint8_t raw_id[]) {
 mcu_reset_reason_t common_hal_mcu_processor_get_reset_reason(void) {
     switch (esp_reset_reason()) {
         case ESP_RST_POWERON:
-            return RESET_REASON_POWER_ON;
+            return MCU_RESET_REASON_POWER_ON;
 
         case ESP_RST_SW:
         case ESP_RST_PANIC:
-            return RESET_REASON_SOFTWARE;
+            return MCU_RESET_REASON_SOFTWARE;
 
         case ESP_RST_INT_WDT:
         case ESP_RST_TASK_WDT:
         case ESP_RST_WDT:
-            return RESET_REASON_WATCHDOG;
+            return MCU_RESET_REASON_WATCHDOG;
 
         case ESP_RST_BROWNOUT:
-            return RESET_REASON_BROWNOUT;
+            return MCU_RESET_REASON_BROWNOUT;
 
         case ESP_RST_SDIO:
         case ESP_RST_EXT:
-            return RESET_REASON_RESET_PIN;
+            return MCU_RESET_REASON_RESET_PIN;
 
-        case ESP_RST_DEEPSLEEP:
-            switch (esp_sleep_get_wakeup_cause()) {
-                case ESP_SLEEP_WAKEUP_TIMER:
-                case ESP_SLEEP_WAKEUP_EXT0:
-                case ESP_SLEEP_WAKEUP_EXT1:
-                case ESP_SLEEP_WAKEUP_TOUCHPAD:
-                case ESP_SLEEP_WAKEUP_ULP:
-                    return RESET_REASON_DEEP_SLEEP_ALARM;
-
-                case ESP_SLEEP_WAKEUP_UNDEFINED:
-                default:
-                    return RESET_REASON_UNKNOWN;
+        case ESP_RST_DEEPSLEEP: {
+            uint32_t wakeup_causes = esp_sleep_get_wakeup_causes();
+            uint32_t alarm_causes =
+                BIT(ESP_SLEEP_WAKEUP_TIMER) |
+                BIT(ESP_SLEEP_WAKEUP_EXT0) |
+                BIT(ESP_SLEEP_WAKEUP_EXT1) |
+                BIT(ESP_SLEEP_WAKEUP_TOUCHPAD) |
+                BIT(ESP_SLEEP_WAKEUP_ULP);
+            if (wakeup_causes & alarm_causes) {
+                return MCU_RESET_REASON_DEEP_SLEEP_ALARM;
             }
+            return MCU_RESET_REASON_UNKNOWN;
+        }
 
         case ESP_RST_UNKNOWN:
         default:
-            return RESET_REASON_UNKNOWN;
+            return MCU_RESET_REASON_UNKNOWN;
 
     }
 }

@@ -31,3 +31,6 @@
 
 // Explanation of how a user got into safe mode
 #define BOARD_USER_SAFE_MODE_ACTION MP_ERROR_TEXT("You pressed the BOOT button at start up.")
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

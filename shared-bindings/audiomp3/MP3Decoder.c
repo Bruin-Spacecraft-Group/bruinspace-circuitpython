@@ -91,8 +91,6 @@ static mp_obj_t audiomp3_mp3file_make_new(const mp_obj_type_t *type, size_t n_ar
         stream = mp_call_function_2(MP_OBJ_FROM_PTR(&mp_builtin_open_obj), stream, MP_ROM_QSTR(MP_QSTR_rb));
     }
 
-    audiomp3_mp3file_obj_t *self = mp_obj_malloc_with_finaliser(audiomp3_mp3file_obj_t, &audiomp3_mp3file_type);
-
     const mp_stream_p_t *stream_p = mp_get_stream_raise(stream, MP_STREAM_OP_READ);
 
     if (stream_p->is_text) {
@@ -106,6 +104,8 @@ static mp_obj_t audiomp3_mp3file_make_new(const mp_obj_type_t *type, size_t n_ar
         buffer = bufinfo.buf;
         buffer_size = bufinfo.len;
     }
+
+    audiomp3_mp3file_obj_t *self = mp_obj_malloc_with_finaliser(audiomp3_mp3file_obj_t, &audiomp3_mp3file_type);
     common_hal_audiomp3_mp3file_construct(self, stream, buffer, buffer_size);
 
     return MP_OBJ_FROM_PTR(self);

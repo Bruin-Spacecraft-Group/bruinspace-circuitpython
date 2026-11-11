@@ -67,7 +67,6 @@
 //|
 
 static mp_obj_t sdioio_sdcard_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    sdioio_sdcard_obj_t *self = mp_obj_malloc(sdioio_sdcard_obj_t, &sdioio_SDCard_type);
     enum { ARG_clock, ARG_command, ARG_data, ARG_frequency, NUM_ARGS };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_clock, MP_ARG_REQUIRED | MP_ARG_KW_ONLY | MP_ARG_OBJ },
@@ -86,6 +85,7 @@ static mp_obj_t sdioio_sdcard_make_new(const mp_obj_type_t *type, size_t n_args,
     uint8_t num_data;
     validate_list_is_free_pins(MP_QSTR_data, data_pins, MP_ARRAY_SIZE(data_pins), args[ARG_data].u_obj, &num_data);
 
+    sdioio_sdcard_obj_t *self = mp_obj_malloc(sdioio_sdcard_obj_t, &sdioio_SDCard_type);
     common_hal_sdioio_sdcard_construct(self, clock, command, num_data, data_pins, args[ARG_frequency].u_int);
     return MP_OBJ_FROM_PTR(self);
 }

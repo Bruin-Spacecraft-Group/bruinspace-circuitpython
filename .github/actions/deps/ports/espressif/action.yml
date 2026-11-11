@@ -19,7 +19,7 @@ runs:
       shell: bash
 
     - name: Cache IDF submodules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           .git/modules/ports/espressif/esp-idf
@@ -27,10 +27,10 @@ runs:
         key: submodules-idf-${{ steps.idf-commit.outputs.commit }}
 
     - name: Cache IDF tools
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ env.IDF_TOOLS_PATH }}
-        key: ${{ runner.os }}-${{ env.pythonLocation }}-tools-idf-${{ steps.idf-commit.outputs.commit }}
+        key: ${{ runner.os }}-${{ env.pythonLocation }}-tools-idf-${{ steps.idf-commit.outputs.commit }}-20260911
 
     - name: Initialize IDF submodules
       run: git submodule update --init --depth=1 --recursive $IDF_PATH

@@ -11,6 +11,9 @@ EXTERNAL_FLASH_DEVICES = "W25Q128JVxQ"
 
 CIRCUITPY__EVE = 1
 
+# GPIO12-19 needed for picodvi, but GPIO12 is used for display reset.
+CIRCUITPY_PICODVI = 0
+
 # TODO: Add custom QMI8658 driver
 # FROZEN_MPY_DIRS += $(TOP)/frozen/circuitpython_qmi8658
 

@@ -21,7 +21,10 @@
 #endif
 
 //| class Terminal:
-//|     """Display a character stream with a TileGrid
+//|     """Terminal manages tile indices and cursor position based on VT100 commands. The ``font`` should be
+//|     a `fontio.BuiltinFont` and the ``scroll_area`` TileGrid's bitmap should match the font's bitmap.
+//|
+//|     Display a character stream with a TileGrid
 //|
 //|     ASCII control:
 //|
@@ -75,6 +78,52 @@
 //|     +--------+------------+------------+
 //|     | White  | 37         | 47         |
 //|     +--------+------------+------------+
+//|
+//|     Example Usage:
+//|
+//|     .. code-block:: python
+//|
+//|         import time
+//|         import displayio
+//|         import supervisor
+//|         from displayio import Group, TileGrid
+//|         from terminalio import FONT, Terminal
+//|
+//|         main_group = Group()
+//|         display = supervisor.runtime.display
+//|         font_bb = FONT.get_bounding_box()
+//|         screen_size = (display.width // font_bb[0], display.height // font_bb[1])
+//|         char_size = FONT.get_bounding_box()
+//|
+//|         palette = displayio.Palette(2)
+//|         palette[0] = 0x000000
+//|         palette[1] = 0xffffff
+//|
+//|         tilegrid = TileGrid(
+//|             bitmap=FONT.bitmap, width=screen_size[0], height=screen_size[1],
+//|             tile_width=char_size[0], tile_height=char_size[1], pixel_shader=palette)
+//|
+//|         terminal = Terminal(tilegrid, FONT)
+//|
+//|         main_group.append(tilegrid)
+//|         display.root_group = main_group
+//|
+//|         message = "Hello World\\n"
+//|         terminal.write(message)
+//|
+//|         print(terminal.cursor_x, terminal.cursor_y)
+//|         move_cursor = chr(27) + "[10;10H"
+//|         terminal.write(f"Moving the cursor\\n{move_cursor} To here")
+//|
+//|         cursor_home = chr(27) + f"[{screen_size[1]};0H"
+//|         terminal.write(cursor_home)
+//|         i = 1
+//|         while True:
+//|             terminal.write(f"Writing again {i}\\n")
+//|             i = i + 1
+//|             time.sleep(1)
+//|
+//|
 //|     """
 //|
 //|     def __init__(
@@ -84,8 +133,6 @@
 //|         *,
 //|         status_bar: Optional[displayio.TileGrid] = None,
 //|     ) -> None:
-//|         """Terminal manages tile indices and cursor position based on VT100 commands. The font should be
-//|         a `fontio.BuiltinFont` and the TileGrid's bitmap should match the font's bitmap."""
 //|         ...
 //|
 
@@ -129,8 +176,8 @@ static mp_obj_t terminalio_terminal_make_new(const mp_obj_type_t *type, size_t n
     mp_arg_validate_int_min(scroll_area->width_in_tiles * scroll_area->height_in_tiles, 2, MP_QSTR_scroll_area_area);
 
     terminalio_terminal_obj_t *self = mp_obj_malloc(terminalio_terminal_obj_t, &terminalio_terminal_type);
-
     common_hal_terminalio_terminal_construct(self, scroll_area, font, status_bar);
+
     return MP_OBJ_FROM_PTR(self);
 }
 
@@ -175,7 +222,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(terminalio_terminal_get_cursor_y_obj, terminalio_termi
 MP_PROPERTY_GETTER(terminalio_terminal_cursor_y_obj,
     (mp_obj_t)&terminalio_terminal_get_cursor_y_obj);
 
-static mp_uint_t terminalio_terminal_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
+static mp_uint_t terminalio_terminal_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     terminalio_terminal_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_uint_t ret;
     if (request == MP_STREAM_POLL) {

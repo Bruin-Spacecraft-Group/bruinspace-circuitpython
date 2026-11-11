@@ -84,6 +84,33 @@ SRC_CYW43 :=
 SRC_LWIP :=
 endif
 
+ifeq ($(CIRCUITPY_WIZNET), 1)
+INC_WIZNET := \
+	-isystem common-hal/wiznet \
+
+SRC_WIZNET := \
+	common-hal/wiznet/wizchip_pio_spi.c \
+
+WIZNET_PIOASM = $(BUILD)/pioasm/pioasm/pioasm
+.PHONY: pioasmBuild
+pioasmBuild: $(WIZNET_PIOASM)
+
+$(WIZNET_PIOASM):
+	$(Q)cmake -S pioasm -B $(BUILD)/pioasm
+	$(MAKE) -C $(BUILD)/pioasm pioasmBuild
+
+$(BUILD)/wizchip_pio_spi.pio.h: common-hal/wiznet/wizchip_pio_spi.pio $(WIZNET_PIOASM)
+	$(Q)$(WIZNET_PIOASM) -o c-sdk $< $@
+$(BUILD)/common-hal/wiznet/wizchip_pio_spi.o: $(BUILD)/wizchip_pio_spi.pio.h
+
+$(BUILD)/genhdr/qstr.i.last: $(BUILD)/wizchip_pio_spi.pio.h
+
+else
+INC_WIZNET :=
+SRC_WIZNET :=
+
+endif
+
 CHIP_VARIANT_LOWER = $(shell echo $(CHIP_VARIANT) | tr '[:upper:]' '[:lower:]')
 
 INC += \
@@ -229,6 +256,10 @@ DISABLE_WARNINGS = -Wno-cast-align
 CFLAGS += $(INC) -Wtype-limits -Wall -Werror -std=gnu11 -fshort-enums $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT) $(DISABLE_WARNINGS) -Werror=missing-prototypes -Wold-style-definition
 
 PICO_LDFLAGS = --specs=nosys.specs --specs=nano.specs
+# The SDK's panic() is flash-resident, but core1 may run with flash access
+# disabled by the MPU. Route panics to the RAM-resident __wrap_panic in
+# supervisor/port.c, which halts safely on core1 and prints on core0.
+PICO_LDFLAGS += -Wl,--wrap=panic
 
 # Use toolchain libm if we're not using our own.
 ifndef INTERNAL_LIBM
@@ -396,6 +427,8 @@ OTHER_PICO_FLAGS := \
 	-Wl,--wrap=__aeabi_uidivmod \
 	-Wl,--wrap=__aeabi_uldivmod
 
+SRC_S = shared/runtime/gchelper_thumb1.s
+
 ifeq ($(CHIP_VARIANT),RP2040)
 CFLAGS += \
 	-march=armv6-m \
@@ -405,8 +438,7 @@ CFLAGS += \
 	-msoft-float \
 	-mfloat-abi=soft
 
-CFLAGS += \
-	-DPICO_RP2040
+CFLAGS += -DPICO_RP2040=1 -DPICO_RP2350=0
 
 SRC_SDK_CHIP_VARIANT := \
 	src/rp2_common/hardware_rtc/rtc.c \
@@ -434,12 +466,12 @@ UF2_ID = 0xE48BFF56
 DOUBLE_EABI = rp2040
 endif
 ifeq ($(CHIP_VARIANT),RP2350)
-CFLAGS += \
-	-march=armv8-m.main+fp+dsp \
+AFLAGS = -march=armv8-m.main+fp+dsp \
 	-mthumb \
-	-mabi=aapcs-linux \
 	-mcpu=cortex-m33 \
 	-mfloat-abi=softfp
+CFLAGS += $(AFLAGS) \
+	-mabi=aapcs-linux
 
 # ARM Secure family id
 UF2_ID = 0xe48bff59
@@ -449,7 +481,7 @@ DOUBLE_EABI = dcp
 INC += \
 	-isystem sdk/src/rp2_common/hardware_dcp/include/
 
-CFLAGS += -DPICO_RP2350=1
+CFLAGS += -DPICO_RP2040=0 -DPICO_RP2350=1
 
 SRC_SDK_CHIP_VARIANT := \
 	src/rp2_common/hardware_powman/powman.c \
@@ -473,6 +505,14 @@ endif
 
 endif
 
+SRC_C += shared/runtime/gchelper_native.c
+
+ifeq ($(CIRCUITPY_PICOGAME),1)
+# SIO interpolator fast path for the picogame mode7 inner row (RP2040 + RP2350).
+# Portable C remains the fallback on other ports.
+SRC_C += common-hal/picogame/interp.c
+CFLAGS += -DPICOGAME_HAS_INTERP=1
+endif
 
 SRC_SDK := \
 	src/common/hardware_claim/claim.c \
@@ -535,6 +575,10 @@ SRC_C += \
 	bindings/rp2pio/__init__.c \
 	common-hal/rp2pio/StateMachine.c \
 	common-hal/rp2pio/__init__.c \
+	bindings/wiznet/PIO_SPI.c \
+	bindings/wiznet/__init__.c \
+	common-hal/wiznet/PIO_SPI.c \
+	common-hal/wiznet/__init__.c \
 	audio_dma.c \
 	background.c \
 	peripherals/pins.c \
@@ -544,6 +588,7 @@ SRC_C += \
 	mphalport.c \
 	$(SRC_CYW43) \
 	$(SRC_LWIP) \
+	$(SRC_WIZNET) \
 
 
 ifeq ($(CIRCUITPY_USB_HOST), 1)
@@ -555,6 +600,12 @@ SRC_C += \
 
 INC += \
 	-isystem lib/Pico-PIO-USB/src
+
+# Core1 posts USB events while core0 may hold the TinyUSB queue mutex. The
+# contended wait path calls these two flash-resident SDK functions, and core1
+# must not execute from flash. Replace them with RAM-resident implementations
+# in common-hal/usb_host/Port.c on USB host builds only. See issue #11116.
+PICO_LDFLAGS += -Wl,--wrap=best_effort_wfe_or_timeout -Wl,--wrap=time_us_64
 endif
 
 ifeq ($(CIRCUITPY_PICODVI),1)
@@ -578,90 +629,106 @@ endif
 
 endif
 
+ifeq ($(CIRCUITPY_SDIOIO),1)
+# Vendored Adafruit SdFat PIO SDIO card driver (C++). The common-hal C sources
+# (SDCard.c, __init__.c) are picked up automatically through SRC_COMMON_HAL.
+SRC_SDIOIO_CXX := \
+	common-hal/sdioio/sdfat_pio/SdCard/PioSdio/PioSdioCard.cpp \
+	common-hal/sdioio/sdfat_pio/shim.cpp \
+	common-hal/sdioio/sdfat_pio/cxx_runtime.cpp \
+
+INC += -Icommon-hal/sdioio/sdfat_pio
+
+# The upstream driver body is guarded by ARDUINO_ARCH_RP2040 and was written
+# against the Arduino RP2040 core, so define that macro for it. It is vendored
+# third-party code, so don't fail the build on its warnings.
+$(BUILD)/common-hal/sdioio/sdfat_pio/SdCard/PioSdio/PioSdioCard.o: CXXFLAGS += -DARDUINO_ARCH_RP2040 -Wno-error
+endif
+
 ifeq ($(CIRCUITPY_SSL),1)
-CFLAGS += -isystem $(TOP)/mbedtls/include
-SRC_MBEDTLS := $(addprefix lib/mbedtls/library/, \
-	aes.c \
-	aesni.c \
-	arc4.c \
-	asn1parse.c \
-	asn1write.c \
-	base64.c \
-	bignum.c \
-	blowfish.c \
-	camellia.c \
-	ccm.c \
-	certs.c \
-	chacha20.c \
-	chachapoly.c \
-	cipher.c \
-	cipher_wrap.c \
-	cmac.c \
-	constant_time.c \
-	ctr_drbg.c \
-	debug.c \
-	des.c \
-	dhm.c \
-	ecdh.c \
-	ecdsa.c \
-	ecjpake.c \
-	ecp.c \
-	ecp_curves.c \
-	entropy.c \
-	entropy_poll.c \
-	gcm.c \
-	havege.c \
-	hmac_drbg.c \
-	md2.c \
-	md4.c \
-	md5.c \
-	md.c \
-	oid.c \
-	padlock.c \
-	pem.c \
-	pk.c \
-	pkcs11.c \
-	pkcs12.c \
-	pkcs5.c \
-	pkparse.c \
-	pk_wrap.c \
-	pkwrite.c \
-	platform.c \
-	platform_util.c \
-	poly1305.c \
-	ripemd160.c \
-	rsa.c \
-	rsa_internal.c \
-	sha1.c \
-	sha256.c \
-	sha512.c \
-	ssl_cache.c \
-	ssl_ciphersuites.c \
-	ssl_cli.c \
-	ssl_cookie.c \
-	ssl_msg.c \
-	ssl_srv.c \
-	ssl_ticket.c \
-	ssl_tls.c \
-	timing.c \
-	x509.c \
-	x509_create.c \
-	x509_crl.c \
-	x509_crt.c \
-	x509_csr.c \
-	x509write_crt.c \
-	x509write_csr.c \
-	xtea.c \
-	)
+# mbedtls 4.x keeps only TLS and X.509 in library/; crypto lives in the tf-psa-crypto
+# submodule, split across core/, drivers/builtin/src/, extras/, platform/ and
+# utilities/.
+#
+# Deliberately excluded:
+#  - mbedtls_config.c, tf_psa_crypto_config.c: pure config-validation translation
+#    units that #include generated *_config_check_*.h headers. Skipping them is what
+#    lets us skip that second code generator.
+#  - net_sockets.c: CircuitPython drives the socket through socketpool callbacks.
+#  - pkcs7.c: unused, and MBEDTLS_PKCS7_C is off.
+#  - psa_its_file.c: filesystem-backed PSA key storage; we have no persistent keys.
+#  - drivers/{everest,p256-m,pqcp}: alternative curve and ML-DSA implementations.
+mbedtls_sources = $(patsubst $(TOP)/%,%,$(filter-out $(2),$(wildcard $(TOP)/$(1)/*.c)))
+
+SRC_MBEDTLS := \
+	$(call mbedtls_sources,lib/mbedtls/library,\
+		$(TOP)/lib/mbedtls/library/mbedtls_config.c \
+		$(TOP)/lib/mbedtls/library/net_sockets.c \
+		$(TOP)/lib/mbedtls/library/pkcs7.c) \
+	$(call mbedtls_sources,lib/mbedtls/tf-psa-crypto/core,\
+		$(TOP)/lib/mbedtls/tf-psa-crypto/core/psa_its_file.c \
+		$(TOP)/lib/mbedtls/tf-psa-crypto/core/tf_psa_crypto_config.c) \
+	$(call mbedtls_sources,lib/mbedtls/tf-psa-crypto/drivers/builtin/src) \
+	$(call mbedtls_sources,lib/mbedtls/tf-psa-crypto/extras) \
+	$(call mbedtls_sources,lib/mbedtls/tf-psa-crypto/platform) \
+	$(call mbedtls_sources,lib/mbedtls/tf-psa-crypto/utilities)
 SRC_C += $(SRC_MBEDTLS) lib/mbedtls_config/mbedtls_port.c lib/mbedtls_config/crt_bundle.c
+# Public headers of mbedtls and of tf-psa-crypto, then the internal ones. mbedtls 4.x
+# still reaches into tf-psa-crypto's internals, so upstream compiles the TLS layer
+# with both; see TF_PSA_CRYPTO_LIBRARY_{PUBLIC,PRIVATE}_INCLUDE in
+# lib/mbedtls/tf-psa-crypto/scripts/crypto-common.make.
 CFLAGS += \
 	  -isystem $(TOP)/lib/mbedtls/include \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/include \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/drivers/builtin/include \
+	  -isystem $(TOP)/lib/mbedtls/library \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/core \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/dispatch \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/drivers/builtin/src \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/extras \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/platform \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/utilities \
 	  -DMBEDTLS_CONFIG_FILE='"$(TOP)/lib/mbedtls_config/mbedtls_config.h"' \
+	  -DTF_PSA_CRYPTO_CONFIG_FILE='"$(TOP)/lib/mbedtls_config/tf_psa_crypto_config.h"' \
 
 $(BUILD)/x509_crt_bundle.S: $(TOP)/lib/certificates/data/roots-full.pem $(TOP)/tools/gen_crt_bundle.py
 	$(Q)$(PYTHON) $(TOP)/tools/gen_crt_bundle.py -i $< -o $@ --asm
 OBJ_MBEDTLS := $(BUILD)/x509_crt_bundle.o
-$(patsubst %.c,$(BUILD)/%.o,$(SRC_MBEDTLS))): CFLAGS += -Wno-suggest-attribute=format
+
+# mbedtls 4.x dispatches PSA crypto through a wrapper layer that is generated from
+# jinja templates rather than shipped in the repo, so build it.
+# It is the same each time, so we could save it, but this makes updating mbedtls easier.
+#
+# generate_driver_wrappers.py resolves `mbedtls_framework` relative to its own tree,
+# which would mean initializing a third nested submodule (tf-psa-crypto/framework).
+# Point PYTHONPATH at the top-level framework submodule instead; mbedtls pins both to
+# the same commit.
+MBEDTLS_GEN := $(BUILD)/tf-psa-crypto
+MBEDTLS_WRAPPERS_H := $(MBEDTLS_GEN)/psa_crypto_driver_wrappers.h
+MBEDTLS_WRAPPERS_C := $(MBEDTLS_GEN)/psa_crypto_driver_wrappers_no_static.c
+
+# The script writes both files at once. Naming both as targets of one rule would run
+# it twice; see the same workaround in py/py.mk.
+$(MBEDTLS_WRAPPERS_C): $(MBEDTLS_WRAPPERS_H)
+	@true
+
+$(MBEDTLS_WRAPPERS_H): $(TOP)/lib/mbedtls/tf-psa-crypto/scripts/generate_driver_wrappers.py
+	$(STEPECHO) "GEN $@"
+	$(Q)mkdir -p $(MBEDTLS_GEN)
+	$(Q)PYTHONPATH=$(TOP)/lib/mbedtls/framework/scripts $(PYTHON) $< $(MBEDTLS_GEN)
+
+OBJ_MBEDTLS += $(MBEDTLS_WRAPPERS_C:.c=.o)
+CFLAGS += -I$(MBEDTLS_GEN)
+
+# psa_crypto.c and friends #include the generated header, so it has to exist before
+# any of them compile.
+$(patsubst %.c,$(BUILD)/%.o,$(SRC_MBEDTLS)) $(OBJ_MBEDTLS): $(MBEDTLS_WRAPPERS_H)
+# Vendored third-party code, so don't hold it to CircuitPython's warning settings. The
+# unused-but-set variables are real but harmless: they are in key-exchange paths that
+# are compiled out.
+$(patsubst %.c,$(BUILD)/%.o,$(SRC_MBEDTLS)) $(OBJ_MBEDTLS): CFLAGS += \
+	-Wno-suggest-attribute=format \
+	-Wno-unused-but-set-variable
 else
 OBJ_MBEDTLS :=
 endif
@@ -672,7 +739,6 @@ SRC_S_UPPER = sdk/src/rp2_common/hardware_irq/irq_handler_chain.S \
               sdk/src/rp2_common/pico_double/double_aeabi_$(DOUBLE_EABI).S \
               sdk/src/rp2_common/pico_int64_ops/pico_int64_ops_aeabi.S \
               sdk/src/rp2_common/pico_crt0/crt0.S \
-              supervisor/shared/cpu_regs.S \
               $(SRC_S_UPPER_CHIP_VARIANT)
 
 ifeq ($(CIRCUITPY_PICODVI),1)
@@ -681,6 +747,12 @@ SRC_S_UPPER += lib/PicoDVI/software/libdvi/tmds_encode_asm.S \
 endif
 
 $(patsubst %.S,$(BUILD)/%.o,$(SRC_S_UPPER)): CFLAGS += -Wno-undef
+
+# Derive the C++ flags from the C flags (mirroring the unix port) so the
+# vendored C++ translation unit picks up all the SDK include paths and defines.
+# Strip the C-only options that g++ rejects, and disable exceptions/RTTI to
+# match the firmware's constraints.
+CXXFLAGS += $(filter-out -std=gnu11 -Werror=missing-prototypes -Wold-style-definition -Wstrict-prototypes -Werror-implicit-function-declaration -Wnested-externs,$(CFLAGS)) -std=gnu++17 -fno-exceptions -fno-rtti
 
 OBJ = $(PY_O) $(SUPERVISOR_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_SDK:.c=.o))
@@ -694,6 +766,9 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_S_UPPER:.S=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 OBJ += $(BUILD)/boot2_padded_checksummed.o
 OBJ += $(OBJ_MBEDTLS)
+ifeq ($(CIRCUITPY_SDIOIO),1)
+OBJ += $(addprefix $(BUILD)/, $(SRC_SDIOIO_CXX:.cpp=.o))
+endif
 
 $(BUILD)/%.o: $(BUILD)/%.S
 	$(STEPECHO) "CC $<"
@@ -736,6 +811,21 @@ endif
 
 LINKER_SCRIPTS += -Wl,-T,link-$(CHIP_VARIANT_LOWER).ld
 
+# Builds where core1 locks flash out via the MPU and may only execute
+# RAM-resident code: USB host (PIO-USB frame loop), and picodvi on RP2040
+# (TMDS encode loop). Check the linked ELF from each core1 entry point.
+# picodvi's DMA IRQ handler and scanline callback run on core1 but are
+# reached only through registered pointers, so they are extra roots.
+CORE1_CHECK_ROOTS :=
+ifeq ($(CIRCUITPY_USB_HOST),1)
+CORE1_CHECK_ROOTS += --root core1_main
+endif
+ifeq ($(CHIP_VARIANT),RP2040)
+ifeq ($(CIRCUITPY_PICODVI),1)
+CORE1_CHECK_ROOTS += --root core1_main --root dvi_dma1_irq --root core1_scanline_callback
+endif
+endif
+
 ifeq ($(VALID_BOARD),)
 $(BUILD)/firmware.elf: invalid-board
 else
@@ -744,6 +834,11 @@ $(BUILD)/firmware.elf: $(OBJ) $(BOARD_LD) link-$(CHIP_VARIANT_LOWER).ld
 	$(Q)echo $(OBJ) > $(BUILD)/firmware.objs
 	$(Q)echo $(PICO_LDFLAGS) > $(BUILD)/firmware.ldflags
 	$(Q)$(CC) -o $@ $(CFLAGS) @$(BUILD)/firmware.ldflags $(LINKER_SCRIPTS) -Wl,--print-memory-usage -Wl,-Map=$@.map -Wl,-cref -Wl,--gc-sections @$(BUILD)/firmware.objs -Wl,-lc
+	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $@.map $(BUILD)
+ifneq ($(CORE1_CHECK_ROOTS),)
+	$(STEPECHO) "CHECK core1 flash calls"
+	$(Q)$(PYTHON) $(TOP)/tools/check_core1_flash_calls.py $@ $(CORE1_CHECK_ROOTS)
+endif
 endif
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf

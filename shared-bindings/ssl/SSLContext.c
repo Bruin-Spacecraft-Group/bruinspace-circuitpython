@@ -26,7 +26,6 @@ static mp_obj_t ssl_sslcontext_make_new(const mp_obj_type_t *type, size_t n_args
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
 
     ssl_sslcontext_obj_t *s = mp_obj_malloc(ssl_sslcontext_obj_t, &ssl_sslcontext_type);
-
     common_hal_ssl_sslcontext_construct(s);
 
     return MP_OBJ_FROM_PTR(s);

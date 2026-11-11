@@ -48,6 +48,7 @@ static inline void free_memory(lvfontio_ondiskfont_t *self, void *ptr) {
 
 // Forward declarations for helper functions
 static int16_t find_codepoint_slot(lvfontio_ondiskfont_t *self, uint32_t codepoint);
+static bool slot_has_active_full_width_partner(lvfontio_ondiskfont_t *self, uint16_t slot);
 static uint16_t find_free_slot(lvfontio_ondiskfont_t *self, uint32_t codepoint);
 static FRESULT read_bits(FIL *file, size_t num_bits, uint8_t *byte_val, uint8_t *remaining_bits, uint32_t *result);
 static FRESULT read_glyph_dimensions(FIL *file, lvfontio_ondiskfont_t *self, uint32_t *advance_width, int32_t *bbox_x, int32_t *bbox_y, uint32_t *bbox_w, uint32_t *bbox_h, uint8_t *byte_val, uint8_t *remaining_bits);
@@ -224,7 +225,12 @@ static bool load_font_header(lvfontio_ondiskfont_t *self, FIL *file, size_t *max
 
                 // Throw away the bitmap bits.
                 read_bits(file, self->header.bits_per_pixel * bbox_w * bbox_h, &byte_val, &remaining_bits, NULL);
-                if (advances[0] == glyph_advance) {
+
+                if (glyph_advance == 0) {
+                    // Ignore zero-advance glyphs when inferring the terminal cell width.
+                    // Some fonts include placeholders/control glyphs with zero advance,
+                    // which would otherwise skew default_advance_width too small.
+                } else if (advances[0] == glyph_advance) {
                     advance_count[0]++;
                 } else if (advances[1] == glyph_advance) {
                     advance_count[1]++;
@@ -257,6 +263,12 @@ static bool load_font_header(lvfontio_ondiskfont_t *self, FIL *file, size_t *max
                 *max_slots = advance_count[0] + advance_count[1];
             }
 
+            if (self->header.default_advance_width == 0) {
+                self->header.default_advance_width = 1;
+            }
+            if (*max_slots == 0) {
+                *max_slots = 1;
+            }
             found_glyf = true;
         }
 
@@ -344,8 +356,9 @@ static int32_t get_char_id(lvfontio_ondiskfont_t *self, uint32_t codepoint) {
                     for (size_t j = 0; j < self->cmap_ranges[i].entries_count; j++) {
                         // Read code point at the index
                         uint16_t candidate_codepoint_delta;
-                        res = f_read(&self->file, &candidate_codepoint_delta, 2, NULL);
-                        if (res != FR_OK) {
+                        UINT bytes_read;
+                        res = f_read(&self->file, &candidate_codepoint_delta, 2, &bytes_read);
+                        if (res != FR_OK || bytes_read < 2) {
                             return -1;
                         }
 
@@ -574,18 +587,20 @@ int16_t common_hal_lvfontio_ondiskfont_cache_glyph(lvfontio_ondiskfont_t *self, 
     // Check if already cached
     int16_t existing_slot = find_codepoint_slot(self, codepoint);
     if (existing_slot >= 0) {
-        // Glyph is already cached, increment reference count
+        // Glyph is already cached, increment reference count(s).
         self->reference_counts[existing_slot]++;
 
         // Check if this is a full-width character by looking for a second slot
-        // with the same codepoint right after this one
+        // with the same codepoint right after this one, wrapping at the end.
+        uint16_t next_slot = (existing_slot + 1) % self->max_glyphs;
+        bool cached_is_full_width = self->codepoints[next_slot] == codepoint;
+
+        if (cached_is_full_width) {
+            self->reference_counts[next_slot]++;
+        }
+
         if (is_full_width != NULL) {
-            if (existing_slot + 1 < self->max_glyphs &&
-                self->codepoints[existing_slot + 1] == codepoint) {
-                *is_full_width = true;
-            } else {
-                *is_full_width = false;
-            }
+            *is_full_width = cached_is_full_width;
         }
 
         return existing_slot;
@@ -722,10 +737,35 @@ static int16_t find_codepoint_slot(lvfontio_ondiskfont_t *self, uint32_t codepoi
     for (uint16_t i = 0; i < self->max_glyphs; i++) {
         int16_t slot = (i + offset) % self->max_glyphs;
         if (self->codepoints[slot] == codepoint) {
+            // If this is the second slot of a full-width glyph pair, return the
+            // first slot so callers always get a canonical index.
+            if (slot > 0 && self->codepoints[slot - 1] == codepoint) {
+                return slot - 1;
+            }
             return slot;
         }
     }
     return -1;
+}
+
+static bool slot_has_active_full_width_partner(lvfontio_ondiskfont_t *self, uint16_t slot) {
+    uint32_t codepoint = self->codepoints[slot];
+    if (codepoint == LVFONTIO_INVALID_CODEPOINT) {
+        return false;
+    }
+
+    // Don't evict one half of a full-width pair while the other half is still in use.
+    uint16_t prev_slot = (slot + self->max_glyphs - 1) % self->max_glyphs;
+    uint16_t next_slot = (slot + 1) % self->max_glyphs;
+
+    if (self->codepoints[prev_slot] == codepoint && self->reference_counts[prev_slot] > 0) {
+        return true;
+    }
+    if (self->codepoints[next_slot] == codepoint && self->reference_counts[next_slot] > 0) {
+        return true;
+    }
+
+    return false;
 }
 
 static uint16_t find_free_slot(lvfontio_ondiskfont_t *self, uint32_t codepoint) {
@@ -739,10 +779,11 @@ static uint16_t find_free_slot(lvfontio_ondiskfont_t *self, uint32_t codepoint) 
         }
     }
 
-    // If none found, look for slots with zero reference count, starting at the offset
+    // If none found, look for slots with zero reference count, starting at the offset.
+    // Avoid reusing one half of an active full-width glyph pair.
     for (uint16_t i = 0; i < self->max_glyphs; i++) {
         int16_t slot = (i + offset) % self->max_glyphs;
-        if (self->reference_counts[slot] == 0) {
+        if (self->reference_counts[slot] == 0 && !slot_has_active_full_width_partner(self, slot)) {
             return slot;
         }
     }

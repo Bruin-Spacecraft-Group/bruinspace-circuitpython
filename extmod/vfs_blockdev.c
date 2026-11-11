@@ -38,6 +38,10 @@
 #include "shared-bindings/sdioio/SDCard.h"
 #endif
 
+#if CIRCUITPY_EMMCIO
+#include "shared-bindings/emmcio/EMMC.h"
+#endif
+
 
 #if MICROPY_VFS
 
@@ -63,7 +67,35 @@ void mp_vfs_blockdev_init(mp_vfs_blockdev_t *self, mp_obj_t bdev) {
     #endif
     #if CIRCUITPY_SDIOIO
     if (mp_obj_get_type(bdev) == &sdioio_SDCard_type) {
-        // TODO: Enable native blockdev for SDIO too.
+        self->flags |= MP_BLOCKDEV_FLAG_NATIVE | MP_BLOCKDEV_FLAG_HAVE_IOCTL;
+        self->readblocks[0] = mp_const_none;
+        self->readblocks[1] = bdev;
+        self->readblocks[2] = (mp_obj_t)sdioio_sdcard_readblocks; // native version
+        self->writeblocks[0] = mp_const_none;
+        self->writeblocks[1] = bdev;
+        self->writeblocks[2] = (mp_obj_t)sdioio_sdcard_writeblocks; // native version
+        self->u.ioctl[0] = mp_const_none;
+        self->u.ioctl[1] = bdev;
+        self->u.ioctl[2] = (mp_obj_t)sdioio_sdcard_ioctl; // native version
+    }
+    #endif
+
+    #if CIRCUITPY_EMMCIO
+    if (mp_obj_get_type(bdev) == &emmcio_emmc_type) {
+        self->flags |= MP_BLOCKDEV_FLAG_NATIVE | MP_BLOCKDEV_FLAG_HAVE_IOCTL;
+        self->readblocks[0] = mp_const_none;
+        self->readblocks[1] = bdev;
+        self->readblocks[2] = (mp_obj_t)emmcio_emmc_readblocks_native;
+        if (emmcio_emmc_is_write_enabled(bdev)) {
+            self->writeblocks[0] = mp_const_none;
+            self->writeblocks[1] = bdev;
+            self->writeblocks[2] = (mp_obj_t)emmcio_emmc_writeblocks_native;
+        } else {
+            self->writeblocks[0] = MP_OBJ_NULL;
+        }
+        self->u.ioctl[0] = mp_const_none;
+        self->u.ioctl[1] = bdev;
+        self->u.ioctl[2] = (mp_obj_t)emmcio_emmc_ioctl_native;
     }
     #endif
     if (self->u.ioctl[0] != MP_OBJ_NULL) {
@@ -99,7 +131,7 @@ static int mp_vfs_blockdev_call_rw(mp_obj_t *args, size_t block_num, size_t bloc
         // and negative integer on errors. Check for positive integer
         // results as some callers (i.e. littlefs) will produce corrupt
         // results from these.
-        int i = MP_OBJ_SMALL_INT_VALUE(ret);
+        int i = mp_obj_get_int(ret);
         return i > 0 ? (-MP_EINVAL) : i;
     }
 }

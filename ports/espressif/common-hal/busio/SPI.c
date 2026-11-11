@@ -16,42 +16,76 @@
 #define SPI_MAX_DMA_BITS (SPI_MAX_DMA_LEN * 8)
 #define MAX_SPI_TRANSACTIONS 10
 
-static bool spi_never_reset[SOC_SPI_PERIPH_NUM];
 static spi_device_handle_t spi_handle[SOC_SPI_PERIPH_NUM];
-static StaticSemaphore_t spi_mutex[SOC_SPI_PERIPH_NUM];
 
 static bool spi_bus_is_free(spi_host_device_t host_id) {
     return spi_bus_get_attr(host_id) == NULL;
 }
 
-void spi_reset(void) {
-    for (spi_host_device_t host_id = SPI2_HOST; host_id < SOC_SPI_PERIPH_NUM; host_id++) {
-        if (spi_never_reset[host_id]) {
-            continue;
-        }
-        if (!spi_bus_is_free(host_id)) {
-            spi_bus_remove_device(spi_handle[host_id]);
-            spi_bus_free(host_id);
-        }
+// Add a throwaway device at the given target clock, ask the driver what
+// frequency it would actually produce, then remove it. Returns the actual
+// frequency in Hz, or -1 if a device could not be added at that target.
+static int spi_probe_actual_freq(busio_spi_obj_t *self,
+    spi_device_interface_config_t *device_config, int target_hz) {
+    device_config->clock_speed_hz = target_hz;
+    spi_device_handle_t handle;
+    if (spi_bus_add_device(self->host_id, device_config, &handle) != ESP_OK) {
+        return -1;
     }
+    int freq_khz = 0;
+    spi_device_get_actual_freq(handle, &freq_khz);
+    spi_bus_remove_device(handle);
+    return freq_khz * 1000;
 }
 
 static void set_spi_config(busio_spi_obj_t *self,
     uint32_t baudrate, uint8_t polarity, uint8_t phase, uint8_t bits) {
-    // 128 is a 50% duty cycle.
-    const int closest_clock = spi_get_actual_clock(APB_CLK_FREQ, baudrate, 128);
-    const spi_device_interface_config_t device_config = {
-        .clock_speed_hz = closest_clock,
+    spi_device_interface_config_t device_config = {
+        .clock_speed_hz = baudrate,
         .mode = phase | (polarity << 1),
         .spics_io_num = -1, // No CS pin
         .queue_size = MAX_SPI_TRANSACTIONS,
         .pre_cb = NULL
     };
+
+    // The ESP-IDF driver rounds clock_speed_hz to the nearest frequency it can
+    // produce, which may be HIGHER than requested. Treat baudrate as a ceiling:
+    // probe candidate targets (each time adding a throwaway device, asking the
+    // driver what it actually produced, and removing it) and keep the highest
+    // target whose actual frequency does not exceed baudrate. We don't inspect
+    // divisor internals -- those vary between Espressif chips -- only the
+    // public add/measure/remove API.
+    int target = baudrate;
+    int actual = spi_probe_actual_freq(self, &device_config, target);
+    if (actual < 0 || actual > (int)baudrate) {
+        // Bisect for the highest target whose actual frequency is <= baudrate.
+        // Stop refining once the interval is within 1 kHz, the resolution that
+        // spi_device_get_actual_freq reports.
+        int lo = 1;
+        int hi = baudrate;
+        while (hi - lo > 1000) {
+            int mid = lo + (hi - lo) / 2;
+            int mid_actual = spi_probe_actual_freq(self, &device_config, mid);
+            if (mid_actual >= 0 && mid_actual <= (int)baudrate) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        target = lo;
+    }
+
+    device_config.clock_speed_hz = target;
     esp_err_t result = spi_bus_add_device(self->host_id, &device_config, &spi_handle[self->host_id]);
     if (result != ESP_OK) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("SPI configuration failed"));
     }
-    self->baudrate = closest_clock;
+
+    // Report the frequency the driver actually settled on for the real device.
+    int actual_khz = 0;
+    spi_device_get_actual_freq(spi_handle[self->host_id], &actual_khz);
+    self->baudrate = actual_khz * 1000;
+    self->requested_baudrate = baudrate;
     self->polarity = polarity;
     self->phase = phase;
     self->bits = bits;
@@ -60,6 +94,9 @@ static void set_spi_config(busio_spi_obj_t *self,
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,
     const mcu_pin_obj_t *clock, const mcu_pin_obj_t *mosi,
     const mcu_pin_obj_t *miso, bool half_duplex) {
+
+    // Ensure the object starts in its deinit state.
+    common_hal_busio_spi_mark_deinit(self);
 
     const spi_bus_config_t bus_config = {
         .mosi_io_num = mosi != NULL ? mosi->number : -1,
@@ -90,6 +127,12 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         raise_ValueError_invalid_pins();
     }
 
+    self->mutex = xSemaphoreCreateMutex();
+    if (self->mutex == NULL) {
+        spi_bus_free(self->host_id);
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Unable to create lock"));
+    }
+
     set_spi_config(self, 250000, 0, 0, 8);
 
     self->MOSI = mosi;
@@ -103,12 +146,9 @@ void common_hal_busio_spi_construct(busio_spi_obj_t *self,
         claim_pin(miso);
     }
     claim_pin(clock);
-
-    self->mutex = xSemaphoreCreateMutexStatic(&spi_mutex[self->host_id]);
 }
 
 void common_hal_busio_spi_never_reset(busio_spi_obj_t *self) {
-    spi_never_reset[self->host_id] = true;
     common_hal_never_reset_pin(self->clock);
     if (self->MOSI != NULL) {
         common_hal_never_reset_pin(self->MOSI);
@@ -122,6 +162,10 @@ bool common_hal_busio_spi_deinited(busio_spi_obj_t *self) {
     return self->clock == NULL;
 }
 
+void common_hal_busio_spi_mark_deinit(busio_spi_obj_t *self) {
+    self->clock = NULL;
+}
+
 void common_hal_busio_spi_deinit(busio_spi_obj_t *self) {
     if (common_hal_busio_spi_deinited(self)) {
         return;
@@ -132,11 +176,10 @@ void common_hal_busio_spi_deinit(busio_spi_obj_t *self) {
         RUN_BACKGROUND_TASKS;
     }
 
-    // Mark us as deinit early in case we are used in an interrupt.
+    // Mark as deinit early in case we are used in an interrupt.
     common_hal_reset_pin(self->clock);
-    self->clock = NULL;
+    common_hal_busio_spi_mark_deinit(self);
 
-    spi_never_reset[self->host_id] = false;
     spi_bus_remove_device(spi_handle[self->host_id]);
     spi_bus_free(self->host_id);
 
@@ -151,7 +194,7 @@ void common_hal_busio_spi_deinit(busio_spi_obj_t *self) {
 
 bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
     uint32_t baudrate, uint8_t polarity, uint8_t phase, uint8_t bits) {
-    if (baudrate == self->baudrate &&
+    if (baudrate == self->requested_baudrate &&
         polarity == self->polarity &&
         phase == self->phase &&
         bits == self->bits) {
@@ -162,19 +205,27 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
     return true;
 }
 
-bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self) {
+// Wait as long as needed for the lock. This is used by SD card access from USB.
+// Overrides the default busy-wait implementation in shared-bindings/busio/SPI.c
+bool common_hal_busio_spi_wait_for_lock(busio_spi_obj_t *self, uint32_t timeout_ms) {
     if (common_hal_busio_spi_deinited(self)) {
         return false;
     }
-    return xSemaphoreTake(self->mutex, 1) == pdTRUE;
+    return xSemaphoreTake(self->mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
+bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self) {
+    return common_hal_busio_spi_wait_for_lock(self, 0);
 }
 
 bool common_hal_busio_spi_has_lock(busio_spi_obj_t *self) {
-    return self->mutex != NULL && xSemaphoreGetMutexHolder(self->mutex) == xTaskGetCurrentTaskHandle();
+    return (self->mutex != NULL) && (xSemaphoreGetMutexHolder(self->mutex) == xTaskGetCurrentTaskHandle());
 }
 
 void common_hal_busio_spi_unlock(busio_spi_obj_t *self) {
-    xSemaphoreGive(self->mutex);
+    if (self->mutex != NULL) {
+        xSemaphoreGive(self->mutex);
+    }
 }
 
 bool common_hal_busio_spi_write(busio_spi_obj_t *self,

@@ -10,3 +10,6 @@ CHIP_FAMILY = rp2
 EXTERNAL_FLASH_DEVICES = "W25Q128JVxQ"
 
 CIRCUITPY__EVE = 1
+
+# GPIO12-19 needed for picodvi, but many of the pins are used for other purposes.
+CIRCUITPY_PICODVI = 0

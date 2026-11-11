@@ -13,8 +13,8 @@
 #include "freertos/task.h"
 
 void port_background_tick(void) {
-    // Zero delay in case FreeRTOS wants to switch to something else.
-    vTaskDelay(0);
+    // Yield with zero delay in case FreeRTOS wants to switch to something else.
+    port_task_yield();
 }
 
 void port_background_task(void) {

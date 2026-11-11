@@ -189,9 +189,27 @@ MP_DEFINE_CONST_FUN_OBJ_1(picodvi_framebuffer_get_color_depth_obj, picodvi_frame
 MP_PROPERTY_GETTER(picodvi_framebuffer_color_depth_obj,
     (mp_obj_t)&picodvi_framebuffer_get_color_depth_obj);
 
+//|     def wait_for_vblank(self) -> None:
+//|         """Block until the next frame boundary (vertical blank), then return. Call this right
+//|         before a full-framebuffer repaint so the repaint starts at the top of scanout and races
+//|         ahead of the beam, avoiding tearing without a second framebuffer. The repaint must
+//|         complete faster than one scanout sweep (~16 ms at 60 Hz) to stay ahead of the beam;
+//|         if it cannot (e.g. a full 640x480 ``displayio`` refresh), use a lower resolution or
+//|         repaint a smaller area. Bounded by a short timeout, so it is safe even if no DVI
+//|         signal is active. No-op on the RP2040 PIO-DVI path."""
+//|         ...
+static mp_obj_t picodvi_framebuffer_wait_for_vblank(mp_obj_t self_in) {
+    picodvi_framebuffer_obj_t *self = (picodvi_framebuffer_obj_t *)self_in;
+    check_for_deinit(self);
+    common_hal_picodvi_framebuffer_wait_for_vblank(self);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(picodvi_framebuffer_wait_for_vblank_obj, picodvi_framebuffer_wait_for_vblank);
+
 
 static const mp_rom_map_elem_t picodvi_framebuffer_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&picodvi_framebuffer_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wait_for_vblank), MP_ROM_PTR(&picodvi_framebuffer_wait_for_vblank_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_width), MP_ROM_PTR(&picodvi_framebuffer_width_obj) },
     { MP_ROM_QSTR(MP_QSTR_height), MP_ROM_PTR(&picodvi_framebuffer_height_obj) },

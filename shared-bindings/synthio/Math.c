@@ -157,10 +157,10 @@ static mp_obj_t synthio_math_make_new_common(mp_arg_val_t args[MP_ARRAY_SIZE(mat
 
     self->base.last_tick = synthio_global_tick;
 
-    mp_obj_t result = MP_OBJ_FROM_PTR(self);
-    properties_construct_helper(result, math_properties, args, MP_ARRAY_SIZE(math_properties));
+    mp_obj_t self_obj = MP_OBJ_FROM_PTR(self);
+    properties_construct_helper(self_obj, math_properties, args, MP_ARRAY_SIZE(math_properties));
 
-    return result;
+    return self_obj;
 };
 
 //|     a: BlockInput

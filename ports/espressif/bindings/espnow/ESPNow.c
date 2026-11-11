@@ -40,6 +40,8 @@ static void espnow_check_for_deinit(espnow_obj_t *self) {
 //|         :param int buffer_size: The size of the internal ring buffer. Default: 526 bytes.
 //|         :param int phy_rate: The ESP-NOW physical layer rate. Default: 1 Mbps.
 //|             `wifi_phy_rate_t <https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/api-reference/network/esp_wifi.html#_CPPv415wifi_phy_rate_t>`_
+//|
+//|         **Limitations:** Currently, setting ``phy_rate`` does nothing. The rate is always 1 Mbps.
 //|         """
 //|         ...
 //|
@@ -231,6 +233,8 @@ MP_PROPERTY_GETTER(espnow_buffer_size_obj,
 //|     phy_rate: int
 //|     """The ESP-NOW physical layer rate.
 //|     `wifi_phy_rate_t <https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/api-reference/network/esp_wifi.html#_CPPv415wifi_phy_rate_t>`_
+//|
+//|     **Limitations:** Currently, setting ``phy_rate`` does nothing. The rate is always 1 Mbps.
 //|     """
 //|
 static mp_obj_t espnow_get_phy_rate(const mp_obj_t self_in) {

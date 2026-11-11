@@ -31,6 +31,11 @@ typedef enum {
 typedef struct {
     uint16_t conn_handle;
     bool is_central;
+    // True if user code initiated or accepted this connection: it connected in the
+    // central role, or a central answered user code's advertising. User-owned
+    // connections are disconnected when the VM resets; the BLE workflow connection
+    // is not user-owned and stays up.
+    bool user_owned;
     // Remote services discovered when this peripheral is acting as a client.
     mp_obj_list_t *remote_service_list;
     // The advertising data and scan response buffers are held by us, not by the SD, so we must
@@ -65,6 +70,7 @@ typedef struct {
 void bleio_connection_clear(bleio_connection_internal_t *self);
 bool connection_on_ble_evt(ble_evt_t *ble_evt, void *self_in);
 
+void bleio_check_connected(uint16_t conn_handle);
 uint16_t bleio_connection_get_conn_handle(bleio_connection_obj_t *self);
 mp_obj_t bleio_connection_new_from_internal(bleio_connection_internal_t *connection);
 bleio_connection_internal_t *bleio_conn_handle_to_connection(uint16_t conn_handle);

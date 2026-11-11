@@ -28,6 +28,14 @@ static uint8_t _buf[16];
 static uint8_t _dev_addr;
 static uint8_t _interface;
 
+// A keyboard interface that is not boot-protocol, detected at mount time from
+// its report descriptor. Composite HID devices (CircuitPython's usb_hid among
+// them) present bInterfaceProtocol NONE and prefix each report with a report
+// ID, so they fail the boot-protocol check in usb_keyboard_attach().
+static uint8_t _report_kbd_dev_addr;
+static uint8_t _report_kbd_interface;
+static uint8_t _report_kbd_report_id;
+
 #define FLAG_SHIFT (1)
 #define FLAG_NUMLOCK (2)
 #define FLAG_CTRL (4)
@@ -298,7 +306,12 @@ static void process_event(uint8_t dev_addr, uint8_t instance, const hid_keyboard
 
     uint8_t leds = (caps | (num << 1));
     if (leds != old_report.reserved) {
-        tuh_hid_set_report(dev_addr, instance /*idx*/, 0 /*report_id*/, HID_REPORT_TYPE_OUTPUT /*report_type*/, &leds, sizeof(leds));
+        // A report-protocol keyboard needs its report ID on the LED output report too.
+        uint8_t report_id = 0;
+        if (dev_addr == _report_kbd_dev_addr && instance == _report_kbd_interface) {
+            report_id = _report_kbd_report_id;
+        }
+        tuh_hid_set_report(dev_addr, instance /*idx*/, report_id, HID_REPORT_TYPE_OUTPUT /*report_type*/, &leds, sizeof(leds));
     }
     old_report = *report;
     old_report.reserved = leds;
@@ -326,7 +339,11 @@ void usb_keyboard_attach(uint8_t dev_addr, uint8_t interface) {
         return;
     }
     uint8_t const itf_protocol = tuh_hid_interface_protocol(dev_addr, interface);
-    if (itf_protocol == HID_ITF_PROTOCOL_KEYBOARD) {
+    bool is_boot_keyboard = itf_protocol == HID_ITF_PROTOCOL_KEYBOARD;
+    // Detected at mount time by tuh_hid_mount_cb(). Device addresses start at
+    // 1, so a zeroed _report_kbd_dev_addr never matches.
+    bool is_report_keyboard = dev_addr == _report_kbd_dev_addr && interface == _report_kbd_interface;
+    if (is_boot_keyboard || is_report_keyboard) {
         _dev_addr = dev_addr;
         _interface = interface;
         tuh_hid_receive_report(dev_addr, interface);
@@ -335,20 +352,52 @@ void usb_keyboard_attach(uint8_t dev_addr, uint8_t interface) {
 }
 
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t interface, uint8_t const *desc_report, uint16_t desc_len) {
+    // A non-boot interface can still be a keyboard, using report protocol.
+    // Find keyboard usage in its report descriptor so that we poll it too.
+    // Otherwise its interrupt IN endpoint is never drained, and a CircuitPython
+    // device plugged into us raises OSError("USB busy") on its second
+    // send_report() (#10721).
+    if (tuh_hid_interface_protocol(dev_addr, interface) == HID_ITF_PROTOCOL_NONE &&
+        _report_kbd_dev_addr == 0) {
+        tuh_hid_report_info_t report_info[8];
+        uint8_t report_count =
+            tuh_hid_parse_report_descriptor(report_info, TU_ARRAY_SIZE(report_info), desc_report, desc_len);
+        for (uint8_t i = 0; i < report_count; i++) {
+            if (report_info[i].usage_page == HID_USAGE_PAGE_DESKTOP &&
+                report_info[i].usage == HID_USAGE_DESKTOP_KEYBOARD) {
+                _report_kbd_dev_addr = dev_addr;
+                _report_kbd_interface = interface;
+                _report_kbd_report_id = report_info[i].report_id;
+                break;
+            }
+        }
+    }
     usb_keyboard_attach(dev_addr, interface);
 }
 
 void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t interface) {
+    if (dev_addr == _report_kbd_dev_addr && interface == _report_kbd_interface) {
+        _report_kbd_dev_addr = 0;
+        _report_kbd_interface = 0;
+        _report_kbd_report_id = 0;
+    }
     usb_keyboard_detach(dev_addr, interface);
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const *report, uint16_t len) {
-    if (len != sizeof(hid_keyboard_report_t)) {
-        return;
-    } else {
+    if (len == sizeof(hid_keyboard_report_t)) {
         process_event(dev_addr, instance, (hid_keyboard_report_t *)report);
+    } else if (dev_addr == _report_kbd_dev_addr && instance == _report_kbd_interface &&
+               _report_kbd_report_id != 0 &&
+               len == sizeof(hid_keyboard_report_t) + 1 &&
+               report[0] == _report_kbd_report_id) {
+        // Report-protocol keyboards prefix the report with its report ID.
+        process_event(dev_addr, instance, (const hid_keyboard_report_t *)(report + 1));
     }
-    // continue to request to receive report
+    // Always request the next report, even when this one wasn't a keyboard
+    // report we understand (a mouse or consumer control report ID from a
+    // composite device, for instance), so that the device's endpoint keeps
+    // draining and polling doesn't stop.
     tuh_hid_receive_report(dev_addr, instance);
 }
 

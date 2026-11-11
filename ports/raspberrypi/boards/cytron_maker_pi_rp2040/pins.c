@@ -62,6 +62,8 @@ static const mp_rom_map_elem_t board_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_GP28), MP_ROM_PTR(&pin_GPIO28) },
     { MP_ROM_QSTR(MP_QSTR_A2), MP_ROM_PTR(&pin_GPIO28) },
 
+    { MP_ROM_QSTR(MP_QSTR_GP29_A3), MP_ROM_PTR(&pin_GPIO29) },
+    { MP_ROM_QSTR(MP_QSTR_GP29), MP_ROM_PTR(&pin_GPIO29) },
     { MP_ROM_QSTR(MP_QSTR_A3), MP_ROM_PTR(&pin_GPIO29) },
     { MP_ROM_QSTR(MP_QSTR_VBATT), MP_ROM_PTR(&pin_GPIO29) },
     { MP_ROM_QSTR(MP_QSTR_VOLTAGE_MONITOR), MP_ROM_PTR(&pin_GPIO29) },

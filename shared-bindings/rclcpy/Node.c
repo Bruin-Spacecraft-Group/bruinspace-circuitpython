@@ -50,7 +50,8 @@ static mp_obj_t rclcpy_node_make_new(const mp_obj_type_t *type, size_t n_args, s
 
     rclcpy_node_obj_t *self = mp_obj_malloc_with_finaliser(rclcpy_node_obj_t, &rclcpy_node_type);
     common_hal_rclcpy_node_construct(self, node_name, namespace);
-    return (mp_obj_t)self;
+
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //|     def deinit(self) -> None:
@@ -90,7 +91,7 @@ static mp_obj_t rclcpy_node_create_publisher(mp_obj_t self_in, mp_obj_t topic) {
 
     rclcpy_publisher_obj_t *publisher = mp_obj_malloc_with_finaliser(rclcpy_publisher_obj_t, &rclcpy_publisher_type);
     common_hal_rclcpy_publisher_construct(publisher, self, topic_name);
-    return (mp_obj_t)publisher;
+    return MP_OBJ_FROM_PTR(publisher);
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(rclcpy_node_create_publisher_obj, rclcpy_node_create_publisher);
 

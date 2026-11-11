@@ -1,31 +1,13 @@
 """
 Process raw qstr file and output qstr data with length, hash and data bytes.
 
-This script works with Python 2.7, 3.3 and 3.4.
-
-CIRCUITPY-CHANGE:
-For documentation about the format of compressed translated strings, see
-supervisor/shared/translate/translate.h
+This script works with Python 3.3+.
 """
-
-from __future__ import print_function
-
 
 import re
 import sys
 
-# CIRCUITPY-CHANGE
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(errors="backslashreplace")
-
-# Python 2/3 compatibility:
-#   - iterating through bytes is different
-#   - codepoint2name from html.entities is hard-coded
-if sys.version_info[0] == 2:
-    bytes_cons = lambda val, enc=None: bytearray(val)
-elif sys.version_info[0] == 3:  # Also handles MicroPython
-    bytes_cons = bytes
+bytes_cons = bytes
 
 # fmt: off
 codepoint2name = {
@@ -51,7 +33,7 @@ codepoint2name = {
     954: "kappa", 8656: "lArr", 955: "lambda", 9001: "lang", 171: "laquo", 8592: "larr", 8968: "lceil",
     8220: "ldquo", 8804: "le", 8970: "lfloor", 8727: "lowast", 9674: "loz", 8206: "lrm", 8249: "lsaquo",
     8216: "lsquo", 60: "lt", 175: "macr", 8212: "mdash", 181: "micro", 183: "middot", 8722: "minus",
-    956: "mu", 8711: "nabla", 160: "nbsp", 8211: "ndash", 8800: "ne", 8715: "ni", 172: "not", 8713: "notin",
+    956: "mu", 8711: "nabla", 160: "nbsp", 8211: "ndash", 8800: "ne", 8715: "ni", 172: "not", 8713: "notin",  # codespell:ignore notin
     8836: "nsub", 241: "ntilde", 957: "nu", 243: "oacute", 244: "ocirc", 339: "oelig", 242: "ograve",
     8254: "oline", 969: "omega", 959: "omicron", 8853: "oplus", 8744: "or", 170: "ordf", 186: "ordm",
     248: "oslash", 245: "otilde", 8855: "otimes", 246: "ouml", 182: "para", 8706: "part", 8240: "permil",
@@ -67,7 +49,6 @@ codepoint2name = {
     253: "yacute", 165: "yen", 255: "yuml", 950: "zeta", 8205: "zwj", 8204: "zwnj"
 }
 # fmt: on
-# end compatibility code
 
 codepoint2name[ord("-")] = "hyphen"
 

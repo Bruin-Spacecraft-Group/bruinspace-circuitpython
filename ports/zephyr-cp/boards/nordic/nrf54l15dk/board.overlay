@@ -1,0 +1,28 @@
+// nRF54L15 DK doesn't have USB, so no app.overlay for CDC ACM.
+
+// I2C bus on P1.8 (SDA) and P1.10 (SCL).
+&pinctrl {
+	i2c21_default: i2c21_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 1, 8)>,
+				<NRF_PSEL(TWIM_SCL, 1, 10)>;
+			bias-pull-up;
+		};
+	};
+
+	i2c21_sleep: i2c21_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 1, 8)>,
+				<NRF_PSEL(TWIM_SCL, 1, 10)>;
+			low-power-enable;
+		};
+	};
+};
+
+&i2c21 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	pinctrl-0 = <&i2c21_default>;
+	pinctrl-1 = <&i2c21_sleep>;
+	pinctrl-names = "default", "sleep";
+	status = "okay";
+};

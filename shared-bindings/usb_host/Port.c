@@ -42,7 +42,7 @@ static mp_obj_t usb_host_port_make_new(const mp_obj_type_t *type,
 
     usb_host_port_obj_t *self = common_hal_usb_host_port_construct(dp, dm);
 
-    return (mp_obj_t)self;
+    return MP_OBJ_FROM_PTR(self);
 }
 
 static const mp_rom_map_elem_t usb_host_port_locals_dict_table[] = {

@@ -180,7 +180,7 @@ void common_hal_bleio_characteristic_set_cccd(bleio_characteristic_obj_t *self, 
     }
 
     const uint16_t conn_handle = bleio_connection_get_conn_handle(self->service->connection);
-    common_hal_bleio_check_connected(conn_handle);
+    bleio_check_connected(conn_handle);
 
     uint16_t cccd_value =
         (notify ? CCCD_NOTIFY : 0) |

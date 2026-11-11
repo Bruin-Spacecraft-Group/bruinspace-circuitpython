@@ -372,6 +372,7 @@ static void set_sai_clocking_for_sample_rate(uint32_t sample_rate) {
 }
 
 void port_i2s_play(i2s_t *self, mp_obj_t sample, bool loop) {
+    audiosample_check(sample);
     self->sample = sample;
     self->loop = loop;
     self->bytes_per_sample = audiosample_get_bits_per_sample(sample) / 8;

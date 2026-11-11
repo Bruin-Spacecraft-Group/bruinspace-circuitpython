@@ -47,7 +47,8 @@ static mp_obj_t canio_match_make_new(const mp_obj_type_t *type, size_t n_args, s
 
     canio_match_obj_t *self = mp_obj_malloc(canio_match_obj_t, &canio_match_type);
     common_hal_canio_match_construct(self, id, mask, args[ARG_extended].u_bool);
-    return self;
+
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //|     id: int

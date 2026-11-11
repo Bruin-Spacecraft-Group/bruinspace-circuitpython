@@ -21,13 +21,12 @@
 //|           may be limited due to hardware restrictions, particularly for deep-sleep alarms.
 //|
 //|         **Limitations:** Not available on SAMD, Nordic, or RP2040.
+//|         On Espressif, only available on ESP32, ESP32-S2, ESP32-S3, and ESP32-P4.
 //|         """
 //|         ...
 //|
 static mp_obj_t alarm_touch_touchalarm_make_new(const mp_obj_type_t *type,
     size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    alarm_touch_touchalarm_obj_t *self = mp_obj_malloc(alarm_touch_touchalarm_obj_t, &alarm_touch_touchalarm_type);
-
     enum { ARG_pin };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_pin, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -38,6 +37,7 @@ static mp_obj_t alarm_touch_touchalarm_make_new(const mp_obj_type_t *type,
 
     const mcu_pin_obj_t *pin = validate_obj_is_free_pin(args[ARG_pin].u_obj, MP_QSTR_pin);
 
+    alarm_touch_touchalarm_obj_t *self = mp_obj_malloc(alarm_touch_touchalarm_obj_t, &alarm_touch_touchalarm_type);
     common_hal_alarm_touch_touchalarm_construct(self, pin);
 
     return MP_OBJ_FROM_PTR(self);

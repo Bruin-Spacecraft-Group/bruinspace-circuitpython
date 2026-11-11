@@ -20,3 +20,5 @@ FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_Register
 FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_seesaw
 FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_framebuf
 FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_SimpleIO
+
+OPTIMIZATION_FLAGS = -O2

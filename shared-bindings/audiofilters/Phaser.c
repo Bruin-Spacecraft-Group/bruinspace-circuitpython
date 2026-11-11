@@ -91,7 +91,16 @@ static mp_obj_t audiofilters_phaser_make_new(const mp_obj_type_t *type, size_t n
     }
 
     audiofilters_phaser_obj_t *self = mp_obj_malloc(audiofilters_phaser_obj_t, &audiofilters_phaser_type);
-    common_hal_audiofilters_phaser_construct(self, args[ARG_frequency].u_obj, args[ARG_feedback].u_obj, args[ARG_mix].u_obj, args[ARG_stages].u_int, args[ARG_buffer_size].u_int, bits_per_sample, args[ARG_samples_signed].u_bool, channel_count, sample_rate);
+    common_hal_audiofilters_phaser_construct(self,
+        args[ARG_frequency].u_obj,
+        args[ARG_feedback].u_obj,
+        args[ARG_mix].u_obj,
+        args[ARG_stages].u_int,
+        args[ARG_buffer_size].u_int,
+        bits_per_sample,
+        args[ARG_samples_signed].u_bool,
+        channel_count,
+        sample_rate);
 
     return MP_OBJ_FROM_PTR(self);
 }

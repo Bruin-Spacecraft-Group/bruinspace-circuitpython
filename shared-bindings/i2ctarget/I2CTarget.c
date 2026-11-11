@@ -26,7 +26,8 @@ static mp_obj_t mp_obj_new_i2ctarget_i2c_target_request(i2ctarget_i2c_target_obj
     self->address = address;
     self->is_read = is_read;
     self->is_restart = is_restart;
-    return (mp_obj_t)self;
+
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //| class I2CTarget:
@@ -50,7 +51,6 @@ static mp_obj_t mp_obj_new_i2ctarget_i2c_target_request(i2ctarget_i2c_target_obj
 //|         ...
 //|
 static mp_obj_t i2ctarget_i2c_target_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    i2ctarget_i2c_target_obj_t *self = mp_obj_malloc_with_finaliser(i2ctarget_i2c_target_obj_t, &i2ctarget_i2c_target_type);
     enum { ARG_scl, ARG_sda, ARG_addresses, ARG_smbus };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_scl, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -78,8 +78,10 @@ static mp_obj_t i2ctarget_i2c_target_make_new(const mp_obj_type_t *type, size_t 
         mp_raise_ValueError(MP_ERROR_TEXT("addresses is empty"));
     }
 
+    i2ctarget_i2c_target_obj_t *self = mp_obj_malloc_with_finaliser(i2ctarget_i2c_target_obj_t, &i2ctarget_i2c_target_type);
     common_hal_i2ctarget_i2c_target_construct(self, scl, sda, addresses, i, args[ARG_smbus].u_bool);
-    return (mp_obj_t)self;
+
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //|     def deinit(self) -> None:

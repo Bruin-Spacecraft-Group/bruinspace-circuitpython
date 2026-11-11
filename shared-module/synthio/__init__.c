@@ -238,7 +238,7 @@ static bool synth_note_into_buffer(synthio_synth_t *synth, int chan, int32_t *ou
     for (uint16_t i = 0; i < dur; i++) {
         accum += dds_rate;
         // because dds_rate is low enough, the subtraction is guaranteed to go back into range, no expensive modulo needed
-        if (accum > lim) {
+        if (accum >= lim) {
             accum = accum - lim + offset;
         }
         int16_t idx = accum >> SYNTHIO_FREQUENCY_SHIFT;
@@ -266,7 +266,7 @@ static bool synth_note_into_buffer(synthio_synth_t *synth, int chan, int32_t *ou
         for (uint16_t i = 0; i < dur; i++) {
             accum += ring_dds_rate;
             // because dds_rate is low enough, the subtraction is guaranteed to go back into range, no expensive modulo needed
-            if (accum > lim) {
+            if (accum >= lim) {
                 accum = accum - lim + offset;
             }
             int16_t idx = accum >> SYNTHIO_FREQUENCY_SHIFT;
@@ -289,17 +289,54 @@ static mp_obj_t synthio_synth_get_note_filter(mp_obj_t note_obj) {
     return mp_const_none;
 }
 
-static void sum_with_loudness(int32_t *out_buffer32, int32_t *tmp_buffer32, int16_t loudness[2], size_t dur, int synth_chan) {
+// Rather than immediately changing the loudness of audio playback, we keep a separate buffer of
+// the "active" loudness and wait until we meet the conditions of a "zero crossing". A zero crossing
+// occurs when either the current value is 0 or the value changes from negative to positive or
+// vice-versa. This is detected by keeping a copy of the previous frame of audio data and checking
+// to see if the sign of the value has changed. By only changing loudness during zero crossings, we
+// avoid audible pops/clicks which can be unpleasant.
+static void assign_loudness(int32_t word, int32_t *last_word, int16_t active_loudness[2], int16_t pending_loudness[2]) {
+    // If the active loudness already matches the pending loudness, exit early.
+    if (MP_LIKELY(active_loudness[0] == pending_loudness[0]) && MP_LIKELY(active_loudness[1] == pending_loudness[1])) {
+        return;
+    }
+
+    // Check for a zero crossing: current value is 0 or has changed sign from the previous value.
+    if (word == 0 || (*last_word != 0 && ((*last_word > 0) == (word < 0) || (*last_word < 0) == (word > 0)))) {
+        // Copy over our pending loudness. Will cause future calls to `assign_loudness` to exit
+        // early.
+        active_loudness[0] = pending_loudness[0];
+        active_loudness[1] = pending_loudness[1];
+    } else {
+        // Update our copy of the previous word for future comparisons (an initial value of 0 is
+        // ignored).
+        *last_word = word;
+    }
+}
+
+static void sum_with_loudness(int32_t *out_buffer32, int32_t *tmp_buffer32, int16_t active_loudness[2], int16_t pending_loudness[2], size_t dur, int synth_chan) {
+    int32_t word, last_word = 0;
     if (synth_chan == 1) {
         for (size_t i = 0; i < dur; i++) {
-            *out_buffer32++ += synthio_sat16((*tmp_buffer32++ *loudness[0]), 16);
+            word = *tmp_buffer32++;
+            assign_loudness(word, &last_word, active_loudness, pending_loudness);
+            *out_buffer32++ += synthio_sat16((word * active_loudness[0]), 16);
         }
     } else {
         for (size_t i = 0; i < dur; i++) {
-            *out_buffer32++ += synthio_sat16((*tmp_buffer32 * loudness[0]), 16);
-            *out_buffer32++ += synthio_sat16((*tmp_buffer32++ *loudness[1]), 16);
+            word = *tmp_buffer32;
+            assign_loudness(word, &last_word, active_loudness, pending_loudness);
+            *out_buffer32++ += synthio_sat16((word * active_loudness[0]), 16);
+            *out_buffer32++ += synthio_sat16((word * active_loudness[1]), 16);
+            tmp_buffer32++;
         }
     }
+
+    // Force the active loudness to match the pending loudness just in case the conditions of a
+    // zero crossing weren't met within the last `SYNTHIO_MAX_DUR` frames. Will ensure minimal
+    // delay in amplitude or panning changes at the potential expensive of an audible pop.
+    active_loudness[0] = pending_loudness[0];
+    active_loudness[1] = pending_loudness[1];
 }
 
 void synthio_synth_synthesize(synthio_synth_t *synth, uint8_t **bufptr, uint32_t *buffer_length, uint8_t channel) {
@@ -351,7 +388,7 @@ void synthio_synth_synthesize(synthio_synth_t *synth, uint8_t **bufptr, uint32_t
         }
 
         // adjust loudness by envelope
-        sum_with_loudness(out_buffer32, tmp_buffer32, loudness, dur, synth->base.channel_count);
+        sum_with_loudness(out_buffer32, tmp_buffer32, synth->active_loudness[chan], loudness, dur, synth->base.channel_count);
     }
 
     int16_t *out_buffer16 = (int16_t *)(void *)synth->buffers[synth->buffer_index];
@@ -460,8 +497,15 @@ static int find_channel_with_note(synthio_synth_t *synth, mp_obj_t note) {
 bool synthio_span_change_note(synthio_synth_t *synth, mp_obj_t old_note, mp_obj_t new_note) {
     int channel;
     if (new_note != SYNTHIO_SILENCE && (channel = find_channel_with_note(synth, new_note)) != -1) {
-        // note already playing, re-enter attack phase
-        synth->envelope_state[channel].state = SYNTHIO_ENVELOPE_STATE_ATTACK;
+        if (synth->envelope_state[channel].level == 0) {
+            // released and already decayed to silence, but not yet reaped:
+            // treat this like a fresh press, not a swell from 0
+            synthio_envelope_state_init(&synth->envelope_state[channel], synthio_synth_get_note_envelope(synth, new_note));
+            synth->accum[channel] = 0;
+        } else {
+            // note already playing, re-enter attack phase
+            synth->envelope_state[channel].state = SYNTHIO_ENVELOPE_STATE_ATTACK;
+        }
         return true;
     }
     channel = find_channel_with_note(synth, old_note);

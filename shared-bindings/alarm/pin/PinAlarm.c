@@ -42,7 +42,6 @@
 //|         ...
 //|
 static mp_obj_t alarm_pin_pinalarm_make_new(const mp_obj_type_t *type, mp_uint_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    alarm_pin_pinalarm_obj_t *self = mp_obj_malloc(alarm_pin_pinalarm_obj_t, &alarm_pin_pinalarm_type);
     enum { ARG_pin, ARG_value, ARG_edge, ARG_pull };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_pin, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -55,6 +54,7 @@ static mp_obj_t alarm_pin_pinalarm_make_new(const mp_obj_type_t *type, mp_uint_t
 
     const mcu_pin_obj_t *pin = validate_obj_is_free_pin(args[ARG_pin].u_obj, MP_QSTR_pin);
 
+    alarm_pin_pinalarm_obj_t *self = mp_obj_malloc(alarm_pin_pinalarm_obj_t, &alarm_pin_pinalarm_type);
     common_hal_alarm_pin_pinalarm_construct(self,
         pin,
         args[ARG_value].u_bool,

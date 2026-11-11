@@ -16,12 +16,19 @@
 #include "shared-bindings/_bleio/__init__.h"
 #include "shared-bindings/_bleio/Connection.h"
 #include "shared-bindings/_bleio/CharacteristicBuffer.h"
+#include "shared-bindings/microcontroller/__init__.h"
 
 #include "supervisor/shared/tick.h"
 
 #include "common-hal/_bleio/ble_events.h"
 
+// The ringbuf is filled from the nimble_host task, which preempts the VM task
+// at arbitrary points, and ringbuf operations are not atomic, so guard them
+// with interrupts disabled.
+
+// Runs on the nimble_host task.
 void bleio_characteristic_buffer_extend(bleio_characteristic_buffer_obj_t *self, const uint8_t *data, size_t len) {
+    common_hal_mcu_disable_interrupts();
     if (self->watch_for_interrupt_char) {
         for (uint16_t i = 0; i < len; i++) {
             if (data[i] == mp_interrupt_char) {
@@ -34,6 +41,7 @@ void bleio_characteristic_buffer_extend(bleio_characteristic_buffer_obj_t *self,
     } else {
         ringbuf_put_n(&self->ringbuf, data, len);
     }
+    common_hal_mcu_enable_interrupts();
 }
 
 void _common_hal_bleio_characteristic_buffer_construct(bleio_characteristic_buffer_obj_t *self,
@@ -70,20 +78,23 @@ uint32_t common_hal_bleio_characteristic_buffer_read(bleio_characteristic_buffer
         }
     }
 
+    common_hal_mcu_disable_interrupts();
     uint32_t num_bytes_read = ringbuf_get_n(&self->ringbuf, data, len);
+    common_hal_mcu_enable_interrupts();
     return num_bytes_read;
 }
 
-// NOTE: The nRF port has protection around these operations because the ringbuf
-// is filled from an interrupt. On ESP the ringbuf is filled from the BLE host
-// task that won't interrupt us.
-
 uint32_t common_hal_bleio_characteristic_buffer_rx_characters_available(bleio_characteristic_buffer_obj_t *self) {
-    return ringbuf_num_filled(&self->ringbuf);
+    common_hal_mcu_disable_interrupts();
+    uint32_t count = ringbuf_num_filled(&self->ringbuf);
+    common_hal_mcu_enable_interrupts();
+    return count;
 }
 
 void common_hal_bleio_characteristic_buffer_clear_rx_buffer(bleio_characteristic_buffer_obj_t *self) {
+    common_hal_mcu_disable_interrupts();
     ringbuf_clear(&self->ringbuf);
+    common_hal_mcu_enable_interrupts();
 }
 
 bool common_hal_bleio_characteristic_buffer_deinited(bleio_characteristic_buffer_obj_t *self) {

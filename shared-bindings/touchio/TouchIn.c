@@ -56,7 +56,7 @@ static mp_obj_t touchio_touchin_make_new(const mp_obj_type_t *type,
     touchio_touchin_obj_t *self = mp_obj_malloc(touchio_touchin_obj_t, &touchio_touchin_type);
     common_hal_touchio_touchin_construct(self, pin, pull);
 
-    return (mp_obj_t)self;
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //|     def deinit(self) -> None:

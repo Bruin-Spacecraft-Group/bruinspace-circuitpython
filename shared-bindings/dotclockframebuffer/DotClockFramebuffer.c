@@ -54,13 +54,6 @@
 //|         When a board has dedicated dot clock framebuffer pins and/or timings, they are intended to be used in the constructor with ``**`` dictionary unpacking like so:
 //|         ``DotClockFramebuffer(**board.TFT_PINS, **board.TFT_TIMINGS)``
 //|
-//|         On Espressif-family microcontrollers, this driver requires that the
-//|         ``CIRCUITPY_RESERVED_PSRAM`` in ``settings.toml`` be large enough to hold the
-//|         framebuffer. Generally, boards with built-in displays or display connectors
-//|         will have a default setting that is large enough for typical use. If the
-//|         constructor raises a MemoryError or an IDFError, this probably indicates the
-//|         setting is too small and should be increased.
-//|
 //|         TFT connection parameters:
 //|
 //|         :param microcontroller.Pin de: The "data enable" input to the display

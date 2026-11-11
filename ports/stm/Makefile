@@ -38,8 +38,7 @@ ifeq ($(DEBUG), 1)
 	CFLAGS += -fno-inline -fno-ipa-sra
 else
 	CFLAGS += -DNDEBUG
-	OPTIMIZATION_FLAGS ?= -O2 -fno-inline-functions
-	CFLAGS += -ggdb3
+	OPTIMIZATION_FLAGS ?= -O2
 endif
 
 # to override compiler optimization level, set in boards/$(BOARD)/mpconfigboard.mk
@@ -206,15 +205,18 @@ endif
 ifneq ($(CIRCUITPY_USB),0)
 	ifeq ($(MCU_VARIANT),$(filter $(MCU_VARIANT),STM32L433xx))
 		SRC_C += lib/tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+		SRC_C += lib/tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c
 	else
 		SRC_C += lib/tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c
 		SRC_C += lib/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c
 	endif
 endif
 
-SRC_S_UPPER = supervisor/shared/cpu_regs.S
 SRC_S = \
+	shared/runtime/gchelper_thumb1.s \
 	st_driver/cmsis_device_$(MCU_SERIES_LOWER)/Source/Templates/gcc/startup_$(MCU_VARIANT_LOWER).s
+
+SRC_C += shared/runtime/gchelper_native.c
 
 ifneq ($(FROZEN_MPY_DIR),)
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR) -type f -name '*.py')
@@ -229,7 +231,6 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_LIBM:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(SRC_CIRCUITPY_COMMON:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
-OBJ += $(addprefix $(BUILD)/, $(SRC_S_UPPER:.S=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 
 $(BUILD)/$(FATFS_DIR)/ff.o: COPT += -Os
@@ -256,7 +257,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(STEPECHO) "LINK $@"
 	$(Q)echo $^ > $(BUILD)/firmware.objs
 	$(Q)$(CC) -o $@ $(LDFLAGS) @$(BUILD)/firmware.objs -Wl,--print-memory-usage -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LD_FILE) $(BUILD)
+	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $@.map $(BUILD)
 endif
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf

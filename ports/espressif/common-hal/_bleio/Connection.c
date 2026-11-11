@@ -30,7 +30,11 @@
 
 #include "common-hal/_bleio/ble_events.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
 #include "host/ble_att.h"
+#include "host/ble_store.h"
 
 // Uncomment to turn on debug logging just in this file.
 // #undef CIRCUITPY_VERBOSE_BLE
@@ -65,7 +69,7 @@ int bleio_connection_event_cb(struct ble_gap_event *event, void *connection_in) 
 
         case BLE_GAP_EVENT_CONN_UPDATE: {
             struct ble_gap_conn_desc desc;
-            int rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
+            int rc __attribute__((unused)) = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
             assert(rc == 0);
             connection->conn_params_updating = false;
             break;
@@ -77,6 +81,22 @@ int bleio_connection_event_cb(struct ble_gap_event *event, void *connection_in) 
                 connection->pair_status = PAIR_PAIRED;
             }
             break;
+        }
+        case BLE_GAP_EVENT_REPEAT_PAIRING: {
+            // The peer is asking to pair even though we still have a bond with it.
+            // This means it no longer has its own copy of that bond. Discard our bond
+            // and tell the BLE stack to carry on pairing. Otherwise NimBLE silently
+            // ignores the request, and a central that has forgotten this device can
+            // never pair again without erasing the bonds on the board. The
+            // nordic port likewise replaces the stored keys when a peer re-pairs.
+            struct ble_gap_conn_desc desc;
+            if (ble_gap_conn_find(event->repeat_pairing.conn_handle, &desc) != 0) {
+                return BLE_GAP_REPEAT_PAIRING_IGNORE;
+            }
+            ble_store_util_delete_peer(&desc.peer_id_addr);
+            // The BLE stack checks that the bond is really gone before retrying, and
+            // reports this event again if it is not.
+            return BLE_GAP_REPEAT_PAIRING_RETRY;
         }
         case BLE_GAP_EVENT_MTU: {
             if (event->mtu.conn_handle != connection->conn_handle) {
@@ -181,43 +201,147 @@ void common_hal_bleio_connection_set_connection_interval(bleio_connection_intern
 // Zero when discovery is in process. BLE_HS_EDONE or a BLE_HS_ error code when done.
 static volatile int _last_discovery_status;
 
-static uint64_t _discovery_start_time;
-
-// Give 20 seconds for discovery
+// Give 20 seconds for each step of discovery: services, characteristics, attributes.
 #define DISCOVERY_TIMEOUT_MS 20000
-
-static void _start_discovery_timeout(void) {
-    _discovery_start_time = common_hal_time_monotonic_ms();
-}
-
-static int _wait_for_discovery_step_done(void) {
-    const uint64_t timeout_time_ms = _discovery_start_time + DISCOVERY_TIMEOUT_MS;
-    while ((_last_discovery_status == 0) && (common_hal_time_monotonic_ms() < timeout_time_ms)) {
-        RUN_BACKGROUND_TASKS;
-        if (mp_hal_is_interrupted()) {
-            // Return prematurely. Then the interrupt will be raised.
-            _last_discovery_status = BLE_HS_EDONE;
-        }
-    }
-    return _last_discovery_status;
-}
 
 // Record result of last discovery step: services, characteristics, descriptors.
 static void _set_discovery_step_status(int status) {
     _last_discovery_status = status;
 }
 
+static void _check_discovery_status(int status) {
+    #if CIRCUITPY_VERBOSE_BLE
+    mp_printf(&mp_plat_print, "discovery step status: %d\n", status);
+    #endif
+
+    if (status == BLE_HS_EDONE) {
+        return;
+    }
+    if (status < BLE_HS_ERR_ATT_BASE) {
+        CHECK_NIMBLE_ERROR(status);
+        return;
+    }
+    CHECK_BLE_ERROR(status);
+}
+
+// Raw discovery results are staged here by the NimBLE host-task callbacks.
+// Those callbacks run on the "nimble_host" task, NOT the VM task, so they must
+// not allocate from the MicroPython heap: an allocation there can trigger a
+// gc_collect() that scans the wrong task's stack and frees the VM's live
+// objects. Instead the callbacks copy the plain NimBLE result struct into this
+// FreeRTOS queue, and the VM task drains it and builds the Python objects.
+//
+// Discovery is serialized (one discover_remote_services() at a time), so a
+// single file-static queue suffices. It must hold one ATT-PDU burst of records:
+// within a response PDU the host task invokes the callback repeatedly without
+// yielding, so the VM task cannot drain until the next PDU's round-trip. The
+// largest burst is a find-information response at the maximum ATT MTU we
+// advertise (CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU, 256): about 64 descriptor
+// records. The depth is twice that.
+//
+// The queue is created on first use from the FreeRTOS (IDF) heap, not the GC
+// heap, so it needs no GC root and survives soft reloads: a stale procedure's
+// sends always land in live memory. It is never deleted.
+
+// One queue item, sized to the largest record type, so one queue can serve every
+// discovery step.
+typedef union {
+    struct ble_gatt_svc svc;
+    struct ble_gatt_chr chr;
+    struct ble_gatt_dsc dsc;
+} discovery_record_t;
+
+#define DISCOVERY_QUEUE_DEPTH (128)
+static QueueHandle_t _discovery_queue;
+
+// Create the queue on first use, and empty it before a discovery step. Runs on
+// the VM task. xQueueReset() is safe against a stale procedure from a previous
+// errored, timed-out, or interrupted discovery that may still be sending
+// records on the nimble_host task.
+static void _reset_discovery_queue(void) {
+    if (_discovery_queue == NULL) {
+        _discovery_queue = xQueueCreate(DISCOVERY_QUEUE_DEPTH, sizeof(discovery_record_t));
+        if (_discovery_queue == NULL) {
+            m_malloc_fail(DISCOVERY_QUEUE_DEPTH * sizeof(discovery_record_t));
+        }
+    }
+    xQueueReset(_discovery_queue);
+}
+
 static int _discovered_service_cb(uint16_t conn_handle,
     const struct ble_gatt_error *error,
     const struct ble_gatt_svc *svc,
     void *arg) {
-    bleio_connection_internal_t *self = (bleio_connection_internal_t *)arg;
-
     if (error->status != 0) {
+        #if CIRCUITPY_VERBOSE_BLE
+        mp_printf(&mp_plat_print, "_discovered_service_cb error->status: %d, handle: %d\n",
+            error->status, error->att_handle);
+        #endif
+
         // BLE_HS_EDONE or some error has occurred.
         _set_discovery_step_status(error->status);
         return 0;
     }
+
+    // Runs on the nimble_host task: stage the raw result only, never allocate.
+    discovery_record_t record = { .svc = *svc };
+    if (xQueueSend(_discovery_queue, &record, 0) != pdTRUE) {
+        _set_discovery_step_status(BLE_HS_ENOMEM);
+    }
+    return 0;
+}
+
+static int _discovered_characteristic_cb(uint16_t conn_handle,
+    const struct ble_gatt_error *error,
+    const struct ble_gatt_chr *chr,
+    void *arg) {
+    if (error->status != 0) {
+        #if CIRCUITPY_VERBOSE_BLE
+        mp_printf(&mp_plat_print, "_discovered_characteristic_cb error->status: %d, handle: %d\n",
+            error->status, error->att_handle);
+        #endif
+
+        // BLE_HS_EDONE or some error has occurred.
+        _set_discovery_step_status(error->status);
+        return 0;
+    }
+
+    // Runs on the nimble_host task: stage the raw result only, never allocate.
+    discovery_record_t record = { .chr = *chr };
+    if (xQueueSend(_discovery_queue, &record, 0) != pdTRUE) {
+        _set_discovery_step_status(BLE_HS_ENOMEM);
+    }
+    return 0;
+}
+
+static int _discovered_descriptor_cb(uint16_t conn_handle,
+    const struct ble_gatt_error *error,
+    uint16_t chr_val_handle,
+    const struct ble_gatt_dsc *dsc,
+    void *arg) {
+    if (error->status != 0) {
+        #if CIRCUITPY_VERBOSE_BLE
+        mp_printf(&mp_plat_print, "_discovered_descriptor_cb error->status: %d, handle: %d\n",
+            error->status, error->att_handle);
+        #endif
+
+        // BLE_HS_EDONE or some error has occurred.
+        _set_discovery_step_status(error->status);
+        return 0;
+    }
+
+    // Runs on the nimble_host task: stage the raw result only, never allocate.
+    discovery_record_t record = { .dsc = *dsc };
+    if (xQueueSend(_discovery_queue, &record, 0) != pdTRUE) {
+        _set_discovery_step_status(BLE_HS_ENOMEM);
+    }
+    return 0;
+}
+
+// Build a Service object from a staged raw record. Runs on the VM task.
+static void _build_service(void *ctx, const void *record) {
+    bleio_connection_internal_t *self = ctx;
+    const struct ble_gatt_svc *svc = record;
 
     bleio_service_obj_t *service = mp_obj_malloc(bleio_service_obj_t, &bleio_service_type);
 
@@ -236,27 +360,53 @@ static int _discovered_service_cb(uint16_t conn_handle,
 
     mp_obj_list_append(MP_OBJ_FROM_PTR(self->remote_service_list),
         MP_OBJ_FROM_PTR(service));
-    return 0;
 }
 
-static int _discovered_characteristic_cb(uint16_t conn_handle,
-    const struct ble_gatt_error *error,
-    const struct ble_gatt_chr *chr,
-    void *arg) {
-    bleio_service_obj_t *service = (bleio_service_obj_t *)arg;
-
-    if (error->status != 0) {
-        // BLE_HS_EDONE or some error has occurred.
-        _set_discovery_step_status(error->status);
-        return 0;
+// Drain and build all staged records on the VM task, until the step completes
+// and the queue is empty. build() is invoked for each raw record with ctx
+// passed through. Returns the discovery step status.
+static int _drain_records(void *ctx,
+    void (*build)(void *ctx, const void *record)) {
+    const uint64_t timeout_time_ms = common_hal_time_monotonic_ms() + DISCOVERY_TIMEOUT_MS;
+    discovery_record_t record;
+    while (true) {
+        if (xQueueReceive(_discovery_queue, &record, 0) == pdTRUE) {
+            build(ctx, &record);
+            continue;
+        }
+        // Queue is empty.
+        if (_last_discovery_status != 0) {
+            // On EDONE or a NimBLE error, the terminal callback has already
+            // run, so no more records will arrive: drain any that raced in,
+            // then stop. On ENOMEM (our own send failure) the procedure may
+            // still be running, but we are raising anyway; any later
+            // discovery resets the queue before reuse.
+            while (xQueueReceive(_discovery_queue, &record, 0) == pdTRUE) {
+                build(ctx, &record);
+            }
+            return _last_discovery_status;
+        }
+        if (common_hal_time_monotonic_ms() >= timeout_time_ms) {
+            return BLE_HS_ETIMEOUT;
+        }
+        RUN_BACKGROUND_TASKS;
+        if (mp_hal_is_interrupted()) {
+            // Return prematurely. Then the interrupt will be raised.
+            _set_discovery_step_status(BLE_HS_EDONE);
+        }
     }
+}
+
+// Build a Characteristic object from a staged raw record. Runs on the VM task.
+static void _build_characteristic(void *ctx, const void *record) {
+    bleio_service_obj_t *service = ctx;
+    const struct ble_gatt_chr *chr = record;
 
     bleio_characteristic_obj_t *characteristic =
         mp_obj_malloc(bleio_characteristic_obj_t, &bleio_characteristic_type);
 
     // Known characteristic UUID.
     bleio_uuid_obj_t *uuid = mp_obj_malloc(bleio_uuid_obj_t, &bleio_uuid_type);
-
     uuid->nimble_ble_uuid = chr->uuid;
 
     bleio_characteristic_properties_t props =
@@ -281,32 +431,17 @@ static int _discovered_characteristic_cb(uint16_t conn_handle,
     characteristic->def_handle = chr->def_handle;
 
     #if CIRCUITPY_VERBOSE_BLE
-    mp_printf(&mp_plat_print, "_discovered_characteristic_cb: char handle: %d\n", characteristic->handle);
+    mp_printf(&mp_plat_print, "_build_characteristic: char handle: %d\n", characteristic->handle);
     #endif
 
     mp_obj_list_append(MP_OBJ_FROM_PTR(service->characteristic_list),
         MP_OBJ_FROM_PTR(characteristic));
-    return 0;
 }
 
-static int _discovered_descriptor_cb(uint16_t conn_handle,
-    const struct ble_gatt_error *error,
-    uint16_t chr_val_handle,
-    const struct ble_gatt_dsc *dsc,
-    void *arg) {
-    bleio_characteristic_obj_t *characteristic = (bleio_characteristic_obj_t *)arg;
-
-    if (error->status != 0) {
-
-        #if CIRCUITPY_VERBOSE_BLE
-        mp_printf(&mp_plat_print, "_discovered_descriptor_cb error->status: %d, handle: %d\n",
-            error->status, error->att_handle);
-        #endif
-
-        // BLE_HS_EDONE or some error has occurred.
-        _set_discovery_step_status(error->status);
-        return 0;
-    }
+// Build a Descriptor object from a staged raw record. Runs on the VM task.
+static void _build_descriptor(void *ctx, const void *record) {
+    bleio_characteristic_obj_t *characteristic = ctx;
+    const struct ble_gatt_dsc *dsc = record;
 
     // Remember handles for certain well-known descriptors.
     switch (dsc->uuid.u16.value) {
@@ -337,33 +472,28 @@ static int _discovered_descriptor_cb(uint16_t conn_handle,
     descriptor->handle = dsc->handle;
 
     #if CIRCUITPY_VERBOSE_BLE
-    mp_printf(&mp_plat_print, "_discovered_descriptor_cb: char handle: %d, desc handle: %d, uuid type: %d, u16 value: 0x%x\n",
+    mp_printf(&mp_plat_print, "_build_descriptor: char handle: %d, desc handle: %d, uuid type: %d, u16 value: 0x%x\n",
         characteristic->handle, descriptor->handle, dsc->uuid.u.type, dsc->uuid.u16.value);
     #endif
 
     mp_obj_list_append(MP_OBJ_FROM_PTR(characteristic->descriptor_list),
         MP_OBJ_FROM_PTR(descriptor));
-    return 0;
 }
 
 static void discover_remote_services(bleio_connection_internal_t *self, mp_obj_t service_uuids_whitelist) {
     // Start over with an empty list.
     self->remote_service_list = mp_obj_new_list(0, NULL);
 
-    // Start timeout in case discovery gets stuck.
-    _start_discovery_timeout();
-
     if (service_uuids_whitelist == mp_const_none) {
-        // Reset discovery status before starting callbacks
+        // Reset discovery status and staging queue before starting callbacks.
         _set_discovery_step_status(0);
+        _reset_discovery_queue();
 
         CHECK_NIMBLE_ERROR(ble_gattc_disc_all_svcs(self->conn_handle, _discovered_service_cb, self));
 
-        // Wait for _discovered_service_cb() to be called multiple times until it's done.
-        int status = _wait_for_discovery_step_done();
-        if (status != BLE_HS_EDONE) {
-            CHECK_BLE_ERROR(status);
-        }
+        // Drain staged services and build them on the VM task until done.
+        int status = _drain_records(self, _build_service);
+        _check_discovery_status(status);
     } else {
         mp_obj_iter_buf_t iter_buf;
         mp_obj_t iterable = mp_getiter(service_uuids_whitelist, &iter_buf);
@@ -374,27 +504,26 @@ static void discover_remote_services(bleio_connection_internal_t *self, mp_obj_t
             }
             bleio_uuid_obj_t *uuid = MP_OBJ_TO_PTR(uuid_obj);
 
-            // Reset discovery status before starting callbacks
+            // Reset discovery status and staging queue before starting callbacks.
             _set_discovery_step_status(0);
+            _reset_discovery_queue();
 
             CHECK_NIMBLE_ERROR(ble_gattc_disc_svc_by_uuid(self->conn_handle, &uuid->nimble_ble_uuid.u,
                 _discovered_service_cb, self));
 
-            // Wait for _discovered_service_cb() to be called multiple times until it's done.
-            int status = _wait_for_discovery_step_done();
-            if (status != BLE_HS_EDONE) {
-                CHECK_BLE_ERROR(status);
-            }
+            // Drain staged services and build them on the VM task until done.
+            int status = _drain_records(self, _build_service);
+            _check_discovery_status(status);
         }
     }
 
     // Now discover characteristics for each discovered service.
-
     for (size_t i = 0; i < self->remote_service_list->len; i++) {
         bleio_service_obj_t *service = MP_OBJ_TO_PTR(self->remote_service_list->items[i]);
 
-        // Reset discovery status before starting callbacks
+        // Reset discovery status and staging queue before starting callbacks.
         _set_discovery_step_status(0);
+        _reset_discovery_queue();
 
         CHECK_NIMBLE_ERROR(ble_gattc_disc_all_chrs(self->conn_handle,
             service->start_handle,
@@ -402,11 +531,9 @@ static void discover_remote_services(bleio_connection_internal_t *self, mp_obj_t
             _discovered_characteristic_cb,
             service));
 
-        // Wait for _discovered_characteristic_cb() to be called multiple times until it's done.
-        int status = _wait_for_discovery_step_done();
-        if (status != BLE_HS_EDONE) {
-            CHECK_BLE_ERROR(status);
-        }
+        // Drain staged characteristics and build them on the VM task until done.
+        int status = _drain_records(service, _build_characteristic);
+        _check_discovery_status(status);
 
         // Got characteristics for this service. Now discover descriptors for each characteristic.
         size_t char_list_len = service->characteristic_list->len;
@@ -423,15 +550,16 @@ static void discover_remote_services(bleio_connection_internal_t *self, mp_obj_t
 
             uint16_t end_handle = next_characteristic == NULL
                 ? service->end_handle
-                : next_characteristic->handle - 1;
+                : next_characteristic->def_handle - 1;
 
             // Pre-check if there are no descriptors to discover so descriptor discovery doesn't fail
             if (end_handle <= characteristic->handle) {
                 continue;
             }
 
-            // Reset discovery status before starting callbacks
+            // Reset discovery status and staging queue before starting callbacks.
             _set_discovery_step_status(0);
+            _reset_discovery_queue();
 
             // The descriptor handle inclusive range is [characteristic->handle + 1, end_handle],
             // but ble_gattc_disc_all_dscs() requires starting with characteristic->handle.
@@ -439,11 +567,9 @@ static void discover_remote_services(bleio_connection_internal_t *self, mp_obj_t
                 end_handle,
                 _discovered_descriptor_cb, characteristic));
 
-            // Wait for _discovered_descriptor_cb to be called multiple times until it's done.
-            status = _wait_for_discovery_step_done();
-            if (status != BLE_HS_EDONE) {
-                CHECK_BLE_ERROR(status);
-            }
+            // Drain staged descriptors and build them on the VM task until done.
+            status = _drain_records(characteristic, _build_descriptor);
+            _check_discovery_status(status);
         }
     }
 }

@@ -54,7 +54,7 @@ void common_hal_busio_spi_deinit(busio_spi_obj_t *self) {
         return;
     }
 
-    self->spi_dev = NULL;
+    common_hal_busio_spi_mark_deinit(self);
 
     reset_pin_number(self->clock_pin->number);
     reset_pin_number(self->mosi_pin->number);
@@ -65,11 +65,34 @@ bool common_hal_busio_spi_deinited(busio_spi_obj_t *self) {
     return self->spi_dev == NULL;
 }
 
+void common_hal_busio_spi_mark_deinit(busio_spi_obj_t *self) {
+    self->spi_dev = NULL;
+}
+
 bool common_hal_busio_spi_configure(busio_spi_obj_t *self, uint32_t baudrate, uint8_t polarity, uint8_t phase, uint8_t bits) {
     uint8_t mode;
 
-    self->frequency = baudrate;
-    SPI_SETFREQUENCY(self->spi_dev, baudrate);
+    // SPI_SETFREQUENCY() picks the nearest available frequency and returns it,
+    // which can be HIGHER than requested (it overshoots at low frequencies).
+    // Treat baudrate as a ceiling: if the driver overshoots, bisect downward on
+    // the requested target for the highest available frequency that does not
+    // exceed baudrate. The driver returns the actual frequency each call, so we
+    // don't depend on its divisor internals.
+    uint32_t actual = SPI_SETFREQUENCY(self->spi_dev, baudrate);
+    if (actual > baudrate) {
+        uint32_t lo = 1;         // f(lo) <= baudrate
+        uint32_t hi = baudrate;  // f(hi) > baudrate (just measured)
+        while (hi - lo > 1) {
+            uint32_t mid = lo + (hi - lo) / 2;
+            if (SPI_SETFREQUENCY(self->spi_dev, mid) <= baudrate) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        actual = SPI_SETFREQUENCY(self->spi_dev, lo);
+    }
+    self->frequency = actual;
 
     if (polarity == 0) {
         if (phase == 0) {

@@ -19,6 +19,10 @@ SRC_SUPERVISOR = \
 	supervisor/shared/translate/translate.c \
 	supervisor/shared/workflow.c \
 
+ifeq ($(CIRCUITPY_SETTINGS_TOML),1)
+SRC_SUPERVISOR += supervisor/shared/settings.c
+endif
+
 ifeq ($(CIRCUITPY_LIB_TLSF),1)
 SRC_SUPERVISOR += lib/tlsf/tlsf.c
 endif
@@ -47,7 +51,7 @@ ifeq ($(CIRCUITPY_BLEIO),1)
   ifeq ($(CIRCUITPY_BLE_FILE_SERVICE),1)
     SRC_SUPERVISOR += supervisor/shared/bluetooth/file_transfer.c
   endif
-  ifeq ($(CIRCUITPY_SERIAL_BLE),1)
+  ifeq ($(CIRCUITPY_BLE_SERIAL_SERVICE),1)
     SRC_SUPERVISOR += supervisor/shared/bluetooth/serial.c
   endif
 endif
@@ -116,13 +120,13 @@ ifeq ($(CIRCUITPY_TINYUSB),1)
     lib/tinyusb/src/common/tusb_fifo.c \
     lib/tinyusb/src/tusb.c \
     supervisor/usb.c \
+    supervisor/shared/usb.c \
     supervisor/shared/usb/usb.c \
 
   ifeq ($(CIRCUITPY_USB_DEVICE),1)
   SRC_SUPERVISOR += \
     lib/tinyusb/src/class/cdc/cdc_device.c \
     lib/tinyusb/src/device/usbd.c \
-    lib/tinyusb/src/device/usbd_control.c \
     supervisor/shared/usb/usb_desc.c \
     supervisor/shared/usb/usb_device.c \
 
@@ -144,6 +148,7 @@ ifeq ($(CIRCUITPY_TINYUSB),1)
       shared-bindings/usb_hid/Device.c \
       shared-module/usb_hid/__init__.c \
       shared-module/usb_hid/Device.c \
+      shared-module/usb_hid/report_descriptors.c \
 
   endif
 
@@ -175,6 +180,20 @@ ifeq ($(CIRCUITPY_TINYUSB),1)
       lib/tinyusb/src/class/video/video_device.c \
 
     CFLAGS += -DCFG_TUD_VIDEO=1 -DCFG_TUD_VIDEO_STREAMING=1 -DCFG_TUD_VIDEO_STREAMING_EP_BUFSIZE=256 -DCFG_TUD_VIDEO_STREAMING_BULK=1
+  endif
+
+  ifeq ($(CIRCUITPY_USB_AUDIO), 1)
+    SRC_SUPERVISOR += \
+      shared-bindings/usb_audio/__init__.c \
+      shared-module/usb_audio/__init__.c \
+      shared-bindings/usb_audio/USBMicrophone.c \
+      shared-module/usb_audio/USBMicrophone.c \
+      shared-bindings/usb_audio/USBSpeaker.c \
+      shared-module/usb_audio/USBSpeaker.c \
+      lib/tinyusb/src/class/audio/audio_device.c \
+
+    # The CFG_TUD_AUDIO_* class driver settings are defined in
+    # supervisor/shared/usb/tusb_config.h, gated on CIRCUITPY_USB_AUDIO.
   endif
 
 
@@ -258,9 +277,6 @@ ifeq ($(CIRCUITPY_USB_CDC),1)
 # Inform TinyUSB there will be up to two CDC devices.
 CFLAGS += -DCFG_TUD_CDC=2
 endif
-
-USB_HIGHSPEED ?= 0
-CFLAGS += -DUSB_HIGHSPEED=$(USB_HIGHSPEED)
 
 $(BUILD)/supervisor/shared/translate/translate.o: $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/compressed_translations.generated.h
 

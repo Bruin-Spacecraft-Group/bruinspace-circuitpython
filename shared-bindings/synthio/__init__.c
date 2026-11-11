@@ -252,7 +252,6 @@ static mp_obj_t synthio_from_file(size_t n_args, const mp_obj_t *pos_args, mp_ma
     }
 
     synthio_miditrack_obj_t *result = mp_obj_malloc(synthio_miditrack_obj_t, &synthio_miditrack_type);
-
     common_hal_synthio_miditrack_construct(result, buffer, track_size,
         tempo, args[ARG_sample_rate].u_int, args[ARG_waveform].u_obj,
         mp_const_none,

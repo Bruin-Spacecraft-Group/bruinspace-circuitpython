@@ -22,3 +22,6 @@
 #define DEFAULT_UART_BUS_TX (&pin_GPIO43)
 
 #define MICROPY_HW_NEOPIXEL (&pin_GPIO40)
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

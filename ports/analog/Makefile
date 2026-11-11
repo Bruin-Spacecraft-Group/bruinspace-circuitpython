@@ -154,8 +154,10 @@ LINKERFILE = linking/$(MCU_VARIANT_LOWER)_cktpy.ld
 LDFLAGS += -nostartfiles -specs=nano.specs
 endif
 
-SRC_S_UPPER = supervisor/shared/cpu_regs.S
 SRC_S += $(STARTUPFILE)
+SRC_S += shared/runtime/gchelper_thumb2.s
+
+SRC_C += shared/runtime/gchelper_native.c
 
 # Needed to compile some MAX32 headers
 CFLAGS += 	-D$(MCU_VARIANT_UPPER) \
@@ -252,7 +254,6 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_LIBM:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(SRC_CIRCUITPY_COMMON:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
-OBJ += $(addprefix $(BUILD)/, $(SRC_S_UPPER:.S=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 
 # List of sources for qstr extraction
@@ -298,7 +299,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(STEPECHO) "LINK $@"
 	$(Q)echo $^ > $(BUILD)/firmware.objs
 	$(Q)$(CC) -o $@ $(LDFLAGS) @$(BUILD)/firmware.objs -Wl,--print-memory-usage -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LINKERFILE) $(BUILD)
+	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $@.map $(BUILD)
 
 $(BUILD)/firmware.hex: $(BUILD)/firmware.elf
 	$(STEPECHO) "Create $@"

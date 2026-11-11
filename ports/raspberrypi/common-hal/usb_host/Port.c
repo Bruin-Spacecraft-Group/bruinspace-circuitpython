@@ -13,10 +13,10 @@
 
 #include "pico/time.h"
 #include "hardware/structs/mpu.h"
-#ifdef PICO_RP2040
+#if PICO_RP2040
 #include "RP2040.h" // (cmsis)
 #endif
-#ifdef PICO_RP2350
+#if PICO_RP2350
 #include "RP2350.h" // (cmsis)
 #endif
 #include "hardware/dma.h"
@@ -33,6 +33,40 @@
 usb_host_port_obj_t usb_host_instance;
 
 volatile bool _core1_ready = false;
+
+// Core1 posts TinyUSB events while core0 may hold the queue FIFO mutex. The
+// contended wait path calls best_effort_wfe_or_timeout() and time_us_64(),
+// which normally live in flash, but core1 must not touch flash (see the MPU
+// setup in core1_main below). These RAM-resident replacements are linked in
+// with --wrap on USB host builds only (see the port Makefile). Issue #11116.
+//
+uint64_t __wrap_time_us_64(void);
+bool __wrap_best_effort_wfe_or_timeout(absolute_time_t timeout_timestamp);
+
+// The same hi/lo/hi re-read loop as the SDK's timer_time_us_64, to defeat
+// rollover between the two 32-bit halves.
+uint64_t __not_in_flash_func(__wrap_time_us_64)(void) {
+    uint32_t hi = timer_hw->timerawh;
+    uint32_t lo;
+    do {
+        lo = timer_hw->timerawl;
+        uint32_t next_hi = timer_hw->timerawh;
+        if (hi == next_hi) {
+            break;
+        }
+        hi = next_hi;
+    } while (true);
+    return ((uint64_t)hi << 32) | lo;
+}
+
+// Mirrors the SDK's own PICO_TIME_DEFAULT_ALARM_POOL_DISABLED fallback
+// (a poll of the clock with no __wfe): "best effort" explicitly permits
+// returning early, and every SDK caller re-checks in a loop. Polling honors
+// the timeout exactly and avoids dragging the alarm pool machinery into RAM.
+bool __not_in_flash_func(__wrap_best_effort_wfe_or_timeout)(absolute_time_t timeout_timestamp) {
+    tight_loop_contents();
+    return __wrap_time_us_64() >= to_us_since_boot(timeout_timestamp);
+}
 
 static void __not_in_flash_func(core1_main)(void) {
     // The MPU is reset before this starts.
@@ -73,41 +107,19 @@ static void __not_in_flash_func(core1_main)(void) {
     }
 }
 
-static uint8_t _sm_free_count(uint8_t pio_index) {
-    PIO pio = pio_get_instance(pio_index);
-    uint8_t free_count = 0;
-    for (size_t j = 0; j < NUM_PIO_STATE_MACHINES; j++) {
-        if (!pio_sm_is_claimed(pio, j)) {
-            free_count++;
-        }
-    }
-    return free_count;
-}
-
-static bool _has_program_room(uint8_t pio_index, uint8_t program_size) {
-    PIO pio = pio_get_instance(pio_index);
-    pio_program_t program_struct = {
-        .instructions = NULL,
-        .length = program_size,
-        .origin = -1
-    };
-    return pio_can_add_program(pio, &program_struct);
-}
-
 // As of 0.6.1, the PIO resource requirement is 1 PIO with 3 state machines &
 // 32 instructions. Since there are only 32 instructions in a state machine, it should
 // be impossible to have an allocated state machine but 32 instruction slots available;
 // go ahead and check for it anyway.
 //
-// Since we check that ALL state machines are available, it's not possible for the GPIO
+// Since we require ALL state machines to be available, it's not possible for the GPIO
 // ranges to mismatch on rp2350b
 static size_t get_usb_pio(void) {
-    for (size_t i = 0; i < NUM_PIOS; i++) {
-        if (_has_program_room(i, 32) && _sm_free_count(i) == NUM_PIO_STATE_MACHINES) {
-            return i;
-        }
+    size_t pio_index = rp2pio_statemachine_find_pio(32, NUM_PIO_STATE_MACHINES);
+    if (pio_index == NUM_PIOS) {
+        mp_raise_RuntimeError(MP_ERROR_TEXT("All state machines in use"));
     }
-    mp_raise_RuntimeError(MP_ERROR_TEXT("All state machines in use"));
+    return pio_index;
 }
 
 

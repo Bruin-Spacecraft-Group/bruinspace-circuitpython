@@ -20,165 +20,110 @@
 #include "supervisor/shared/tick.h"
 #include "supervisor/workflow.h"
 
-#include <zephyr/net/net_ip.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
-// void socketpool_resolve_host_or_throw(int family, int type, const char *hostname, struct sockaddr_storage *addr, int port) {
-//     // struct addrinfo *result_i;
-//     // const struct addrinfo hints = {
-//     //     .ai_family = family,
-//     //     .ai_socktype = type,
-//     // };
-//     // int error = socketpool_getaddrinfo_common(hostname, port, &hints, &result_i);
-//     if (true) {
-//         common_hal_socketpool_socketpool_raise_gaierror_noname();
-//     }
-//     // memcpy(addr, result_i->ai_addr, sizeof(struct sockaddr_storage));
-//     // lwip_freeaddrinfo(result_i);
-// }
+#include <zephyr/kernel.h>
+#include <zephyr/net/dns_resolve.h>
+#include <zephyr/net/socket.h>
 
-// static void resolve_host_or_throw(socketpool_socket_obj_t *self, const char *hostname, struct sockaddr_storage *addr, int port) {
-//     socketpool_resolve_host_or_throw(self->family, self->type, hostname, addr, port);
-// }
+#define SOCKETPOOL_IP_STR_LEN 48
 
-// StackType_t socket_select_stack[2 * configMINIMAL_STACK_SIZE];
+static mp_obj_t _format_address(const struct sockaddr *addr, int family) {
+    char ip_str[SOCKETPOOL_IP_STR_LEN];
+    const struct sockaddr_in *a = (void *)addr;
 
-// /* Socket state table:
-//  * 0 := Closed (unused)
-//  * 1 := Open
-//  * 2 := Closing (remove from rfds)
-//  * Index into socket_fd_state is calculated from actual lwip fd. idx := fd - LWIP_SOCKET_OFFSET
-// */
-// #define FDSTATE_CLOSED  0
-// #define FDSTATE_OPEN    1
-// #define FDSTATE_CLOSING 2
-// static uint8_t socket_fd_state[CONFIG_LWIP_MAX_SOCKETS];
+    switch (family) {
+        #if CIRCUITPY_SOCKETPOOL_IPV6
+        case AF_INET6:
+            zsock_inet_ntop(family, &((const struct sockaddr_in6 *)a)->sin6_addr, ip_str, sizeof(ip_str));
+            break;
+        #endif
+        default:
+        case AF_INET:
+            zsock_inet_ntop(family, &((const struct sockaddr_in *)a)->sin_addr, ip_str, sizeof(ip_str));
+            break;
+    }
+    return mp_obj_new_str(ip_str, strlen(ip_str));
+}
+
+static mp_obj_t _sockaddr_to_tuple(const struct sockaddr_storage *sockaddr) {
+    mp_obj_t args[4] = {
+        _format_address((const struct sockaddr *)sockaddr, sockaddr->ss_family),
+    };
+    int n = 2;
+    #if CIRCUITPY_SOCKETPOOL_IPV6
+    if (sockaddr->ss_family == AF_INET6) {
+        const struct sockaddr_in6 *addr6 = (const void *)sockaddr;
+        args[1] = MP_OBJ_NEW_SMALL_INT(ntohs(addr6->sin6_port));
+        args[2] = MP_OBJ_NEW_SMALL_INT(addr6->sin6_flowinfo);
+        args[3] = MP_OBJ_NEW_SMALL_INT(addr6->sin6_scope_id);
+        n = 4;
+    } else
+    #endif
+    {
+        const struct sockaddr_in *addr = (const void *)sockaddr;
+        args[1] = MP_OBJ_NEW_SMALL_INT(ntohs(addr->sin_port));
+    }
+    return mp_obj_new_tuple(n, args);
+}
+
+static void socketpool_resolve_host_or_throw(int family, int type, const char *hostname, struct sockaddr_storage *addr, int port) {
+    const struct zsock_addrinfo hints = {
+        .ai_family = family,
+        .ai_socktype = type,
+    };
+    struct zsock_addrinfo *result_i = NULL;
+    char service_buf[6];
+
+    snprintf(service_buf, sizeof(service_buf), "%d", port);
+
+    int error = zsock_getaddrinfo(hostname, service_buf, &hints, &result_i);
+    if (error != 0 || result_i == NULL) {
+        // Report what the resolver said. A null result with no error is the
+        // one case that really is "not found".
+        if (error == 0) {
+            error = DNS_EAI_NONAME;
+        }
+        common_hal_socketpool_socketpool_raise_gaierror(error);
+    }
+
+    memcpy(addr, result_i->ai_addr, sizeof(struct sockaddr_storage));
+    zsock_freeaddrinfo(result_i);
+}
+
+static void resolve_host_or_throw(socketpool_socket_obj_t *self, const char *hostname, struct sockaddr_storage *addr, int port) {
+    socketpool_resolve_host_or_throw(self->family, self->type, hostname, addr, port);
+}
 
 // How long to wait between checks for a socket to connect.
 #define SOCKET_CONNECT_POLL_INTERVAL_MS 100
 
-// static socketpool_socket_obj_t *user_socket[CONFIG_LWIP_MAX_SOCKETS];
-// StaticTask_t socket_select_task_buffer;
-// TaskHandle_t socket_select_task_handle;
-// static int socket_change_fd = -1;
-
-// static void socket_select_task(void *arg) {
-//     uint64_t signal;
-//     fd_set readfds;
-//     fd_set excptfds;
-
-//     while (true) {
-//         FD_ZERO(&readfds);
-//         FD_ZERO(&excptfds);
-//         FD_SET(socket_change_fd, &readfds);
-//         int max_fd = socket_change_fd;
-//         for (size_t i = 0; i < MP_ARRAY_SIZE(socket_fd_state); i++) {
-//             if ((socket_fd_state[i] == FDSTATE_OPEN) && (user_socket[i] == NULL)) {
-//                 int sockfd = i + LWIP_SOCKET_OFFSET;
-//                 max_fd = MAX(max_fd, sockfd);
-//                 FD_SET(sockfd, &readfds);
-//                 FD_SET(sockfd, &excptfds);
-//             }
-//         }
-
-//         int num_triggered = select(max_fd + 1, &readfds, NULL, &excptfds, NULL);
-//         // Hard error (or someone closed a socket on another thread)
-//         if (num_triggered == -1) {
-//             assert(errno == EBADF);
-//             continue;
-//         }
-
-//         assert(num_triggered > 0);
-
-//         // Notice event trigger
-//         if (FD_ISSET(socket_change_fd, &readfds)) {
-//             read(socket_change_fd, &signal, sizeof(signal));
-//             num_triggered--;
-//         }
-
-//         // Handle active FDs, close the dead ones
-//         for (size_t i = 0; i < MP_ARRAY_SIZE(socket_fd_state); i++) {
-//             int sockfd = i + LWIP_SOCKET_OFFSET;
-//             if (socket_fd_state[i] != FDSTATE_CLOSED) {
-//                 if (FD_ISSET(sockfd, &readfds) || FD_ISSET(sockfd, &excptfds)) {
-//                     if (socket_fd_state[i] == FDSTATE_CLOSING) {
-//                         socket_fd_state[i] = FDSTATE_CLOSED;
-//                         num_triggered--;
-//                     }
-//                 }
-//             }
-//         }
-
-//         if (num_triggered > 0) {
-//             // Wake up CircuitPython by queuing request
-//             supervisor_workflow_request_background();
-//             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-//         }
-//     }
-
-//     close(socket_change_fd);
-//     socket_change_fd = -1;
-//     vTaskDelete(NULL);
-// }
-
 void socket_user_reset(void) {
-    // if (socket_change_fd < 0) {
-    //     esp_vfs_eventfd_config_t config = ESP_VFS_EVENTD_CONFIG_DEFAULT();
-    //     ESP_ERROR_CHECK(esp_vfs_eventfd_register(&config));
+    // User sockets are heap objects with __del__ bound to close().
+    // During VM shutdown/reset, gc_sweep_all() runs finalizers, so sockets
+    // are closed there rather than being tracked and closed explicitly here.
+}
 
-    //     // Clear initial socket states
-    //     for (size_t i = 0; i < MP_ARRAY_SIZE(socket_fd_state); i++) {
-    //         socket_fd_state[i] = FDSTATE_CLOSED;
-    //         user_socket[i] = NULL;
-    //     }
-    //     socket_change_fd = eventfd(0, 0);
-    //     // Run this at the same priority as CP so that the web workflow background task can be
-    //     // queued while CP is running. Both tasks can still sleep and, therefore, sleep overall.
-    //     socket_select_task_handle = xTaskCreateStaticPinnedToCore(socket_select_task,
-    //         "socket_select",
-    //         2 * configMINIMAL_STACK_SIZE,
-    //         NULL,
-    //         uxTaskPriorityGet(NULL),
-    //         socket_select_stack,
-    //         &socket_select_task_buffer,
-    //         xPortGetCoreID());
-    // } else {
-    //     // Not init - close open user sockets
-    //     for (size_t i = 0; i < MP_ARRAY_SIZE(socket_fd_state); i++) {
-    //         if ((socket_fd_state[i] == FDSTATE_OPEN) && user_socket[i]) {
-    //             common_hal_socketpool_socket_close(user_socket[i]);
-    //         }
-    //     }
-    // }
+static struct k_work_delayable socketpool_poll_work;
+static bool socketpool_poll_work_initialized;
+
+static void socketpool_poll_work_handler(struct k_work *work) {
+    (void)work;
+    supervisor_workflow_request_background();
 }
 
 // Unblock select task (ok if not blocked yet)
 void socketpool_socket_poll_resume(void) {
-    // if (socket_select_task_handle) {
-    //     xTaskNotifyGive(socket_select_task_handle);
-    // }
+    if (!socketpool_poll_work_initialized) {
+        k_work_init_delayable(&socketpool_poll_work, socketpool_poll_work_handler);
+        socketpool_poll_work_initialized = true;
+    }
+    k_work_schedule(&socketpool_poll_work, K_MSEC(10));
 }
-
-// The writes below send an event to the socket select task so that it redoes the
-// select with the new open socket set.
-
-// static bool register_open_socket(int fd) {
-//     if (fd < FD_SETSIZE) {
-//         socket_fd_state[fd - LWIP_SOCKET_OFFSET] = FDSTATE_OPEN;
-//         user_socket[fd - LWIP_SOCKET_OFFSET] = NULL;
-
-//         uint64_t signal = 1;
-//         write(socket_change_fd, &signal, sizeof(signal));
-//         socketpool_socket_poll_resume();
-//         return true;
-//     }
-//     return false;
-// }
-
-// static void mark_user_socket(int fd, socketpool_socket_obj_t *obj) {
-//     socket_fd_state[fd - LWIP_SOCKET_OFFSET] = FDSTATE_OPEN;
-//     user_socket[fd - LWIP_SOCKET_OFFSET] = obj;
-//     // No need to wakeup select task
-// }
 
 static bool _socketpool_socket(socketpool_socketpool_obj_t *self,
     socketpool_socketpool_addressfamily_t family, socketpool_socketpool_sock_t type,
@@ -212,16 +157,23 @@ static bool _socketpool_socket(socketpool_socketpool_obj_t *self,
     sock->pool = self;
     sock->timeout_ms = (uint)-1;
 
-    // Create LWIP socket
-    // int socknum = -1;
-    // socknum = lwip_socket(sock->family, sock->type, sock->ipproto);
-    // if (socknum < 0) {
-    //     return false;
-    // }
+    int socknum = zsock_socket(sock->family, sock->type, sock->ipproto);
+    if (socknum < 0) {
+        return false;
+    }
 
-    // sock->num = socknum;
-    // // Sockets should be nonblocking in most cases
-    // lwip_fcntl(socknum, F_SETFL, O_NONBLOCK);
+    sock->num = socknum;
+
+    // Enable address reuse by default to avoid bind failures on recently-used ports.
+    int reuseaddr = 1;
+    if (zsock_setsockopt(socknum, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) < 0) {
+        // Ignore if SO_REUSEADDR is unsupported.
+    }
+
+    // Sockets should be nonblocking in most cases.
+    if (zsock_fcntl(socknum, F_SETFL, ZVFS_O_NONBLOCK) < 0) {
+        // Ignore if non-blocking is unsupported.
+    }
 
     return true;
 }
@@ -235,11 +187,6 @@ bool socketpool_socket(socketpool_socketpool_obj_t *self,
         return false;
     }
 
-    // This shouldn't happen since we have room for the same number of sockets as LWIP.
-    // if (!register_open_socket(sock->num)) {
-    //     lwip_close(sock->num);
-    //     return false;
-    // }
     return true;
 }
 
@@ -260,13 +207,12 @@ socketpool_socket_obj_t *common_hal_socketpool_socket(socketpool_socketpool_obj_
     if (!_socketpool_socket(self, family, type, proto, sock)) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Out of sockets"));
     }
-    // mark_user_socket(sock->num, sock);
     return sock;
 }
 
 int socketpool_socket_accept(socketpool_socket_obj_t *self, mp_obj_t *peer_out, socketpool_socket_obj_t *accepted) {
     struct sockaddr_storage peer_addr;
-    // socklen_t socklen = sizeof(peer_addr);
+    socklen_t socklen = sizeof(peer_addr);
     int newsoc = -1;
     bool timed_out = false;
     uint64_t start_ticks = supervisor_ticks_ms64();
@@ -277,10 +223,13 @@ int socketpool_socket_accept(socketpool_socket_obj_t *self, mp_obj_t *peer_out, 
             timed_out = supervisor_ticks_ms64() - start_ticks >= self->timeout_ms;
         }
         RUN_BACKGROUND_TASKS;
-        // newsoc = lwip_accept(self->num, (struct sockaddr *)&peer_addr, &socklen);
+        newsoc = zsock_accept(self->num, (struct sockaddr *)&peer_addr, &socklen);
         // In non-blocking mode, fail instead of timing out
         if (newsoc == -1 && (self->timeout_ms == 0 || mp_hal_is_interrupted())) {
             return -MP_EAGAIN;
+        }
+        if (newsoc == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            return -errno;
         }
     }
 
@@ -293,17 +242,13 @@ int socketpool_socket_accept(socketpool_socket_obj_t *self, mp_obj_t *peer_out, 
     }
 
     // We got a socket. New client socket will not be non-blocking by default, so make it non-blocking.
-    // lwip_fcntl(newsoc, F_SETFL, O_NONBLOCK);
+    if (zsock_fcntl(newsoc, F_SETFL, ZVFS_O_NONBLOCK) < 0) {
+        // Ignore if non-blocking is unsupported.
+    }
 
     if (accepted != NULL) {
         // Error if called with open socket object.
         assert(common_hal_socketpool_socket_get_closed(accepted));
-
-        // Register if system socket
-        // if (!register_open_socket(newsoc)) {
-        //     lwip_close(newsoc);
-        //     return -MP_EBADF;
-        // }
 
         // Replace the old accepted socket with the new one.
         accepted->num = newsoc;
@@ -313,7 +258,7 @@ int socketpool_socket_accept(socketpool_socket_obj_t *self, mp_obj_t *peer_out, 
     }
 
     if (peer_out) {
-        *peer_out = sockaddr_to_tuple(&peer_addr);
+        *peer_out = _sockaddr_to_tuple(&peer_addr);
     }
 
     return newsoc;
@@ -327,7 +272,6 @@ socketpool_socket_obj_t *common_hal_socketpool_socket_accept(socketpool_socket_o
 
     if (newsoc > 0) {
         // Create the socket
-        // mark_user_socket(newsoc, sock);
         sock->base.type = &socketpool_socket_type;
         sock->num = newsoc;
         sock->pool = self->pool;
@@ -343,40 +287,42 @@ socketpool_socket_obj_t *common_hal_socketpool_socket_accept(socketpool_socket_o
 
 size_t common_hal_socketpool_socket_bind(socketpool_socket_obj_t *self,
     const char *host, size_t hostlen, uint32_t port) {
-    // struct sockaddr_storage bind_addr;
+    struct sockaddr_storage bind_addr;
     const char *broadcast = "<broadcast>";
+    uint32_t local_port = port;
 
-    // bind_addr.ss_family = self->family;
+    memset(&bind_addr, 0, sizeof(bind_addr));
+    bind_addr.ss_family = self->family;
 
     #if CIRCUITPY_SOCKETPOOL_IPV6
     if (self->family == AF_INET6) {
         struct sockaddr_in6 *addr6 = (void *)&bind_addr;
-        addr6->sin6_port = htons(port);
+        addr6->sin6_port = htons(local_port);
         // no ipv6 broadcast
         if (hostlen == 0) {
             memset(&addr6->sin6_addr, 0, sizeof(addr6->sin6_addr));
         } else {
-            socketpool_resolve_host_or_throw(self->family, self->type, host, &bind_addr, port);
+            socketpool_resolve_host_or_throw(self->family, self->type, host, &bind_addr, local_port);
         }
     } else
     #endif
     {
-        // struct sockaddr_in *addr4 = (void *)&bind_addr;
-        // addr4->sin_port = htons(port);
+        struct sockaddr_in *addr4 = (void *)&bind_addr;
+        addr4->sin_port = htons(local_port);
         if (hostlen == 0) {
-            // addr4->sin_addr.s_addr = IPADDR_ANY;
+            addr4->sin_addr.s_addr = htonl(INADDR_ANY);
         } else if (hostlen == strlen(broadcast) &&
                    memcmp(host, broadcast, strlen(broadcast)) == 0) {
-            // addr4->sin_addr.s_addr = IPADDR_BROADCAST;
+            addr4->sin_addr.s_addr = htonl(INADDR_BROADCAST);
         } else {
-            // socketpool_resolve_host_or_throw(self->family, self->type, host, &bind_addr, port);
+            socketpool_resolve_host_or_throw(self->family, self->type, host, &bind_addr, local_port);
         }
     }
 
-    // int result = lwip_bind(self->num, (struct sockaddr *)&bind_addr, sizeof(bind_addr));
-    // if (result == 0) {
-    //     return 0;
-    // }
+    int result = zsock_bind(self->num, (struct sockaddr *)&bind_addr, sizeof(bind_addr));
+    if (result == 0) {
+        return 0;
+    }
     return errno;
 }
 
@@ -390,20 +336,11 @@ void socketpool_socket_close(socketpool_socket_obj_t *self) {
     }
     #endif
     self->connected = false;
-    // int fd = self->num;
-    // Ignore bogus/closed sockets
-    // if (fd >= LWIP_SOCKET_OFFSET) {
-    //     if (user_socket[fd - LWIP_SOCKET_OFFSET] == NULL) {
-    //         socket_fd_state[fd - LWIP_SOCKET_OFFSET] = FDSTATE_CLOSING;
-    //         lwip_shutdown(fd, SHUT_RDWR);
-    //         lwip_close(fd);
-    //     } else {
-    //         lwip_shutdown(fd, SHUT_RDWR);
-    //         lwip_close(fd);
-    //         socket_fd_state[fd - LWIP_SOCKET_OFFSET] = FDSTATE_CLOSED;
-    //         user_socket[fd - LWIP_SOCKET_OFFSET] = NULL;
-    //     }
-    // }
+    int fd = self->num;
+    if (fd >= 0) {
+        zsock_shutdown(fd, ZSOCK_SHUT_RDWR);
+        zsock_close(fd);
+    }
     self->num = -1;
 }
 
@@ -413,16 +350,11 @@ void common_hal_socketpool_socket_close(socketpool_socket_obj_t *self) {
 
 void common_hal_socketpool_socket_connect(socketpool_socket_obj_t *self,
     const char *host, size_t hostlen, uint32_t port) {
-    // struct sockaddr_storage addr;
-    // resolve_host_or_throw(self, host, &addr, port);
+    (void)hostlen;
+    struct sockaddr_storage addr;
+    resolve_host_or_throw(self, host, &addr, port);
 
-    // Replace above with function call -----
-
-    // Emulate SO_CONTIMEO, which is not implemented by lwip.
-    // All our sockets are non-blocking, so we check the timeout ourselves.
-
-    int result = -1;
-    // result = lwip_connect(self->num, (struct sockaddr *)&addr, addr.s2_len);
+    int result = zsock_connect(self->num, (struct sockaddr *)&addr, sizeof(addr));
 
     if (result == 0) {
         // Connected immediately.
@@ -436,12 +368,7 @@ void common_hal_socketpool_socket_connect(socketpool_socket_obj_t *self,
         return;
     }
 
-    // struct timeval timeout = {
-    //     .tv_sec = 0,
-    //     .tv_usec = SOCKET_CONNECT_POLL_INTERVAL_MS * 1000,
-    // };
-
-    // Keep checking, using select(), until timeout expires, at short intervals.
+    // Keep checking, using poll(), until timeout expires, at short intervals.
     // This allows ctrl-C interrupts to be detected and background tasks to run.
     mp_uint_t timeout_left = self->timeout_ms;
 
@@ -452,14 +379,22 @@ void common_hal_socketpool_socket_connect(socketpool_socket_obj_t *self,
             return;
         }
 
-        // fd_set fds;
-        // FD_ZERO(&fds);
-        // FD_SET(self->num, &fds);
+        struct zsock_pollfd fd = {
+            .fd = self->num,
+            .events = ZSOCK_POLLOUT,
+        };
+        int poll_timeout = SOCKET_CONNECT_POLL_INTERVAL_MS;
+        if (self->timeout_ms == (uint)-1) {
+            poll_timeout = -1;
+        } else if (timeout_left < SOCKET_CONNECT_POLL_INTERVAL_MS) {
+            poll_timeout = timeout_left;
+        }
 
-        // result = select(self->num + 1, NULL, &fds, NULL, &timeout);
+        result = zsock_poll(&fd, 1, poll_timeout);
         if (result == 0) {
-            // No change to fd's after waiting for timeout, so try again if some time is still left.
-            // Don't wrap below 0, because we're using a uint.
+            if (self->timeout_ms == (uint)-1) {
+                continue;
+            }
             if (timeout_left < SOCKET_CONNECT_POLL_INTERVAL_MS) {
                 timeout_left = 0;
             } else {
@@ -469,16 +404,14 @@ void common_hal_socketpool_socket_connect(socketpool_socket_obj_t *self,
         }
 
         if (result < 0) {
-            // Some error happened when doing select(); error is in errno.
             mp_raise_OSError(errno);
         }
 
-        // select() indicated the socket is writable. Check if any connection error occurred.
         int error_code = 0;
-        // socklen_t socklen = sizeof(error_code);
-        // result = getsockopt(self->num, SOL_SOCKET, SO_ERROR, &error_code, &socklen);
+        socklen_t socklen = sizeof(error_code);
+        result = zsock_getsockopt(self->num, SOL_SOCKET, SO_ERROR, &error_code, &socklen);
         if (result < 0 || error_code != 0) {
-            mp_raise_OSError(errno);
+            mp_raise_OSError(error_code != 0 ? error_code : errno);
         }
         self->connected = true;
         return;
@@ -498,17 +431,15 @@ bool common_hal_socketpool_socket_get_connected(socketpool_socket_obj_t *self) {
 }
 
 bool common_hal_socketpool_socket_listen(socketpool_socket_obj_t *self, int backlog) {
-    // return lwip_listen(self->num, backlog) == 0;
-    return false;
+    return zsock_listen(self->num, backlog) == 0;
 }
 
 mp_uint_t common_hal_socketpool_socket_recvfrom_into(socketpool_socket_obj_t *self,
     uint8_t *buf, uint32_t len, mp_obj_t *source_out) {
 
-    // struct sockaddr_storage source_addr;
-    // socklen_t socklen = sizeof(source_addr);
+    struct sockaddr_storage source_addr;
+    socklen_t socklen = sizeof(source_addr);
 
-    // LWIP Socket
     uint64_t start_ticks = supervisor_ticks_ms64();
     int received = -1;
     bool timed_out = false;
@@ -519,11 +450,18 @@ mp_uint_t common_hal_socketpool_socket_recvfrom_into(socketpool_socket_obj_t *se
             timed_out = supervisor_ticks_ms64() - start_ticks >= self->timeout_ms;
         }
         RUN_BACKGROUND_TASKS;
-        // received = lwip_recvfrom(self->num, buf, len, 0, (struct sockaddr *)&source_addr, &socklen);
+        received = zsock_recvfrom(self->num, buf, len, ZSOCK_MSG_DONTWAIT, (struct sockaddr *)&source_addr, &socklen);
 
-        // In non-blocking mode, fail instead of looping
-        if (received == -1 && self->timeout_ms == 0) {
-            mp_raise_OSError(MP_EAGAIN);
+        if (received < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            mp_raise_OSError(errno);
+        }
+
+        if (received == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            // In non-blocking mode, fail instead of looping
+            if (self->timeout_ms == 0) {
+                mp_raise_OSError(MP_EAGAIN);
+            }
+            continue;
         }
     }
 
@@ -537,7 +475,7 @@ mp_uint_t common_hal_socketpool_socket_recvfrom_into(socketpool_socket_obj_t *se
     }
 
     if (source_out) {
-        // *source_out = sockaddr_to_tuple(&source_addr);
+        *source_out = _sockaddr_to_tuple(&source_addr);
     }
 
     return received;
@@ -549,7 +487,6 @@ int socketpool_socket_recv_into(socketpool_socket_obj_t *self,
     bool timed_out = false;
 
     if (self->num != -1) {
-        // LWIP Socket
         uint64_t start_ticks = supervisor_ticks_ms64();
         received = -1;
         while (received == -1 &&
@@ -558,7 +495,16 @@ int socketpool_socket_recv_into(socketpool_socket_obj_t *self,
                 timed_out = supervisor_ticks_ms64() - start_ticks >= self->timeout_ms;
             }
             RUN_BACKGROUND_TASKS;
-            // received = lwip_recv(self->num, (void *)buf, len, 0);
+            received = zsock_recv(self->num, (void *)buf, len, ZSOCK_MSG_DONTWAIT);
+            if (received < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+                return -errno;
+            }
+            if (received < 1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                if (self->timeout_ms == 0) {
+                    return -MP_EAGAIN;
+                }
+                continue;
+            }
             // In non-blocking mode, fail instead of looping
             if (received < 1 && self->timeout_ms == 0) {
                 if ((received == 0) || (errno == ENOTCONN)) {
@@ -597,9 +543,7 @@ mp_uint_t common_hal_socketpool_socket_recv_into(socketpool_socket_obj_t *self, 
 int socketpool_socket_send(socketpool_socket_obj_t *self, const uint8_t *buf, uint32_t len) {
     int sent = -1;
     if (self->num != -1) {
-        // LWIP Socket
-        // TODO: deal with potential failure/add timeout?
-        // sent = lwip_send(self->num, buf, len, 0);
+        sent = zsock_send(self->num, buf, len, 0);
     } else {
         sent = -MP_EBADF;
     }
@@ -626,15 +570,15 @@ mp_uint_t common_hal_socketpool_socket_send(socketpool_socket_obj_t *self, const
 mp_uint_t common_hal_socketpool_socket_sendto(socketpool_socket_obj_t *self,
     const char *host, size_t hostlen, uint32_t port, const uint8_t *buf, uint32_t len) {
 
-    // struct sockaddr_storage addr;
-    // resolve_host_or_throw(self, host, &addr, port);
+    (void)hostlen;
+    struct sockaddr_storage addr;
+    resolve_host_or_throw(self, host, &addr, port);
 
-    // int bytes_sent = lwip_sendto(self->num, buf, len, 0, (struct sockaddr *)&addr, addr.s2_len);
-    // if (bytes_sent < 0) {
-    //     mp_raise_BrokenPipeError();
-    //     return 0;
-    // }
-    int bytes_sent = 0;
+    int bytes_sent = zsock_sendto(self->num, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
+    if (bytes_sent < 0) {
+        mp_raise_BrokenPipeError();
+        return 0;
+    }
     return bytes_sent;
 }
 
@@ -648,7 +592,44 @@ mp_int_t common_hal_socketpool_socket_get_type(socketpool_socket_obj_t *self) {
 
 
 int common_hal_socketpool_socket_setsockopt(socketpool_socket_obj_t *self, int level, int optname, const void *value, size_t optlen) {
-    int err = 0; // lwip_setsockopt(self->num, level, optname, value, optlen);
+    int zephyr_level = level;
+    int zephyr_optname = optname;
+
+    switch (level) {
+        case SOCKETPOOL_SOL_SOCKET:
+            zephyr_level = SOL_SOCKET;
+            break;
+        case SOCKETPOOL_IPPROTO_IP:
+            zephyr_level = IPPROTO_IP;
+            break;
+        case SOCKETPOOL_IPPROTO_TCP:
+            zephyr_level = IPPROTO_TCP;
+            break;
+        case SOCKETPOOL_IPPROTO_UDP:
+            zephyr_level = IPPROTO_UDP;
+            break;
+        #if CIRCUITPY_SOCKETPOOL_IPV6
+        case SOCKETPOOL_IPPROTO_IPV6:
+            zephyr_level = IPPROTO_IPV6;
+            break;
+        #endif
+    }
+
+    if (zephyr_level == SOL_SOCKET) {
+        switch (optname) {
+            case SOCKETPOOL_SO_REUSEADDR:
+                zephyr_optname = SO_REUSEADDR;
+                break;
+        }
+    } else if (zephyr_level == IPPROTO_TCP) {
+        switch (optname) {
+            case SOCKETPOOL_TCP_NODELAY:
+                zephyr_optname = TCP_NODELAY;
+                break;
+        }
+    }
+
+    int err = zsock_setsockopt(self->num, zephyr_level, zephyr_optname, value, optlen);
     if (err != 0) {
         return -errno;
     }
@@ -656,29 +637,23 @@ int common_hal_socketpool_socket_setsockopt(socketpool_socket_obj_t *self, int l
 }
 
 bool common_hal_socketpool_readable(socketpool_socket_obj_t *self) {
-    // struct timeval immediate = {0, 0};
+    struct zsock_pollfd fd = {
+        .fd = self->num,
+        .events = ZSOCK_POLLIN,
+    };
 
-    // fd_set fds;
-    // FD_ZERO(&fds);
-    // FD_SET(self->num, &fds);
-    // int num_triggered = select(self->num + 1, &fds, NULL, &fds, &immediate);
-
-    // including returning true in the error case
-    // return num_triggered != 0;
-    return false;
+    int num_triggered = zsock_poll(&fd, 1, 0);
+    return num_triggered > 0;
 }
 
 bool common_hal_socketpool_writable(socketpool_socket_obj_t *self) {
-    // struct timeval immediate = {0, 0};
+    struct zsock_pollfd fd = {
+        .fd = self->num,
+        .events = ZSOCK_POLLOUT,
+    };
 
-    // fd_set fds;
-    // FD_ZERO(&fds);
-    // FD_SET(self->num, &fds);
-    // int num_triggered = select(self->num + 1, NULL, &fds, &fds, &immediate);
-
-    // including returning true in the error case
-    // return num_triggered != 0;
-    return false;
+    int num_triggered = zsock_poll(&fd, 1, 0);
+    return num_triggered > 0;
 }
 
 void socketpool_socket_move(socketpool_socket_obj_t *self, socketpool_socket_obj_t *sock) {

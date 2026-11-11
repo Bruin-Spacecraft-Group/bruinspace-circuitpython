@@ -81,7 +81,6 @@
 
 static mp_obj_t keypad_keymatrix_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if CIRCUITPY_KEYPAD_KEYMATRIX
-    keypad_keymatrix_obj_t *self = mp_obj_malloc(keypad_keymatrix_obj_t, &keypad_keymatrix_type);
     enum { ARG_row_pins, ARG_column_pins, ARG_columns_to_anodes, ARG_interval, ARG_max_events, ARG_debounce_threshold };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_row_pins, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -123,7 +122,9 @@ static mp_obj_t keypad_keymatrix_make_new(const mp_obj_type_t *type, size_t n_ar
         column_pins_array[column] = pin;
     }
 
+    keypad_keymatrix_obj_t *self = mp_obj_malloc(keypad_keymatrix_obj_t, &keypad_keymatrix_type);
     common_hal_keypad_keymatrix_construct(self, num_row_pins, row_pins_array, num_column_pins, column_pins_array, args[ARG_columns_to_anodes].u_bool, interval, max_events, debounce_threshold);
+
     return MP_OBJ_FROM_PTR(self);
     #else
     mp_raise_NotImplementedError_varg(MP_ERROR_TEXT("%q"), MP_QSTR_KeyMatrix);

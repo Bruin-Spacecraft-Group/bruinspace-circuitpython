@@ -1,3 +1,0 @@
-&s28hl512t {
-    /delete-node/ partitions;
-};

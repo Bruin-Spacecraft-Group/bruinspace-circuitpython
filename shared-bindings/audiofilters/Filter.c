@@ -91,7 +91,14 @@ static mp_obj_t audiofilters_filter_make_new(const mp_obj_type_t *type, size_t n
     }
 
     audiofilters_filter_obj_t *self = mp_obj_malloc(audiofilters_filter_obj_t, &audiofilters_filter_type);
-    common_hal_audiofilters_filter_construct(self, args[ARG_filter].u_obj, args[ARG_mix].u_obj, args[ARG_buffer_size].u_int, bits_per_sample, args[ARG_samples_signed].u_bool, channel_count, sample_rate);
+    common_hal_audiofilters_filter_construct(self,
+        args[ARG_filter].u_obj,
+        args[ARG_mix].u_obj,
+        args[ARG_buffer_size].u_int,
+        bits_per_sample,
+        args[ARG_samples_signed].u_bool,
+        channel_count,
+        sample_rate);
 
     return MP_OBJ_FROM_PTR(self);
 }

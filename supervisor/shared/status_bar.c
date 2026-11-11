@@ -21,7 +21,7 @@
 #include "supervisor/shared/web_workflow/web_workflow.h"
 #endif
 
-#if CIRCUITPY_BLE_FILE_SERVICE || CIRCUITPY_SERIAL_BLE
+#if CIRCUITPY_BLE_FILE_SERVICE || CIRCUITPY_BLE_SERIAL_SERVICE
 #include "supervisor/shared/bluetooth/bluetooth.h"
 #endif
 
@@ -88,7 +88,7 @@ void supervisor_status_bar_update(void) {
     serial_write(" | ");
     #endif
 
-    #if CIRCUITPY_BLE_FILE_SERVICE || CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_FILE_SERVICE || CIRCUITPY_BLE_SERIAL_SERVICE
     supervisor_bluetooth_status();
     serial_write(" | ");
     #endif
@@ -119,7 +119,7 @@ static void status_bar_background(void *data) {
     dirty = dirty || supervisor_web_workflow_status_dirty();
     #endif
 
-    #if CIRCUITPY_BLE_FILE_SERVICE || CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_FILE_SERVICE || CIRCUITPY_BLE_SERIAL_SERVICE
     dirty = dirty || supervisor_bluetooth_status_dirty();
     #endif
 

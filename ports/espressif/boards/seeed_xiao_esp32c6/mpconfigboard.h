@@ -17,3 +17,6 @@
 
 // For entering safe mode, use BOOT button
 #define CIRCUITPY_BOOT_BUTTON       (&pin_GPIO9)
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

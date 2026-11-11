@@ -34,7 +34,7 @@
 //|         This module is unavailable as the flash is only large enough for one app partition.
 //|
 //|     Boards with flash ``>2MB``:
-//|         This module is enabled/disabled at runtime based on whether the ``CIRCUITPY`` drive
+//|         This module is enabled/disabled at runtime based on whether the **CIRCUITPY** drive
 //|         is extended or not. See `storage.erase_filesystem()` for more information.
 //|
 //| .. code-block:: python

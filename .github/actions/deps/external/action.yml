@@ -26,20 +26,14 @@ runs:
         inputs.port != 'zephyr-cp'
       uses: carlosperate/arm-none-eabi-gcc-action@v1
       with:
-        # When changing this update what Windows grabs too!
-        release: '14.2.Rel1'
+        release: '15.2.Rel1'
 
     # espressif
-    - name: Get espressif toolchain
-      if: inputs.port == 'espressif'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build
-      shell: bash
     - name: Install IDF tools
       if: inputs.port == 'espressif'
       run: |
         $IDF_PATH/install.sh
+        $IDF_PATH/tools/idf_tools.py install ninja
         rm -rf $IDF_TOOLS_PATH/dist
       shell: bash
     - name: Set environment
@@ -56,6 +50,16 @@ runs:
       uses: ./.github/actions/deps/python
       with:
         action: ${{ inputs.action }}
+    - name: Set ESP-IDF constraints path
+      if: inputs.port == 'espressif'
+      run: python3 -u tools/ci_set_idf_constraint.py
+      shell: bash
+
     - name: Install python dependencies
-      run: pip install -r requirements-dev.txt
+      run: |
+        if [ -n "${IDF_CONSTRAINT_FILE:-}" ] && [ -f "$IDF_CONSTRAINT_FILE" ]; then
+          pip install -c "$IDF_CONSTRAINT_FILE" -r requirements-dev.txt
+        else
+          pip install -r requirements-dev.txt
+        fi
       shell: bash

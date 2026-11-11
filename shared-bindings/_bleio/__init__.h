@@ -39,25 +39,31 @@ void bleio_user_reset(void);
 // Completely resets the BLE stack including BLE connections.
 void bleio_reset(void);
 
+// True if user code created a local GATT service during this VM run. Set by the
+// shared-bindings Service constructor; the supervisor constructs its BLE workflow
+// services through common-hal directly and does not set it. User-created services
+// can only be removed from the stack's GATT table by a full stack reset, so a
+// port's bleio_reset() uses this to decide whether that reset, which drops all
+// connections, is needed at all.
+bool bleio_get_user_services_created(void);
+
+// Record that user code created a local GATT service.
+void bleio_set_user_services_created(void);
+
+// Clear the flag reported by bleio_get_user_services_created(). Call after a full
+// stack reset, so the next VM run starts out clean.
+void bleio_clear_user_services_created(void);
+
 // Init any state needed before calling any bleio functions including those
 // having to do with bonding. This doesn't enable the BLE adapter though.
 void common_hal_bleio_init(void);
 
 extern mp_obj_t bleio_set_adapter(mp_obj_t adapter_obj);
 
-NORETURN void mp_raise_bleio_BluetoothError(mp_rom_error_text_t msg, ...);
-NORETURN void mp_raise_bleio_RoleError(mp_rom_error_text_t msg);
-NORETURN void mp_raise_bleio_SecurityError(mp_rom_error_text_t msg, ...);
+MP_NORETURN void mp_raise_bleio_BluetoothError(mp_rom_error_text_t msg, ...);
+MP_NORETURN void mp_raise_bleio_RoleError(mp_rom_error_text_t msg);
+MP_NORETURN void mp_raise_bleio_SecurityError(mp_rom_error_text_t msg, ...);
 
 bleio_adapter_obj_t *common_hal_bleio_allocate_adapter_or_raise(void);
-void common_hal_bleio_check_connected(uint16_t conn_handle);
-
-uint16_t common_hal_bleio_device_get_conn_handle(mp_obj_t device);
-void common_hal_bleio_device_discover_remote_services(mp_obj_t device, mp_obj_t service_uuids_whitelist);
-
-size_t common_hal_bleio_gatts_read(uint16_t handle, uint16_t conn_handle, uint8_t *buf, size_t len);
-void common_hal_bleio_gatts_write(uint16_t handle, uint16_t conn_handle, mp_buffer_info_t *bufinfo);
-size_t common_hal_bleio_gattc_read(uint16_t handle, uint16_t conn_handle, uint8_t *buf, size_t len);
-void common_hal_bleio_gattc_write(uint16_t handle, uint16_t conn_handle, mp_buffer_info_t *bufinfo, bool write_no_response);
 
 void common_hal_bleio_gc_collect(void);

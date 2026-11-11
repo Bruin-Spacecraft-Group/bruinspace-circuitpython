@@ -1,0 +1,2 @@
+CIRCUITPY_BUILD_EXTENSIONS = ["elf"]
+BLOBS=["hal_renesas"]

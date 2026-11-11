@@ -6,6 +6,7 @@
 
 #include "shared-bindings/busdisplay/BusDisplay.h"
 
+#include "py/mphal.h"
 #include "py/runtime.h"
 #if CIRCUITPY_FOURWIRE
 #include "shared-bindings/fourwire/FourWire.h"
@@ -16,6 +17,7 @@
 #if CIRCUITPY_PARALLELDISPLAYBUS
 #include "shared-bindings/paralleldisplaybus/ParallelBus.h"
 #endif
+#include "shared/runtime/interrupt_char.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/time/__init__.h"
 #include "shared-module/displayio/__init__.h"
@@ -73,6 +75,9 @@ void common_hal_busdisplay_busdisplay_construct(busdisplay_busdisplay_obj_t *sel
         uint8_t *data = cmd + 2;
         while (!displayio_display_bus_begin_transaction(&self->bus)) {
             RUN_BACKGROUND_TASKS;
+            if (mp_hal_is_interrupted()) {
+                mp_raise_RuntimeError_varg(MP_ERROR_TEXT("%q init failed"), MP_QSTR_display);
+            }
         }
         if (self->bus.data_as_commands) {
             uint8_t full_command[data_size + 1];
@@ -80,7 +85,7 @@ void common_hal_busdisplay_busdisplay_construct(busdisplay_busdisplay_obj_t *sel
             memcpy(full_command + 1, data, data_size);
             self->bus.send(self->bus.bus, DISPLAY_COMMAND, CHIP_SELECT_TOGGLE_EVERY_BYTE, full_command, data_size + 1);
         } else {
-            self->bus.send(self->bus.bus, DISPLAY_COMMAND, CHIP_SELECT_TOGGLE_EVERY_BYTE, cmd, 1);
+            self->bus.send(self->bus.bus, DISPLAY_COMMAND, data_size > 0 ? CHIP_SELECT_TOGGLE_EVERY_BYTE : CHIP_SELECT_UNTOUCHED, cmd, 1);
             self->bus.send(self->bus.bus, DISPLAY_DATA, CHIP_SELECT_UNTOUCHED, data, data_size);
         }
         displayio_display_bus_end_transaction(&self->bus);
@@ -214,7 +219,7 @@ static void _send_pixels(busdisplay_busdisplay_obj_t *self, uint8_t *pixels, uin
 }
 
 static bool _refresh_area(busdisplay_busdisplay_obj_t *self, const displayio_area_t *area) {
-    uint16_t buffer_size = 128; // In uint32_ts
+    uint16_t buffer_size = CIRCUITPY_DISPLAY_AREA_BUFFER_SIZE / sizeof(uint32_t); // In uint32_ts
 
     displayio_area_t clipped;
     // Clip the area to the display by overlapping the areas. If there is no overlap then we're done.
@@ -256,9 +261,10 @@ static bool _refresh_area(busdisplay_busdisplay_obj_t *self, const displayio_are
 
     // Allocated and shared as a uint32_t array so the compiler knows the
     // alignment everywhere.
-    uint32_t buffer[buffer_size];
     uint32_t mask_length = (pixels_per_buffer / 32) + 1;
+    uint32_t buffer[buffer_size];
     uint32_t mask[mask_length];
+
     uint16_t remaining_rows = displayio_area_height(&clipped);
 
     for (uint16_t j = 0; j < subrectangles; j++) {
@@ -273,8 +279,6 @@ static bool _refresh_area(busdisplay_busdisplay_obj_t *self, const displayio_are
         }
         remaining_rows -= rows_per_buffer;
 
-        displayio_display_bus_set_region_to_update(&self->bus, &self->core, &subrectangle);
-
         uint16_t subrectangle_size_bytes;
         if (self->core.colorspace.depth >= 8) {
             subrectangle_size_bytes = displayio_area_size(&subrectangle) * (self->core.colorspace.depth / 8);
@@ -287,12 +291,12 @@ static bool _refresh_area(busdisplay_busdisplay_obj_t *self, const displayio_are
 
         displayio_display_core_fill_area(&self->core, &subrectangle, mask, buffer);
 
+        displayio_display_bus_set_region_to_update(&self->bus, &self->core, &subrectangle);
+
         // Can't acquire display bus; skip the rest of the data.
-        if (!displayio_display_bus_is_free(&self->bus)) {
+        if (!displayio_display_bus_begin_transaction(&self->bus)) {
             return false;
         }
-
-        displayio_display_bus_begin_transaction(&self->bus);
         _send_pixels(self, (uint8_t *)buffer, subrectangle_size_bytes);
         displayio_display_bus_end_transaction(&self->bus);
 
@@ -305,6 +309,10 @@ static bool _refresh_area(busdisplay_busdisplay_obj_t *self, const displayio_are
         usb_background();
         #endif
     }
+
+    // Drain any remaining asynchronous transfers.
+    displayio_display_bus_flush(&self->bus);
+
     return true;
 }
 
@@ -313,7 +321,11 @@ static void _refresh_display(busdisplay_busdisplay_obj_t *self) {
         // A refresh on this bus is already in progress.  Try next display.
         return;
     }
-    displayio_display_core_start_refresh(&self->core);
+    if (!displayio_display_core_start_refresh(&self->core)) {
+        // Refresh for this display already in progress.
+        return;
+    }
+
     const displayio_area_t *current_area = _get_refresh_areas(self);
     while (current_area != NULL) {
         _refresh_area(self, current_area);

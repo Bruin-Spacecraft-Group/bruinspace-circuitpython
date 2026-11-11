@@ -63,7 +63,7 @@ SECTIONS
         *(.property_getset)
         __property_getset_end = .;
 
-        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *interp.o *divider.o *tusb_fifo.o *mem_ops_aeabi.o *usbh.o *string0.o) .text*)
+        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *interp.o *divider.o *pico_int64_ops_aeabi.o *tusb_fifo.o *mem_ops_aeabi.o *usbh.o *string0.o) .text*)
         /* Allow everything in usbh.o except tuh_task_event_ready because we read it from core 1. */
         *usbh.o (.text.[_uphc]* .text.tuh_[cmved]* .text.tuh_task_ext*)
         *(.fini)

@@ -18,13 +18,15 @@
 #if CIRCUITPY_BLEIO
 #include "shared-bindings/_bleio/__init__.h"
 #include "supervisor/shared/bluetooth/bluetooth.h"
-#if CIRCUITPY_SERIAL_BLE
+#if CIRCUITPY_BLE_SERIAL_SERVICE
 #include "supervisor/shared/bluetooth/serial.h"
 #endif
 #endif
 
-#if CIRCUITPY_TINYUSB || CIRCUITPY_USB_KEYBOARD_WORKFLOW
+#if CIRCUITPY_USB_DEVICE || CIRCUITPY_USB_KEYBOARD_WORKFLOW
 #include "supervisor/usb.h"
+#endif
+#if CIRCUITPY_TINYUSB
 #include "tusb.h"
 #endif
 
@@ -43,10 +45,12 @@ void supervisor_workflow_reset(void) {
 
     #if CIRCUITPY_WEB_WORKFLOW
     bool result = supervisor_start_web_workflow();
-    if (workflow_background_cb.fun) {
-        if (result) {
-            supervisor_workflow_request_background();
+    if (result) {
+        if (!workflow_background_cb.fun) {
+            // Enable background callbacks if web_workflow startup successful.
+            workflow_background_cb.fun = supervisor_web_workflow_background;
         }
+        supervisor_workflow_request_background();
     }
     #endif
 }
@@ -68,8 +72,8 @@ void supervisor_workflow_request_background(void) {
 bool supervisor_workflow_active(void) {
     #if CIRCUITPY_USB_DEVICE
     // Eventually there might be other non-USB workflows, such as BLE.
-    // tud_ready() checks for usb mounted and not suspended.
-    if (tud_ready()) {
+    // usb_connected() checks for usb mounted and not suspended.
+    if (usb_connected()) {
         return true;
     }
     #endif
@@ -78,7 +82,7 @@ bool supervisor_workflow_active(void) {
         return true;
     }
     #endif
-    #if CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_SERIAL_SERVICE
     if (ble_serial_connected()) {
         return true;
     }
@@ -89,7 +93,7 @@ bool supervisor_workflow_active(void) {
 
 void supervisor_workflow_start(void) {
     // Start USB after giving boot.py a chance to tweak behavior.
-    #if CIRCUITPY_TINYUSB
+    #if CIRCUITPY_USB_DEVICE
     // Setup USB connection after heap is available.
     // It needs the heap to build descriptors.
     usb_init();
@@ -105,9 +109,10 @@ void supervisor_workflow_start(void) {
 
     #if CIRCUITPY_WEB_WORKFLOW
     if (supervisor_start_web_workflow()) {
-        // Enable background callbacks if web_workflow startup successful
-        memset(&workflow_background_cb, 0, sizeof(workflow_background_cb));
+        // Enable background callbacks if web_workflow startup successful.
         workflow_background_cb.fun = supervisor_web_workflow_background;
+        // Kick the first background run now that the callback is installed.
+        supervisor_workflow_request_background();
     }
     #endif
 

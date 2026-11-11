@@ -81,7 +81,6 @@
 
 static mp_obj_t keypad_keys_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if CIRCUITPY_KEYPAD_KEYS
-    keypad_keys_obj_t *self = mp_obj_malloc(keypad_keys_obj_t, &keypad_keys_type);
     enum { ARG_pins, ARG_value_when_pressed, ARG_pull, ARG_interval, ARG_max_events, ARG_debounce_threshold };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_pins, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -112,6 +111,7 @@ static mp_obj_t keypad_keys_make_new(const mp_obj_type_t *type, size_t n_args, s
             validate_obj_is_free_pin(mp_obj_subscr(pins, MP_OBJ_NEW_SMALL_INT(i), MP_OBJ_SENTINEL), MP_QSTR_pin);
     }
 
+    keypad_keys_obj_t *self = mp_obj_malloc(keypad_keys_obj_t, &keypad_keys_type);
     common_hal_keypad_keys_construct(self, num_pins, pins_array, value_when_pressed, args[ARG_pull].u_bool, interval, max_events, debounce_threshold);
 
     return MP_OBJ_FROM_PTR(self);

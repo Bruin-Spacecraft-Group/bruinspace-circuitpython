@@ -4,11 +4,11 @@ Workflows are the process used to 1) manipulate files on the CircuitPython devic
 with the serial connection to CircuitPython. The serial connection is usually used to access the
 REPL.
 
-Starting with CircuitPython 3.x we moved to a USB-only workflow. Prior to that, we used the serial
-connection alone to do the whole workflow. In CircuitPython 7.x, a BLE workflow was added with the
-advantage of working with mobile devices. CircuitPython 8.x added a web workflow that works over the
-local network (usually Wi-Fi) and a web browser. Other clients can also use the Web REST API. Boards
-should clearly document which workflows are supported.
+CircuitPython started with a USB mass storage device workflow for filesystem operations.
+CircuitPython 7.x added a BLE workflow with the advantage of working with mobile devices.
+CircuitPython 8.x added a web workflow that works over the
+local network (usually Wi-Fi) and a web browser.
+Other clients can also use the Web REST API. Boards should clearly document which workflows are supported.
 
 Code for workflows lives in `supervisor/shared`.
 
@@ -21,7 +21,7 @@ device has been plugged into a host.
 
 ### Mass Storage
 CircuitPython exposes a standard mass storage (MSC) interface to enable file manipulation over a
-standard interface. (This is how USB drives work.) This interface works underneath the file system at
+standard interface. The board appears as a USB drive. This interface works underneath the file system at
 the block level so using it excludes other types of workflows from manipulating the file system at
 the same time.
 
@@ -29,55 +29,68 @@ CircuitPython 10.x adds multiple Logical Units (LUNs) to the mass storage interf
 multiple drives to be accessed and ejected independently.
 
 #### CIRCUITPY drive
-The CIRCUITPY drive is the main drive that CircuitPython uses. It is writable by the host by default
+The CIRCUITPY drive is the main drive that CircuitPython presents. It is writable by the host by default
 and read-only to CircuitPython. `storage.remount()` can be used to remount the drive to
 CircuitPython as read-write.
 
 #### CPSAVES drive
-The board may also expose a CPSAVES drive. (This is based on the ``CIRCUITPY_SAVES_PARTITION_SIZE``
-setting in ``mpconfigboard.h``.) It is a portion of the main flash that is writable by CircuitPython
-by default. It is read-only to the host. `storage.remount()` can be used to remount the drive to the
-host as read-write.
+The board may also expose a CPSAVES drive. (This is based on the `CIRCUITPY_SAVES_PARTITION_SIZE`
+setting in `mpconfigboard.h`.) It is a portion of the main flash that is writable by CircuitPython
+by default.  The CPSAVES drive becomes visible to the attached host computer after a few seconds.
+By default it is read-only to the host, but `storage.remount()` can be used to remount the drive
+as read-write to the host
 
 #### SD card drive
-A few boards have SD card automounting. (This is based on the ``DEFAULT_SD`` settings in
-``mpconfigboard.h``.) The card is writable from CircuitPython by default and read-only to the host.
+A few boards auomatically mount an SD card, if present, to the `/sd` mount point.
+Boards that do this have `DEFAULT_SD` settings in`mpconfigboard.h` which allow detecting the
+presence of an SD card, and fixed pin settings for the SD card socket.
+The mounted SD card is writable from CircuitPython by default and read-only to the host.
 `storage.remount()` can be used to remount the drive to the host as read-write.
 
-On most other boards, except for ``atmel-samd`` boards, an SD card mounted in user code
-at ``/sd`` will become visible after a few seconds on the attached host computer, as an
-additional drive besides CIRCUITPY and (if present) CPSAVES. It will present with the volume
-label on the SD card. Depending on the host operating system settings, the drive may or may not be
-auto-mounted on the host. Host writes to drives mounted by user code will not trigger a reload.
+If `CIRCUITPY_SDCARD_USB` in settings.toml is `true` (the default),
+an SD card mounted in user code at `/sd` will become visible on the attached host computer
+after a few seconds, as an additional drive besides CIRCUITPY and (if present) CPSAVES.
+It will present with the volume label on the SD card.
+Depending on the host operating system settings, the drive may or may not be
+auto-mounted on the host.
+Host writes to drives mounted by user code will not trigger a reload.
 
 ### CDC serial
-CircuitPython exposes one CDC USB interface for CircuitPython serial. This is a standard serial
-USB interface.
+CircuitPython exposes a standard serial CDC USB interface for the CircuitPython REPL.
+Setting the CDC's baudrate 1200 and disconnecting will reboot the board into a bootloader.
+This technique was first used by Arduino boards and the Arduino IDE to trigger a reset into bootloader.
 
-TODO: Document how it designates itself from the user CDC.
+A second CDC interface is optionally available for binary data transfer (see `usb_cdc`).
 
-Setting baudrate 1200 and disconnecting will reboot into a bootloader. (Used by Arduino to trigger
-a reset into bootloader.)
 
 ## BLE
 
-The BLE workflow is enabled for Nordic boards. By default, to prevent malicious access, it is disabled.
-To connect to the BLE workflow, press the reset button while the status led blinks blue quickly
-after the safe mode blinks. The board will restart and broadcast the file transfer service UUID
-(`0xfebb`) along with the board's [Creation IDs](https://github.com/creationid/creators). This
-public broadcast is done at a lower transmit level so the devices must be closer. On connection, the
-device will need to pair and bond. Once bonded, the device will broadcast whenever disconnected
-using a rotating key rather than a static one. Non-bonded devices won't be able to resolve it. After
-connection, the central device can discover two default services. One for file transfer and one for
-CircuitPython specifically that includes serial characteristics.
+The BLE workflow provides file transfer and REPL access over BLE.
+It can be controlled by setting `CIRCUITPY_BLE_WORKFLOW` to be `true` or `false`.
+in `settings.toml`. The default is `true`.
+
+To prevent malicious access, even if `CIRCUITPY_BLE_WORKFLOW=true`,
+the user must initiate a bonded connection with the host.
+To bond, press the reset button when the status led blinks blue quickly after reset,
+after the safe mode blinks.
+The board will restart and advertise the file transfer service UUID (`0xfebb`)
+along with the board's [Creation ID](https://github.com/creationid/creators).
+This public advertisement is done at a lower transmit level so the devices must be closer.
+On connection, the device will need to pair and bond.
+Once bonded, the device will advertise whenever disconnected,
+using a rotating key rather than a static one.
+Non-bonded devices won't be able to resolve it.
+
+After connection, will discover two default services: one is for file transfer and
+the other provides version information and a serial connection to the CircuitPython REPL.
 
 To change the default BLE advertising name without (or before) running user code, the desired name
-can be put in the `settings.toml` file. The key is `CIRCUITPY_BLE_NAME`. It's limited to approximately
-30 characters depending on the port's settings and will be truncated if longer.
+can be put in the `settings.toml` using the `CIRCUITPY_BLE_NAME` key. The name is limited to approximately
+30 characters, depending on the port, and will be truncated if longer.
 
 ### File Transfer API
 
-CircuitPython uses [an open File Transfer API](https://github.com/adafruit/Adafruit_CircuitPython_BLE_File_Transfer)
+The file transfer service provides [an open File Transfer API](https://github.com/adafruit/Adafruit_CircuitPython_BLE_File_Transfer)
 to enable file system access.
 
 ### CircuitPython Service
@@ -87,22 +100,22 @@ replaced by the four specific digits below. The service itself is `0001`.
 
 #### TX - `0002` / RX - `0003`
 
-These characteristic work just like the Nordic Uart Service (NUS) but have different UUIDs to prevent
-conflicts with user created NUS services.
+The TX and RX characteristics for the CircuitPython service work just like the Nordic Uart Service (NUS)
+but have different UUIDs to prevent conflicts with user-created NUS services.
 
 #### Version - `0100`
-Read-only characteristic that returns the UTF-8 encoded version string.
+The Version characteristic is read-only and returns the UTF-8 encoded version string.
 
 ## Web
 If the keys `CIRCUITPY_WIFI_SSID` and `CIRCUITPY_WIFI_PASSWORD` are set in `settings.toml`,
 CircuitPython will automatically connect to the given Wi-Fi network on boot and upon reload.
 
-If `CIRCUITPY_WEB_API_PASSWORD` is set, MDNS and the http server for the web workflow will also start.
+If `CIRCUITPY_WEB_API_PASSWORD` is set, MDNS and the HTTP server for the web workflow will also start.
 
-The webserver is on port 80 unless overridden by `CIRCUITPY_WEB_API_PORT`. It also enables MDNS.
+The webserver is on port 80 unless overridden by `CIRCUITPY_WEB_API_PORT`. It also enables mDNS.
 The name of the board as advertised to the network can be overridden by `CIRCUITPY_WEB_INSTANCE_NAME`.
 
-Here is an example `/settings.toml`:
+Here is an example `settings.toml`:
 
 ```bash
 # To auto-connect to Wi-Fi
@@ -249,7 +262,7 @@ curl -v -u :passw0rd -X PUT -L --location-trusted http://circuitpython.local/fs/
 ```
 
 ##### Move
-Moves the directory at the given path to ``X-Destination``. Also known as rename.
+Moves the directory at the given path to `X-Destination`. Also known as rename.
 
 The custom `X-Destination` header stores the destination path of the directory.
 
@@ -335,7 +348,7 @@ curl -v -u :passw0rd -L --location-trusted http://circuitpython.local/fs/lib/hel
 
 
 ##### Move
-Moves the file at the given path to the ``X-Destination``. Also known as rename.
+Moves the file at the given path to the `X-Destination`. Also known as rename.
 
 The custom `X-Destination` header stores the destination path of the file.
 

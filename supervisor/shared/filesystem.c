@@ -19,6 +19,10 @@
 #include "shared-module/sdcardio/__init__.h"
 #endif
 
+#if CIRCUITPY_EMMC_USB
+#include "shared-module/emmcio/__init__.h"
+#endif
+
 static mp_vfs_mount_t _circuitpy_vfs;
 static fs_user_mount_t _circuitpy_usermount;
 
@@ -172,7 +176,7 @@ bool filesystem_init(bool create_allowed, bool force_create) {
         #endif
         #endif
 
-        #if CIRCUITPY_OS_GETENV
+        #if CIRCUITPY_SETTINGS_TOML
         make_empty_file(&circuitpy->fatfs, "/settings.toml");
         #endif
         // make a sample code.py file
@@ -219,6 +223,22 @@ bool filesystem_init(bool create_allowed, bool force_create) {
 
     #if CIRCUITPY_SDCARDIO
     sdcardio_init();
+    #if defined(DEFAULT_SD_CARD_DETECT) && CIRCUITPY_SDCARD_USB
+    // Mount the SD card now so it's ready when USB enumerates.
+    // Lazy mount from tud_msc_test_unit_ready_cb can lose races with
+    // macOS's probe timing. Gated on CIRCUITPY_SDCARD_USB to match the
+    // existing call site in usb_msc_flash.c (guarded by SDCARD_LUN).
+    // automount_sd_card() itself honors the runtime CIRCUITPY_SDCARD_USB
+    // setting and is a no-op when it is disabled.
+    automount_sd_card();
+    #endif
+    #endif
+
+    // Same reason as the SD card above, mount it before USB enumerates rather than
+    // lazily from tud_msc_test_unit_ready_cb(). Also the same requirement
+    // that settings.toml is readable.
+    #if CIRCUITPY_EMMC_USB
+    automount_emmc();
     #endif
 
     return true;
@@ -320,12 +340,23 @@ bool filesystem_lock(fs_user_mount_t *fs_mount) {
         return false;
     }
     fs_mount->lock_count += 1;
+    // CIRCUITPY-CHANGE: while a non-USB-MSC writer (BLE file transfer, web
+    // workflow, storage.remount) holds the filesystem lock, allow the
+    // FatFS f_open(FA_WRITE) path to bypass STA_PROTECT. Without this, the
+    // disk_ioctl(IOCTL_STATUS) -> filesystem_is_writable_by_python() check
+    // added by #10659 always sets STA_PROTECT on USB-device-capable boards,
+    // so even after the lock is held, f_open returns FR_WRITE_PROTECTED.
+    // USB MSC takes the lock via blockdev_lock() directly, NOT via
+    // filesystem_lock(), so this flag is never set on its behalf.
+    fs_mount->blockdev.flags |= MP_BLOCKDEV_FLAG_IGNORE_WRITE_PROTECTION;
     return true;
 }
 
 void filesystem_unlock(fs_user_mount_t *fs_mount) {
     fs_mount->lock_count -= 1;
     if (fs_mount->lock_count == 0) {
+        // CIRCUITPY-CHANGE: clear the bypass when releasing the lock.
+        fs_mount->blockdev.flags &= ~MP_BLOCKDEV_FLAG_IGNORE_WRITE_PROTECTION;
         blockdev_unlock(fs_mount);
     }
 }

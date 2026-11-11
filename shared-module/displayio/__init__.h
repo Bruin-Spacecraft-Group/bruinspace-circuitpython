@@ -38,6 +38,15 @@
 #if CIRCUITPY_DOTCLOCKFRAMEBUFFER
 #include "common-hal/dotclockframebuffer/DotClockFramebuffer.h"
 #endif
+#if CIRCUITPY_MIPIDSI
+#include "shared-bindings/mipidsi/Display.h"
+#endif
+#if CIRCUITPY_QSPIBUS
+#include "shared-bindings/qspibus/QSPIBus.h"
+#endif
+#if CIRCUITPY_ZEPHYR_DISPLAY
+#include "bindings/zephyr_display/Display.h"
+#endif
 // Port unique frame buffers.
 #if CIRCUITPY_VIDEOCORE
 #include "bindings/videocore/Framebuffer.h"
@@ -81,6 +90,12 @@ typedef struct {
         #if CIRCUITPY_AURORA_EPAPER
         aurora_epaper_framebuffer_obj_t aurora_epaper;
         #endif
+        #if CIRCUITPY_MIPIDSI
+        mipidsi_display_obj_t mipidsi;
+        #endif
+        #if CIRCUITPY_QSPIBUS
+        qspibus_qspibus_obj_t qspi_bus;
+        #endif
     };
 } primary_display_bus_t;
 
@@ -95,6 +110,9 @@ typedef struct {
         #endif
         #if CIRCUITPY_FRAMEBUFFERIO
         framebufferio_framebufferdisplay_obj_t framebuffer_display;
+        #endif
+        #if CIRCUITPY_ZEPHYR_DISPLAY
+        zephyr_display_display_obj_t zephyr_display;
         #endif
     };
 } primary_display_t;

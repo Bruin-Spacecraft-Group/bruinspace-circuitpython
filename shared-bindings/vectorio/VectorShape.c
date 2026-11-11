@@ -69,7 +69,7 @@ mp_obj_t vectorio_vector_shape_make_new(const mp_obj_t shape, const mp_obj_t pix
     } else if (mp_obj_is_type(shape, &vectorio_circle_type)) {
         common_hal_vectorio_circle_set_on_dirty(self->ishape.shape, on_dirty);
     } else {
-        mp_raise_TypeError_varg(MP_ERROR_TEXT("unsupported %q type"), MP_QSTR_shape);
+        // Already excluded due to previous else-if chain.
     }
 
     return MP_OBJ_FROM_PTR(self);
