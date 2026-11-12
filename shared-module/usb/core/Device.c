@@ -85,8 +85,113 @@ static bool _wait_for_callback(void) {
         RUN_BACKGROUND_TASKS;
     }
     xfer_result_t result = _xfer_result;
-    _xfer_result = 0xff;
-    return result == XFER_RESULT_SUCCESS;
+    _xfer_result = XFER_RESULT_INVALID;
+    switch (result) {
+        case XFER_RESULT_SUCCESS:
+            return true;
+        case XFER_RESULT_ABORTED:
+        case XFER_RESULT_FAILED:
+            mp_raise_usb_core_USBError(NULL);
+            break;
+        case XFER_RESULT_STALLED:
+            mp_raise_usb_core_USBError(MP_ERROR_TEXT("Pipe error"));
+            break;
+        case XFER_RESULT_TIMEOUT:
+        case XFER_RESULT_INVALID:
+            mp_raise_usb_core_USBTimeoutError();
+            break;
+    }
+    return false;
+}
+
+static void _prepare_for_transfer(void) {
+    // Prepare for transfer. Unless there is a timeout, these static globals will
+    // get modified by the _transfer_done_cb() callback when tinyusb finishes the
+    // transfer or encounters an error condition.
+    _xfer_result = XFER_RESULT_INVALID;
+    _actual_len = 0;
+}
+
+static void _abort_transfer(tuh_xfer_t *xfer) {
+    bool aborted = tuh_edpt_abort_xfer(xfer->daddr, xfer->ep_addr);
+    if (aborted) {
+        // If the transfer was aborted, then we can continue.
+        return;
+    }
+    uint32_t start_time = supervisor_ticks_ms32();
+    // If not, we need to wait for it to finish, otherwise we may free memory out from under it.
+    // Limit the wait time to 10 milliseconds to avoid blocking indefinitely.
+    while (_xfer_result == XFER_RESULT_INVALID && (supervisor_ticks_ms32() - start_time < 10)) {
+        // The background tasks include TinyUSB which will call the function
+        // we provided above. In other words, the callback isn't in an interrupt.
+        RUN_BACKGROUND_TASKS;
+    }
+}
+
+// Only frees the transfer buffer on error.
+static size_t _handle_timed_transfer_callback(tuh_xfer_t *xfer, mp_int_t timeout, bool our_buffer, bool raise_on_timeout) {
+    if (xfer == NULL) {
+        mp_raise_usb_core_USBError(NULL);
+        return 0;
+    }
+    uint32_t start_time = supervisor_ticks_ms32();
+    while ((timeout == 0 || supervisor_ticks_ms32() - start_time < (uint32_t)timeout) &&
+           !mp_hal_is_interrupted() &&
+           _xfer_result == XFER_RESULT_INVALID) {
+        // The background tasks include TinyUSB which will call the function
+        // we provided above. In other words, the callback isn't in an interrupt.
+        RUN_BACKGROUND_TASKS;
+    }
+    if (mp_hal_is_interrupted()) {
+        // Handle case of VM being interrupted by Ctrl-C or autoreload
+        _abort_transfer(xfer);
+        return 0;
+    }
+    // Handle transfer result code from TinyUSB
+    xfer_result_t result = _xfer_result;
+    _xfer_result = XFER_RESULT_INVALID;
+    // Free the bounce buffer only on paths that raise: raising unwinds past
+    // the caller's cleanup, so it must be freed here. Paths that return
+    // normally leave ownership with the caller, which copies out of and
+    // frees the buffer itself (freeing on both sides would be a double free).
+    bool will_raise = result == XFER_RESULT_ABORTED || result == XFER_RESULT_FAILED ||
+        result == XFER_RESULT_STALLED ||
+        (result == XFER_RESULT_TIMEOUT && raise_on_timeout);
+    if (our_buffer && will_raise) {
+        port_free(xfer->buffer);
+    }
+    switch (result) {
+        case XFER_RESULT_SUCCESS:
+            return _actual_len;
+        case XFER_RESULT_ABORTED:
+        case XFER_RESULT_FAILED:
+            mp_raise_usb_core_USBError(NULL);
+            break;
+        case XFER_RESULT_STALLED:
+            mp_raise_usb_core_USBError(MP_ERROR_TEXT("Pipe error"));
+            break;
+        case XFER_RESULT_TIMEOUT:
+            // This timeout comes from TinyUSB, so assume that it has stopped the
+            // transfer (note: timeout logic may be unimplemented on TinyUSB side)
+            if (!raise_on_timeout) {
+                return 0;
+            }
+            mp_raise_usb_core_USBTimeoutError();
+            break;
+        case XFER_RESULT_INVALID:
+            // This timeout comes from CircuitPython, not TinyUSB, so tell TinyUSB
+            // to stop the transfer.
+            _abort_transfer(xfer);
+            if (!raise_on_timeout) {
+                return 0;               // the caller owns (and frees) the buffer
+            }
+            if (our_buffer) {
+                port_free(xfer->buffer);
+            }
+            mp_raise_usb_core_USBTimeoutError();
+            break;
+    }
+    return 0;
 }
 
 static mp_obj_t _get_string(const uint16_t *temp_buf) {
@@ -203,39 +308,15 @@ void common_hal_usb_core_device_set_configuration(usb_core_device_obj_t *self, m
     _wait_for_callback();
 }
 
-static size_t _xfer(tuh_xfer_t *xfer, mp_int_t timeout) {
-    _xfer_result = 0xff;
+// Raises an exception on failure. Returns the number of bytes transferred (maybe zero) on success.
+static size_t _xfer(tuh_xfer_t *xfer, mp_int_t timeout, bool our_buffer, bool raise_on_timeout) {
+    _prepare_for_transfer();
     xfer->complete_cb = _transfer_done_cb;
     if (!tuh_edpt_xfer(xfer)) {
         mp_raise_usb_core_USBError(NULL);
         return 0;
     }
-    uint32_t start_time = supervisor_ticks_ms32();
-    while ((timeout == 0 || supervisor_ticks_ms32() - start_time < (uint32_t)timeout) &&
-           !mp_hal_is_interrupted() &&
-           _xfer_result == 0xff) {
-        // The background tasks include TinyUSB which will call the function
-        // we provided above. In other words, the callback isn't in an interrupt.
-        RUN_BACKGROUND_TASKS;
-    }
-    if (mp_hal_is_interrupted()) {
-        tuh_edpt_abort_xfer(xfer->daddr, xfer->ep_addr);
-        return 0;
-    }
-    xfer_result_t result = _xfer_result;
-    _xfer_result = 0xff;
-    if (result == XFER_RESULT_STALLED) {
-        mp_raise_usb_core_USBError(MP_ERROR_TEXT("Pipe error"));
-    }
-    if (result == 0xff) {
-        tuh_edpt_abort_xfer(xfer->daddr, xfer->ep_addr);
-        mp_raise_usb_core_USBTimeoutError();
-    }
-    if (result == XFER_RESULT_SUCCESS) {
-        return _actual_len;
-    }
-
-    return 0;
+    return _handle_timed_transfer_callback(xfer, timeout, our_buffer, raise_on_timeout);
 }
 
 static bool _open_endpoint(usb_core_device_obj_t *self, mp_int_t endpoint) {
@@ -297,10 +378,16 @@ mp_int_t common_hal_usb_core_device_write(usb_core_device_obj_t *self, mp_int_t 
     xfer.ep_addr = endpoint;
     xfer.buffer = (uint8_t *)buffer;
     xfer.buflen = len;
-    return _xfer(&xfer, timeout);
+    size_t result = _xfer(&xfer, timeout, dma_buffer != buffer, true);
+    #if !CIRCUITPY_ALL_MEMORY_DMA_CAPABLE
+    if (dma_buffer != buffer) {
+        port_free(dma_buffer);
+    }
+    #endif
+    return result;
 }
 
-mp_int_t common_hal_usb_core_device_read(usb_core_device_obj_t *self, mp_int_t endpoint, uint8_t *buffer, mp_int_t len, mp_int_t timeout) {
+mp_int_t common_hal_usb_core_device_read(usb_core_device_obj_t *self, mp_int_t endpoint, uint8_t *buffer, mp_int_t len, mp_int_t timeout, bool raise_on_timeout) {
     if (!_open_endpoint(self, endpoint)) {
         mp_raise_usb_core_USBError(NULL);
         return 0;
@@ -310,7 +397,17 @@ mp_int_t common_hal_usb_core_device_read(usb_core_device_obj_t *self, mp_int_t e
     xfer.ep_addr = endpoint;
     xfer.buffer = buffer;
     xfer.buflen = len;
-    return _xfer(&xfer, timeout);
+    mp_int_t result = _xfer(&xfer, timeout, dma_buffer != buffer, raise_on_timeout);
+
+    #if !CIRCUITPY_ALL_MEMORY_DMA_CAPABLE
+    // Copy data back to original buffer if needed
+    if (dma_buffer != buffer) {
+        memcpy(buffer, dma_buffer, result);
+        port_free(dma_buffer);
+    }
+    #endif
+
+    return result;
 }
 
 mp_int_t common_hal_usb_core_device_ctrl_transfer(usb_core_device_obj_t *self,
@@ -340,29 +437,15 @@ mp_int_t common_hal_usb_core_device_ctrl_transfer(usb_core_device_obj_t *self,
         mp_raise_usb_core_USBError(NULL);
         return 0;
     }
-    uint32_t start_time = supervisor_ticks_ms32();
-    while ((timeout == 0 || supervisor_ticks_ms32() - start_time < (uint32_t)timeout) &&
-           !mp_hal_is_interrupted() &&
-           _xfer_result == 0xff) {
-        // The background tasks include TinyUSB which will call the function
-        // we provided above. In other words, the callback isn't in an interrupt.
-        RUN_BACKGROUND_TASKS;
-    }
-    if (mp_hal_is_interrupted()) {
-        tuh_edpt_abort_xfer(xfer.daddr, xfer.ep_addr);
-        return 0;
-    }
-    xfer_result_t result = _xfer_result;
-    _xfer_result = 0xff;
-    if (result == XFER_RESULT_STALLED) {
-        mp_raise_usb_core_USBError(MP_ERROR_TEXT("Pipe error"));
-    }
-    if (result == 0xff) {
-        tuh_edpt_abort_xfer(xfer.daddr, xfer.ep_addr);
-        mp_raise_usb_core_USBTimeoutError();
-    }
-    if (result == XFER_RESULT_SUCCESS) {
-        return len;
+    mp_int_t result = (mp_int_t)_handle_timed_transfer_callback(&xfer, timeout, dma_buffer != buffer, true);
+
+    #if !CIRCUITPY_ALL_MEMORY_DMA_CAPABLE
+    if (dma_buffer != buffer) {
+        // Copy data back to original buffer if this was a read transfer
+        if (buffer != NULL && !is_write) {
+            memcpy(buffer, dma_buffer, result);
+        }
+        port_free(dma_buffer);
     }
 
     return 0;

@@ -16,3 +16,6 @@
 
 #define CIRCUITPY_CONSOLE_UART_RX     DEFAULT_UART_BUS_RX
 #define CIRCUITPY_CONSOLE_UART_TX     DEFAULT_UART_BUS_TX
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

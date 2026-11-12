@@ -60,9 +60,9 @@ static void display_init(void) {
     common_hal_fourwire_fourwire_construct(
         bus,
         spi,
-        &pin_GPIO2,     // DC
-        &pin_GPIO4,     // CS
-        &pin_GPIO1,     // RST
+        MP_OBJ_FROM_PTR(&pin_GPIO2),     // DC
+        MP_OBJ_FROM_PTR(&pin_GPIO4),     // CS
+        MP_OBJ_FROM_PTR(&pin_GPIO1),     // RST
         10000000,       // baudrate
         0,              // polarity
         0               // phase
@@ -97,7 +97,7 @@ static void display_init(void) {
         false,          // data_as_commands
         true,           // auto_refresh
         60,             // native_frames_per_second
-        true,           // backlight_on_high
+        false,          // backlight_on_high
         false,          // SH1107_addressing
         50000           // backlight pwm frequency
         );

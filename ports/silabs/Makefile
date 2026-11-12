@@ -71,7 +71,7 @@ ifeq ($(DEBUG), 1)
 	CFLAGS += -fno-inline -fno-ipa-sra -Og
 else
 	CFLAGS += -DNDEBUG
-	OPTIMIZATION_FLAGS ?= -Os -fno-inline-functions
+	OPTIMIZATION_FLAGS ?= -Os
 	CFLAGS += -g
 endif
 
@@ -90,7 +90,10 @@ ifneq (,$(wildcard boards/$(BOARD)/sensor.c))
 SRC_C += boards/$(BOARD)/sensor.c
 endif
 
-SRC_S = boards/mp_efr32xg24_gchelper.s
+AFLAGS = -mcpu=cortex-m33 -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=hard
+SRC_S = shared/runtime/gchelper_thumb1.s
+
+SRC_C += shared/runtime/gchelper_native.c
 
 SRC_COMMON_HAL_EXPANDED = $(addprefix shared-bindings/, $(SRC_COMMON_HAL)) \
 			  $(addprefix shared-bindings/, $(SRC_BINDINGS_ENUMS)) \
@@ -144,7 +147,8 @@ $(SILABS_BUILD)/$(PROJECTNAME).Makefile: | $(HEADER_BUILD)/mpversion.h
 $(OUTPUT_DIR)/firmware.out: $(SILABS_BUILD)/pin_functions.h $(SILABS_BUILD)/pins.c $(OBJ) $(OBJS) $(LIB_FILES)
 	$(STEPECHO) 'Linking $(OUTPUT_DIR)/firmware.out'
 	$(Q)echo "$(OBJS) $(OBJ)" > $(OUTPUT_DIR)/linker_objs
-	$(Q)$(CC) $(LD_FLAGS) @$(OUTPUT_DIR)/linker_objs -Wl,--print-memory-usage $(LIBS) -o $(OUTPUT_DIR)/firmware.out
+	$(Q)$(CC) $(LD_FLAGS) @$(OUTPUT_DIR)/linker_objs -Wl,--print-memory-usage -Wl,-Map=$(OUTPUT_DIR)/firmware.out.map $(LIBS) -o $(OUTPUT_DIR)/firmware.out
+	$(Q)$(SIZE) $(OUTPUT_DIR)/firmware.out | $(PYTHON) $(TOP)/tools/build_memory_info.py $(OUTPUT_DIR)/firmware.out.map $(BUILD)
 	$(Q)$(OBJCOPY) $(OUTPUT_DIR)/firmware.out -O binary $(OUTPUT_DIR)/firmware.bin
 
 flash: $(OUTPUT_DIR)/firmware.bin

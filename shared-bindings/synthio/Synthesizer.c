@@ -62,7 +62,6 @@ static mp_obj_t synthio_synthesizer_make_new(const mp_obj_type_t *type, size_t n
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     synthio_synthesizer_obj_t *self = mp_obj_malloc(synthio_synthesizer_obj_t, &synthio_synthesizer_type);
-
     common_hal_synthio_synthesizer_construct(self,
         args[ARG_sample_rate].u_int,
         args[ARG_channel_count].u_int,

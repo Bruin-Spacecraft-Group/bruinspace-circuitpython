@@ -34,20 +34,18 @@
 static mp_obj_t bleio_uuid_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
-    bleio_uuid_obj_t *self = mp_obj_malloc(bleio_uuid_obj_t, &bleio_uuid_type);
-
     const mp_obj_t value = all_args[0];
     uint8_t uuid128[16];
 
     if (mp_obj_is_int(value)) {
-        mp_int_t uuid16 = mp_obj_get_int(value);
-        if (uuid16 < 0 || uuid16 > 0xffff) {
-            mp_raise_ValueError(MP_ERROR_TEXT("UUID integer value must be 0-0xffff"));
-        }
+        const mp_int_t uuid16 =
+            mp_arg_validate_int_range(mp_obj_get_int(value), 0, 0xffff, MP_QSTR_value);
 
         // NULL means no 128-bit value.
+        bleio_uuid_obj_t *self = mp_obj_malloc(bleio_uuid_obj_t, &bleio_uuid_type);
         common_hal_bleio_uuid_construct(self, uuid16, NULL);
 
+        return MP_OBJ_FROM_PTR(self);
     } else {
         if (mp_obj_is_str(value)) {
             // 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
@@ -82,9 +80,7 @@ static mp_obj_t bleio_uuid_make_new(const mp_obj_type_t *type, size_t n_args, si
                 mp_raise_ValueError(MP_ERROR_TEXT("UUID value is not str, int or byte buffer"));
             }
 
-            if (bufinfo.len != 16) {
-                mp_raise_ValueError(MP_ERROR_TEXT("Byte buffer must be 16 bytes."));
-            }
+            mp_arg_validate_length(bufinfo.len, 16, MP_QSTR_value);
 
             memcpy(uuid128, bufinfo.buf, 16);
         }
@@ -93,10 +89,12 @@ static mp_obj_t bleio_uuid_make_new(const mp_obj_type_t *type, size_t n_args, si
         uint32_t uuid16 = (uuid128[13] << 8) | uuid128[12];
         uuid128[12] = 0;
         uuid128[13] = 0;
-        common_hal_bleio_uuid_construct(self, uuid16, uuid128);
-    }
 
-    return MP_OBJ_FROM_PTR(self);
+        bleio_uuid_obj_t *self = mp_obj_malloc(bleio_uuid_obj_t, &bleio_uuid_type);
+        common_hal_bleio_uuid_construct(self, uuid16, uuid128);
+
+        return MP_OBJ_FROM_PTR(self);
+    }
 }
 
 //|     uuid16: int
@@ -171,12 +169,12 @@ static mp_obj_t bleio_uuid_pack_into(mp_uint_t n_args, const mp_obj_t *pos_args,
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[ARG_buffer].u_obj, &bufinfo, MP_BUFFER_WRITE);
 
-    size_t offset = args[ARG_offset].u_int;
-    if (offset + common_hal_bleio_uuid_get_size(self) / 8 > bufinfo.len) {
-        mp_raise_ValueError(MP_ERROR_TEXT("Buffer + offset too small %d %d %d"));
-    }
+    const mp_int_t offset =
+        mp_arg_validate_int_range(args[ARG_offset].u_int, 0, (mp_int_t)bufinfo.len, MP_QSTR_offset);
+    const size_t packed_len = common_hal_bleio_uuid_get_size(self) / 8;
+    mp_arg_validate_length_min(bufinfo.len - (size_t)offset, packed_len, MP_QSTR_buffer);
 
-    common_hal_bleio_uuid_pack_into(self, bufinfo.buf + offset);
+    common_hal_bleio_uuid_pack_into(self, (uint8_t *)bufinfo.buf + (size_t)offset);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_KW(bleio_uuid_pack_into_obj, 1, bleio_uuid_pack_into);

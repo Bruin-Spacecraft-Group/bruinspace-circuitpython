@@ -47,40 +47,43 @@ INC += \
 	-isystem esp-idf/components/bt/host/nimble/nimble/porting/nimble/include \
 	-isystem esp-idf/components/bt/host/nimble/nimble/porting/npl/freertos/include \
 	-isystem esp-idf/components/bt/host/nimble/port/include \
-	-isystem esp-idf/components/driver/touch_sensor/include \
-	-isystem esp-idf/components/driver/touch_sensor/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/bt/porting/include \
+	-isystem esp-idf/components/bt/porting/npl/freertos/include \
+	-isystem esp-idf/components/bt/porting/transport/include \
+	-isystem esp-idf/components/esp_driver_touch_sens/include \
 	-isystem esp-idf/components/driver/twai/include \
+	-isystem esp-idf/components/driver/i2c/include \
 	-isystem esp-idf/components/efuse/include \
 	-isystem esp-idf/components/efuse/$(IDF_TARGET)/include \
-	-isystem esp-idf/components/$(IDF_TARGET)/include \
 	-isystem esp-idf/components/esp_adc/include \
 	-isystem esp-idf/components/esp_adc/$(IDF_TARGET)/include \
 	-isystem esp-idf/components/esp_app_format/include \
 	-isystem esp-idf/components/esp_bootloader_format/include \
 	-isystem esp-idf/components/esp_common/include \
-	-isystem esp-idf/components/esp_driver_deprecated \
 	-isystem esp-idf/components/esp_driver_dac/include \
 	-isystem esp-idf/components/esp_driver_gpio/include \
 	-isystem esp-idf/components/esp_driver_gptimer/include \
 	-isystem esp-idf/components/esp_driver_i2c/include \
 	-isystem esp-idf/components/esp_driver_i2s/include \
-	-isystem esp-idf/components/esp_driver_$(IDF_TARGET)/include \
 	-isystem esp-idf/components/esp_driver_ledc/include \
 	-isystem esp-idf/components/esp_driver_parlio/include \
 	-isystem esp-idf/components/esp_driver_pcnt/include \
 	-isystem esp-idf/components/esp_driver_rmt/include \
 	-isystem esp-idf/components/esp_driver_sdio/include \
 	-isystem esp-idf/components/esp_driver_sdmmc/include \
+	-isystem esp-idf/components/esp_driver_sdmmc/legacy/include \
+	-isystem esp-idf/components/esp_driver_dma/include \
 	-isystem esp-idf/components/esp_driver_spi/include \
 	-isystem esp-idf/components/esp_driver_tsens/include \
 	-isystem esp-idf/components/esp_driver_uart/include \
 	-isystem esp-idf/components/esp_event/include \
-	-isystem esp-idf/components/esp_hw_support/dma/include \
 	-isystem esp-idf/components/esp_hw_support/include \
 	-isystem esp-idf/components/esp_hw_support/include/soc \
 	-isystem esp-idf/components/esp_hw_support/port/$(IDF_TARGET)/private_include \
+	-isystem esp-idf/components/esp_hw_support/etm/include \
 	-isystem esp-idf/components/esp_mm/include \
 	-isystem esp-idf/components/esp_netif/include \
+	-isystem esp-idf/components/esp_blockdev/include \
 	-isystem esp-idf/components/esp_partition/include \
 	-isystem esp-idf/components/esp_pm/include \
 	-isystem esp-idf/components/esp_psram/include \
@@ -102,6 +105,38 @@ INC += \
 	-isystem esp-idf/components/hal/include \
 	-isystem esp-idf/components/hal/$(IDF_TARGET)/include \
 	-isystem esp-idf/components/hal/platform_port/include \
+	-isystem esp-idf/components/esp_hal_gpio/include \
+	-isystem esp-idf/components/esp_hal_gpio/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_timg/include \
+	-isystem esp-idf/components/esp_hal_ana_conv/include \
+	-isystem esp-idf/components/esp_hal_touch_sens/include \
+	-isystem esp-idf/components/esp_hal_uart/include \
+	-isystem esp-idf/components/esp_hal_gpspi/include \
+	-isystem esp-idf/components/esp_hal_i2c/include \
+	-isystem esp-idf/components/esp_hal_i2s/include \
+	-isystem esp-idf/components/esp_hal_i2s/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_ledc/include \
+	-isystem esp-idf/components/esp_hal_pcnt/include \
+	-isystem esp-idf/components/esp_hal_rmt/include \
+	-isystem esp-idf/components/esp_hal_rmt/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_twai/include \
+	-isystem esp-idf/components/esp_hal_twai/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_timg/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_gpspi/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_dma/include \
+	-isystem esp-idf/components/esp_hal_dma/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_lcd/include \
+	-isystem esp-idf/components/esp_hal_lcd/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_sd/include \
+	-isystem esp-idf/components/esp_hal_sd/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_usb/include \
+	-isystem esp-idf/components/esp_hal_usb/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_parlio/include \
+	-isystem esp-idf/components/esp_hal_pmu/include \
+	-isystem esp-idf/components/esp_hal_pmu/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_wdt/include \
+	-isystem esp-idf/components/esp_hal_wdt/$(IDF_TARGET)/include \
+	-isystem esp-idf/components/esp_hal_security/include \
 	-isystem esp-idf/components/heap/include \
 	-isystem esp-idf/components/log/include \
 	-isystem esp-idf/components/lwip/include \
@@ -111,19 +146,19 @@ INC += \
 	-isystem esp-idf/components/lwip/port/freertos/include \
 	-isystem esp-idf/components/mbedtls/esp_crt_bundle/include \
 	-isystem esp-idf/components/mbedtls/mbedtls/include \
+	-isystem esp-idf/components/mbedtls/mbedtls/tf-psa-crypto/include \
+	-isystem esp-idf/components/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/include \
 	-isystem esp-idf/components/mbedtls/port/include \
-	-isystem esp-idf/components/newlib/platform_include \
+	-isystem esp-idf/components/mbedtls/port/psa_driver/include \
+	-isystem esp-idf/components/esp_libc/platform_include \
 	-isystem esp-idf/components/nvs_flash/include \
-	-isystem esp-idf/components/sdio/include \
 	-isystem esp-idf/components/sdmmc/include \
 	-isystem esp-idf/components/soc/include \
 	-isystem esp-idf/components/soc/$(IDF_TARGET)/include \
 	-isystem esp-idf/components/spi_flash/include \
-	-isystem esp-idf/components/usb/include \
 	-isystem esp-idf/components/ulp/ulp_fsm/include \
 	-isystem esp-idf/components/ulp/ulp_riscv/include \
 	-isystem esp-idf/components/ulp/ulp_common/include \
-	-isystem esp-idf/components/ulp/ulp_common/include/$(IDF_TARGET) \
 	-isystem esp-idf/components/$(IDF_TARGET_ARCH)/include \
 	-isystem esp-idf/components/$(IDF_TARGET_ARCH)/$(IDF_TARGET)/include \
 	-isystem esp-protocols/components/mdns/include
@@ -132,6 +167,7 @@ CFLAGS += \
 	-DHAVE_CONFIG_H \
 	-DESP_PLATFORM=1 \
 	-DMBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\" \
+	-DMBEDTLS_DECLARE_PRIVATE_IDENTIFIERS \
 	-DMBEDTLS_PADLOCK_FILE=\"ports/espressif/esp-idf/components/mbedtls/mbedtls/library/padlock.h\" \
 	-DUNITY_INCLUDE_CONFIG_H -DWITH_POSIX \
 	-DMP3DEC_GENERIC
@@ -167,7 +203,56 @@ REGISTRATION_FUNCTIONS = \
 	-u esp_libc_init_funcs \
 	-u include_esp_phy_override \
 	-u vfs_include_syscalls_impl \
-	-u esp_vfs_include_nullfs_register
+	-u esp_vfs_include_nullfs_register \
+	-u usb_serial_jtag_vfs_include_dev_init \
+	-u usb_serial_jtag_connection_monitor_include \
+	-u esp_flash_spi_init_include_func \
+	-u pthread_include_pthread_impl \
+	-u pthread_include_pthread_cond_var_impl \
+	-u pthread_include_pthread_local_storage_impl \
+	-u pthread_include_pthread_rwlock_impl \
+	-u pthread_include_pthread_semaphore_impl \
+	-u esp_security_init_include_impl \
+	-u mbedtls_psa_crypto_init_include_impl
+
+# RISC-V picolibc ships optimized memcpy/memset/etc. that need forcing
+# (gated by CONFIG_LIBC_OPTIMIZED_MISALIGNED_ACCESS in IDF's esp_libc CMake).
+ifeq ($(IDF_TARGET_ARCH),riscv)
+REGISTRATION_FUNCTIONS += \
+	-u esp_libc_include_memcpy_impl \
+	-u esp_libc_include_memmove_impl \
+	-u esp_libc_include_memcmp_impl \
+	-u esp_libc_include_memset_impl \
+	-u esp_libc_include_strcpy_impl \
+	-u esp_libc_include_strncpy_impl \
+	-u esp_libc_include_strcmp_impl \
+	-u esp_libc_include_strncmp_impl
+endif
+
+# Chips with PAU + TOP power-down (SOC_PAU_SUPPORTED && SOC_PM_SUPPORT_TOP_PD):
+# C5, C6, C61, H2, H21, H4, P4. These pull in sleep_gpio + system-peripheral
+# retention, and the SW-driven RISC-V CPU register save/restore path.
+ifneq ($(filter $(IDF_TARGET),esp32c5 esp32c6 esp32c61 esp32h2 esp32h21 esp32h4 esp32p4),)
+REGISTRATION_FUNCTIONS += \
+	-u esp_sleep_gpio_include \
+	-u sleep_system_peripheral_dummy \
+	-u rv_core_critical_regs_save \
+	-u rv_core_critical_regs_restore
+endif
+
+# RISC-V chips with a hardware FPU (H4, P4) need FPU register save/restore
+# alongside the CPU retention path.
+ifneq ($(filter $(IDF_TARGET),esp32h4 esp32p4),)
+REGISTRATION_FUNCTIONS += \
+	-u rv_core_fpu_save \
+	-u rv_core_fpu_restore
+endif
+
+ifneq ($(CIRCUITPY_WIFI),0)
+ifeq ($(filter $(IDF_TARGET),esp32s2 esp32p4),)
+REGISTRATION_FUNCTIONS += -u esp_coex_init_include_func
+endif
+endif
 
 
 #Debugging/Optimization
@@ -197,45 +282,66 @@ endif
 CFLAGS += $(OPTIMIZATION_FLAGS)
 
 CFLAGS += $(INC) -Werror -Wall -std=gnu11 -Wl,--gc-sections $(BASE_CFLAGS) $(C_DEFS) $(CFLAGS_MOD) $(COPT) -Werror=missing-prototypes
+# Default ROM symbol maps; per-chip blocks below may override.
+IDF_TARGET_ROM_LD ?= $(IDF_TARGET).rom.ld
+# Floating-point/libgcc ROM map. IDF picks between libgcc and rvfp based on
+# CONFIG_COMPILER_FLOAT_LIB_FROM_GCCLIB (rvfp xor libgcc, never both). Default
+# to libgcc; targets that ship the rvfp variant in ROM (P4 in particular)
+# override this.
+IDF_TARGET_ROM_FLOAT_LD ?= $(IDF_TARGET).rom.libgcc.ld
 
-# Most current ESPs have nano versions of newlib in ROM so we use them.
-ifneq ($(IDF_TARGET),esp32c6)
-	CFLAGS += --specs=nano.specs
-else
-	LDFLAGS += -T$(IDF_TARGET).rom.newlib-normal.ld
-endif
+CFLAGS += $(INC) -Werror -Wall -std=gnu11 -Wl,--gc-sections $(BASE_CFLAGS) $(C_DEFS) $(CFLAGS_MOD) $(COPT) -Werror=missing-prototypes -Werror=old-style-definition -Wno-error=cpp -Wno-cpp
+
+# ESP-IDF v6.0 uses picolibc instead of newlib.
+CFLAGS += --specs=picolibc.specs
 
 ifeq ($(IDF_TARGET_ARCH),xtensa)
 # Remove the last two flags once TinyUSB is updated with the `#include <xtensa_api.h>` instead of
 # `#include "xtensa/xtensa_api.h"`.
 
-CFLAGS += -mlongcalls -isystem esp-idf/components/xtensa/deprecated_include/ -Wno-error=cpp
+	CFLAGS += -mlongcalls -fno-builtin-memcpy -fno-builtin-memset -fno-builtin-bzero
+	CFLAGS += -isystem esp-idf/components/xtensa/deprecated_include/
+ifeq ($(IDF_TARGET),esp32)
+	CFLAGS += -Wno-frame-address
+endif
+	CFLAGS += -DMICROPY_GCREGS_SETJMP=1
+
+# Wrap longjmp with a patched version that protects register window update with a critical section
+	LDFLAGS += -Wl,--wrap=longjmp
+
+	SRC_C += shared/runtime/gchelper_generic.c
 else ifeq ($(IDF_TARGET_ARCH),riscv)
 
-ifeq ($(IDF_TARGET),esp32p4)
-CFLAGS += -march=rv32imafc_zicsr_zifencei_xesppie -mabi=ilp32f
-else
-CFLAGS += -march=rv32imac_zicsr_zifencei
+	ifeq ($(IDF_TARGET),esp32p4)
+		CFLAGS += -march=rv32imafc_zicsr_zifencei_zaamo_zalrsc -mabi=ilp32f
+	else ifeq ($(IDF_TARGET),$(filter $(IDF_TARGET),esp32c2 esp32c3))
+		CFLAGS += -march=rv32imc_zicsr_zifencei
+	else
+		CFLAGS += -march=rv32imac_zicsr_zifencei_zaamo_zalrsc
+	endif
+
+	LDFLAGS += \
+		-Lesp-idf/components/riscv/ld \
+		-Trom.api.ld
+
+	SRC_C += shared/runtime/gchelper_native.c
+	SRC_S = shared/runtime/gchelper_rv32i.s
 endif
 
-LDFLAGS += \
-	-Lesp-idf/components/riscv/ld \
-	-Trom.api.ld
-endif
 
-
-LDFLAGS += $(CFLAGS) -Wl,-nostdlib -Wl,-Map=$@.map -Wl,-cref -Wl,--undefined=uxTopUsedPriority
+LDFLAGS += $(CFLAGS) -nostartfiles -Wl,-nostdlib -Wl,-Map=$@.map -Wl,-cref -Wl,--undefined=uxTopUsedPriority
 
 LDFLAGS += \
 	-L$(BUILD)/esp-idf/esp-idf/esp_system/ld \
 	-Lesp-idf/components/esp_rom/$(IDF_TARGET)/ld \
 	-Lesp-idf/components/soc/$(IDF_TARGET)/ld \
+	-Lesp-idf/components/esp_hal_wdt/$(IDF_TARGET) \
 	-Tmemory.ld \
 	-Tsections.ld \
 	-T$(IDF_TARGET).peripherals.ld \
-	-T$(IDF_TARGET).rom.ld \
+	-T$(IDF_TARGET_ROM_LD) \
 	-T$(IDF_TARGET).rom.api.ld \
-	-T$(IDF_TARGET).rom.libgcc.ld \
+	-T$(IDF_TARGET_ROM_FLOAT_LD) \
 	-Wl,-Bstatic \
 	-Wl,--no-warn-mismatch \
 	-Wl,--build-id=none \
@@ -247,36 +353,79 @@ LDFLAGS += \
 	-Tesp32.rom.newlib-funcs.ld \
 	-Tesp32.rom.newlib-time.ld \
 	-Tesp32.rom.spiflash_legacy.ld
+	-Tesp32.rom.libc-funcs.ld
+
+CFLAGS += -isystem esp-idf/components/esp_driver_touch_sens/hw_ver1/include
 
 CHIP_COMPONENTS = \
-	esp_driver_dac
+	esp_driver_dac \
+	esp_driver_touch_sens \
+	esp_hal_i2s \
+	esp_hal_lcd \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_touch_sens \
+	esp_hal_twai
 
 else ifeq ($(IDF_TARGET),esp32c2)
 LDFLAGS += \
 	-Tesp32c2.rom.ble.ld \
 	-Tesp32c2.rom.heap.ld \
 	-Tesp32c2.rom.libc.ld \
-	-Tesp32c2.rom.newlib.ld \
-	-Tesp32c2.rom.newlib-nano.ld \
 	-Tesp32c2.rom.version.ld \
 	-Tesp32c2.rom.systimer.ld \
-	-Tesp32c2.rom.wdt.ld
+	-Trom.wdt.ld
 
 CFLAGS += -DSOC_XTAL_FREQ_MHZ=CONFIG_XTAL_FREQ
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_tsens \
+	esp_hal_dma \
+	esp_hal_pmu
 
 else ifeq ($(IDF_TARGET),esp32c3)
+# esp32c2 has none of: esp_hal_i2s esp_hal_lcd esp_hal_pcnt esp_hal_touch_sens esp_hal_twai
 LDFLAGS += \
 	-Tesp32c3.rom.newlib.ld \
 	-Tesp32c3.rom.newlib-time.ld \
+	-Tesp32c3.rom.libc.ld \
 	-Tesp32c3.rom.version.ld \
 	-Tesp32c3.rom.eco3.ld \
 	-Tesp32c3.rom.bt_funcs.ld
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_twai \
+	esp_hal_usb
+
+else ifeq ($(IDF_TARGET),esp32c5)
+LDFLAGS += \
+	-Tesp32c5.rom.phy.ld \
+	-Tesp32c5.rom.pp.ld \
+	-Tesp32c5.rom.net80211.ld \
+	-Tesp32c5.rom.libc.ld \
+	-Tesp32c5.rom.version.ld \
+	-Tesp32c5.rom.coexist.ld \
+	-Tesp32c5.rom.heap.ld \
+	-Tesp32c5.rom.systimer.ld \
+	-Trom.wdt.ld
+
+CHIP_COMPONENTS = \
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_twai \
+	esp_hal_usb
 
 else ifeq ($(IDF_TARGET),esp32c6)
 LDFLAGS += \
@@ -284,15 +433,22 @@ LDFLAGS += \
 	-Tesp32c6.rom.pp.ld \
 	-Tesp32c6.rom.net80211.ld \
 	-Tesp32c6.rom.libc.ld \
-	-Tesp32c6.rom.newlib.ld \
 	-Tesp32c6.rom.coexist.ld \
 	-Tesp32c6.rom.heap.ld \
 	-Tesp32c6.rom.systimer.ld \
-	-Tesp32c6.rom.wdt.ld
+	-Trom.wdt.ld
 
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_twai \
+	esp_hal_usb
 
 else ifeq ($(IDF_TARGET),esp32c61)
 LDFLAGS += \
@@ -300,40 +456,81 @@ LDFLAGS += \
 	-Tesp32c61.rom.pp.ld \
 	-Tesp32c61.rom.net80211.ld \
 	-Tesp32c61.rom.libc.ld \
-	-Tesp32c61.rom.newlib.ld \
 	-Tesp32c61.rom.version.ld \
 	-Tesp32c61.rom.coexist.ld \
 	-Tesp32c61.rom.heap.ld \
 	-Tesp32c61.rom.systimer.ld \
-	-Tesp32c61.rom.wdt.ld
+	-Trom.wdt.ld
 
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_pmu \
+	esp_hal_usb
 
 else ifeq ($(IDF_TARGET),esp32p4)
+CIRCUITPY_ESP32P4_REV ?= 1
+CFLAGS += \
+	-isystem esp-idf/components/soc/esp32p4/register/hw_ver$(CIRCUITPY_ESP32P4_REV) \
+	-isystem esp-idf/components/esp_hw_support/ldo/include \
+	-isystem esp-idf/components/esp_driver_touch_sens/hw_ver3/include
+
+ifeq ($(CIRCUITPY_ESP32P4_REV),3)
+IDF_TARGET_ROM_LD = esp32p4.rom.eco5.ld
+IDF_TARGET_ROM_FLOAT_LD = esp32p4.rom.eco5.rvfp.ld
+LDFLAGS += \
+	-Tesp32p4.rom.systimer.ld \
+	-Tesp32p4.rom.eco5.libc.ld \
+	-Tesp32p4.rom.version.ld \
+	-Trom.wdt.ld
+else
+IDF_TARGET_ROM_FLOAT_LD = esp32p4.rom.rvfp.ld
 LDFLAGS += \
 	-Tesp32p4.rom.libc.ld \
-	-Tesp32p4.rom.newlib.ld \
 	-Tesp32p4.rom.systimer.ld \
-	-Tesp32p4.rom.wdt.ld
+	-Tesp32p4.rom.version.ld \
+	-Trom.wdt.ld
+endif
 
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_touch_sens \
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_lcd \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_touch_sens \
+	esp_hal_twai \
+	esp_hal_usb
 
 else ifeq ($(IDF_TARGET),esp32h2)
 LDFLAGS += \
 	-Tesp32h2.rom.heap.ld \
 	-Tesp32h2.rom.libc.ld \
-	-Tesp32h2.rom.newlib.ld \
 	-Tesp32h2.rom.systimer.ld \
-	-Tesp32h2.rom.wdt.ld
+	-Trom.wdt.ld
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_twai \
+	esp_hal_usb
 
 else ifeq ($(IDF_TARGET),esp32s2)
+CFLAGS += -isystem esp-idf/components/esp_driver_touch_sens/hw_ver2/include
+
 LDFLAGS += \
 	-Tesp32s2.rom.libc-funcs.ld \
 	-Tesp32s2.rom.newlib-data.ld \
@@ -343,19 +540,41 @@ LDFLAGS += \
 
 CHIP_COMPONENTS = \
 	esp_driver_dac \
-	esp_driver_tsens
+	esp_driver_touch_sens \
+	esp_driver_tsens \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_lcd \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_touch_sens \
+	esp_hal_twai \
+	esp_hal_usb
 
 else ifeq ($(IDF_TARGET),esp32s3)
+CFLAGS += -isystem esp-idf/components/esp_driver_touch_sens/hw_ver2/include
+
 LDFLAGS += \
 	-Tesp32s3.rom.libc.ld \
-	-Tesp32s3.rom.newlib.ld \
 	-Tesp32s3.rom.version.ld \
 	-Tesp32s3.rom.systimer.ld \
-	-Tesp32s3.rom.wdt.ld \
-	-Tesp32s3.rom.bt_funcs.ld
+	-Tesp32s3.rom.bt_funcs.ld \
+	-Trom.wdt.ld
 
 CHIP_COMPONENTS = \
-	esp_driver_tsens
+	esp_driver_touch_sens \
+	esp_driver_tsens \
+	esp_driver_usb_serial_jtag \
+	esp_hal_dma \
+	esp_hal_i2s \
+	esp_hal_lcd \
+	esp_hal_pcnt \
+	esp_hal_pmu \
+	esp_hal_rmt \
+	esp_hal_touch_sens \
+	esp_hal_twai \
+	esp_hal_usb
 
 endif
 
@@ -374,6 +593,8 @@ else ifeq ($(IDF_TARGET),esp32c2)
 CFLAGS += -DCFG_TUSB_MCU=OPT_MCU_ESP32C2
 else ifeq ($(IDF_TARGET),esp32c3)
 CFLAGS += -DCFG_TUSB_MCU=OPT_MCU_ESP32C3
+else ifeq ($(IDF_TARGET),esp32c5)
+CFLAGS += -DCFG_TUSB_MCU=OPT_MCU_ESP32C5
 else ifeq ($(IDF_TARGET),esp32c6)
 CFLAGS += -DCFG_TUSB_MCU=OPT_MCU_ESP32C6
 else ifeq ($(IDF_TARGET),esp32c61)
@@ -439,7 +660,11 @@ ifneq ($(CIRCUITPY_AUDIOBUSIO),0)
 CHIP_COMPONENTS += esp_driver_i2s
 endif
 
-ifneq ($(CIRCUITPY_BLEIO),0)
+ifneq ($(CIRCUITPY_AUDIOI2SIN),0)
+CHIP_COMPONENTS += esp_driver_i2s
+endif
+
+ifneq ($(CIRCUITPY_BLEIO_NATIVE),0)
 SRC_C += common-hal/_bleio/ble_events.c
 endif
 
@@ -448,6 +673,13 @@ CFLAGS += \
 	-isystem esp-idf/components/esp_lcd/include \
 	-isystem esp-idf/components/esp_lcd/interface \
 	-isystem esp-idf/components/esp_lcd/rgb/include
+endif
+
+ifneq ($(CIRCUITPY_MIPIDSI),0)
+CFLAGS += \
+	-isystem esp-idf/components/esp_lcd/include \
+	-isystem esp-idf/components/esp_lcd/interface \
+	-isystem esp-idf/components/esp_lcd/dsi/include
 endif
 
 ifneq ($(CIRCUITPY_ESPCAMERA),0)
@@ -527,6 +759,7 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_LIBM:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(SRC_CIRCUITPY_COMMON:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
 
 $(BUILD)/$(FATFS_DIR)/ff.o: COPT += -Os
 $(filter $(PY_BUILD)/../extmod/vfs_fat_%.o, $(PY_O)): COPT += -Os
@@ -582,14 +815,23 @@ endif
 SDKCONFIGS := esp-idf-config/sdkconfig.defaults;$(DEBUG_SDKCONFIG);$(FLASH_SIZE_SDKCONFIG);$(FLASH_MODE_SDKCONFIG);$(FLASH_SPEED_SDKCONFIG);$(PSRAM_SDKCONFIG);$(PSRAM_SIZE_SDKCONFIG);$(PSRAM_MODE_SDKCONFIG);$(PSRAM_SPEED_SDKCONFIG);$(TARGET_SDKCONFIG);boards/$(BOARD)/sdkconfig
 ifneq ($(CIRCUITPY_BLEIO),0)
 	SDKCONFIGS := esp-idf-config/sdkconfig-ble.defaults;$(SDKCONFIGS)
+ifeq ($(ENABLE_JTAG), 1)
+	CFLAGS += -DENABLE_JTAG=1
 endif
+
+ifneq ($(CIRCUITPY_BLEIO_NATIVE),0)
+	BLE_SDKCONFIG := ;esp-idf-config/sdkconfig-ble.defaults
+endif
+
+SDKCONFIGS := esp-idf-config/sdkconfig.defaults;$(DEBUG_SDKCONFIG);$(FLASH_SIZE_SDKCONFIG);$(FLASH_MODE_SDKCONFIG);$(FLASH_SPEED_SDKCONFIG);$(PSRAM_SDKCONFIG);$(PSRAM_SIZE_SDKCONFIG);$(PSRAM_MODE_SDKCONFIG);$(PSRAM_SPEED_SDKCONFIG);$(BLE_SDKCONFIG);$(TARGET_SDKCONFIG);boards/$(BOARD)/sdkconfig
+
 # create the config headers
 .PHONY: do-sdkconfig
 do-sdkconfig: $(BUILD)/esp-idf/config/sdkconfig.h
 QSTR_GLOBAL_REQUIREMENTS += $(BUILD)/esp-idf/config/sdkconfig.h
 $(BUILD)/esp-idf/config/sdkconfig.h: boards/$(BOARD)/sdkconfig boards/$(BOARD)/mpconfigboard.mk CMakeLists.txt | $(BUILD)/esp-idf
-	$(STEPECHO) "LINK $@"
-	$(Q)env IDF_PATH=$(IDF_PATH) cmake -S . -B $(BUILD)/esp-idf -DSDKCONFIG=$(BUILD)/esp-idf/sdkconfig -DSDKCONFIG_DEFAULTS="$(SDKCONFIGS)" -DCMAKE_TOOLCHAIN_FILE=$(IDF_PATH)/tools/cmake/toolchain-$(IDF_TARGET).cmake -DIDF_TARGET=$(IDF_TARGET) -GNinja
+	$(STEPECHO) "Create $@"
+	$(Q)env IDF_PATH=$(IDF_PATH) IDF_COMPONENT_MANAGER=0 cmake -S . -B $(BUILD)/esp-idf -DSDKCONFIG=$(BUILD)/esp-idf/sdkconfig -DSDKCONFIG_DEFAULTS="$(SDKCONFIGS)" -DCMAKE_TOOLCHAIN_FILE=$(IDF_PATH)/tools/cmake/toolchain-$(IDF_TARGET).cmake -DIDF_TARGET=$(IDF_TARGET) -GNinja
 	$(Q)$(PYTHON) tools/check-sdkconfig.py \
 		CIRCUITPY_DUALBANK=$(CIRCUITPY_DUALBANK) \
 		CIRCUITPY_STORAGE_EXTEND=$(CIRCUITPY_STORAGE_EXTEND) \
@@ -637,7 +879,7 @@ ifeq ($(IDF_TARGET),esp32)
 BINARY_BLOBS += esp-idf/components/esp_phy/lib/$(IDF_TARGET)/librtc.a
 endif
 
-ESP_IDF_COMPONENTS_LINK = $(IDF_TARGET_ARCH) $(CHIP_COMPONENTS) app_update bootloader_support driver esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_ledc esp_driver_spi esp_driver_uart efuse esp_adc esp_app_format esp_common esp_event esp_hw_support esp_mm esp_partition esp_pm esp_ringbuf esp_rom esp_system esp_timer freertos hal heap log newlib nvs_flash pthread soc spi_flash vfs esp_vfs_console
+ESP_IDF_COMPONENTS_LINK = $(IDF_TARGET_ARCH) $(CHIP_COMPONENTS) app_update bootloader_support driver esp_driver_dma esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_ledc esp_driver_spi esp_driver_uart efuse esp_adc esp_app_format esp_common esp_event esp_gdbstub esp_hal_ana_conv esp_hal_clock esp_hal_gpio esp_hal_gpspi esp_hal_i2c esp_hal_ledc esp_hal_mspi esp_hal_security esp_hal_timg esp_hal_uart esp_hal_wdt esp_hw_support esp_mm esp_partition esp_pm esp_ringbuf esp_rom esp_system esp_timer freertos hal heap log esp_libc nvs_flash nvs_sec_provider pthread soc spi_flash vfs esp_stdio
 ifneq ($(CIRCUITPY_WIFI),0)
 	ESP_IDF_COMPONENTS_LINK += esp_coex esp_netif esp-tls esp_wifi lwip mbedtls mdns wpa_supplicant esp_phy
 endif
@@ -646,6 +888,7 @@ ifneq ($(CIRCUITPY_BLEIO),0)
 	BLE_IMPL_esp32s3 := esp32c3
 	BLE_IMPL_esp32c2 := libble
 	BLE_IMPL_esp32c3 := esp32c3
+	BLE_IMPL_esp32c5 := libble
 	BLE_IMPL_esp32c6 := libble
 	BLE_IMPL_esp32c61 := libble
 	BLE_IMPL_esp32h2 := libble
@@ -682,20 +925,27 @@ endif
 ifneq ($(CIRCUITPY_DOTCLOCKFRAMEBUFFER),0)
 	ESP_IDF_COMPONENTS_LINK += esp_lcd
 endif
+ifneq ($(CIRCUITPY_MIPIDSI),0)
+	ESP_IDF_COMPONENTS_LINK += esp_lcd
+endif
 ifneq ($(CIRCUITPY_PARALLELDISPLAYBUS),0)
 	ESP_IDF_COMPONENTS_LINK += esp_lcd
 endif
-ifneq ($(CIRCUITPY_USB_DEVICE),0)
-	ESP_IDF_COMPONENTS_LINK += usb
+ifneq ($(CIRCUITPY_QSPIBUS),0)
+	ESP_IDF_COMPONENTS_LINK += esp_lcd
 endif
 ifneq ($(CIRCUITPY_SDIOIO),0)
-	ESP_IDF_COMPONENTS_LINK += sdmmc esp_driver_sdmmc
+	ESP_IDF_COMPONENTS_LINK += sdmmc esp_driver_sdmmc esp_driver_sd_intf esp_hal_sd
 endif
 
 ESP_IDF_COMPONENTS_EXPANDED = $(foreach component, $(ESP_IDF_COMPONENTS_LINK), $(BUILD)/esp-idf/esp-idf/$(component)/lib$(component).a)
 
 MBEDTLS_COMPONENTS_LINK = crypto tls x509
 MBEDTLS_COMPONENTS_LINK_EXPANDED = $(foreach component, $(MBEDTLS_COMPONENTS_LINK), $(BUILD)/esp-idf/esp-idf/mbedtls/mbedtls/library/libmbed$(component).a)
+MBEDTLS_COMPONENTS_LINK_EXPANDED += $(BUILD)/esp-idf/esp-idf/mbedtls/mbedtls/library/libtfpsacrypto.a
+MBEDTLS_COMPONENTS_LINK_EXPANDED += $(BUILD)/esp-idf/esp-idf/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/libmbed-builtin.a
+MBEDTLS_COMPONENTS_LINK_EXPANDED += $(BUILD)/esp-idf/esp-idf/mbedtls/mbedtls/tf-psa-crypto/drivers/everest/libeverest.a
+MBEDTLS_COMPONENTS_LINK_EXPANDED += $(BUILD)/esp-idf/esp-idf/mbedtls/mbedtls/tf-psa-crypto/drivers/p256-m/libp256m.a
 
 ifeq ($(IDF_TARGET_ARCH),xtensa)
 BINARY_BLOBS += esp-idf/components/xtensa/$(IDF_TARGET)/libxt_hal.a
@@ -718,6 +968,8 @@ else ifeq ($(IDF_TARGET),esp32c2)
 BOOTLOADER_OFFSET = 0x0
 else ifeq ($(IDF_TARGET),esp32c3)
 BOOTLOADER_OFFSET = 0x0
+else ifeq ($(IDF_TARGET),esp32c5)
+BOOTLOADER_OFFSET = 0x2000
 else ifeq ($(IDF_TARGET),esp32c6)
 BOOTLOADER_OFFSET = 0x0
 else ifeq ($(IDF_TARGET),esp32c61)
@@ -760,9 +1012,9 @@ else
 	ESPTOOLPY_FLASHFREQ = $(CIRCUITPY_ESP_FLASH_FREQ)
 endif
 
-FLASH_FLAGS = --flash_mode $(ESPTOOLPY_FLASHMODE) --flash_freq $(ESPTOOLPY_FLASHFREQ) --flash_size $(CIRCUITPY_ESP_FLASH_SIZE)
+FLASH_FLAGS = --flash-mode $(ESPTOOLPY_FLASHMODE) --flash-freq $(ESPTOOLPY_FLASHFREQ) --flash-size $(CIRCUITPY_ESP_FLASH_SIZE)
 
-ESPTOOL_FLAGS ?= --before=default_reset --after=no_reset --baud 921600
+ESPTOOL_FLAGS ?= --before=default-reset --after=no-reset --baud 921600
 
 ifeq ($(UF2_BOOTLOADER),1)
 all: $(BUILD)/firmware.bin $(BUILD)/firmware.uf2
@@ -782,7 +1034,7 @@ $(BUILD)/firmware.elf: $(OBJ) | esp-idf-stamp $(IDF_CMAKE_TARGETS)
 
 $(BUILD)/circuitpython-firmware.bin: $(BUILD)/firmware.elf | tools/build_memory_info.py
 	$(STEPECHO) "Create $@"
-	$(Q)esptool.py --chip $(IDF_TARGET) elf2image $(FLASH_FLAGS) --elf-sha256-offset 0xb0 -o $@ $^
+	$(Q)esptool --chip $(IDF_TARGET) elf2image $(FLASH_FLAGS) --elf-sha256-offset 0xb0 -o $@ $^
 	$(Q)$(PYTHON) tools/build_memory_info.py $< $(BUILD)/esp-idf/sdkconfig $@ $(BUILD)
 
 ifeq ($(VALID_BOARD),)
@@ -801,10 +1053,10 @@ $(BUILD)/firmware.uf2: $(BUILD)/circuitpython-firmware.bin
 	$(Q)$(PYTHON) $(TOP)/tools/uf2/utils/uf2conv.py -f $(UF2_FAMILY_ID_$(IDF_TARGET)) -b 0x0000 -c -o $@ $^
 
 flash: $(BUILD)/firmware.bin
-	esptool.py --chip $(IDF_TARGET) -p $(PORT) $(ESPTOOL_FLAGS) write_flash $(FLASH_FLAGS) 0x0000 $^
+	esptool --chip $(IDF_TARGET) -p $(PORT) $(ESPTOOL_FLAGS) write-flash $(FLASH_FLAGS) 0x0000 $^
 
 flash-circuitpython-only: $(BUILD)/circuitpython-firmware.bin
-	esptool.py --chip $(IDF_TARGET) -p $(PORT) $(ESPTOOL_FLAGS) write_flash $(FLASH_FLAGS) $(FIRMWARE_OFFSET) $^
+	esptool --chip $(IDF_TARGET) -p $(PORT) $(ESPTOOL_FLAGS) write-flash $(FLASH_FLAGS) $(FIRMWARE_OFFSET) $^
 
 monitor: $(BUILD)/firmware.elf
 	cp $< build/circuitpython.elf

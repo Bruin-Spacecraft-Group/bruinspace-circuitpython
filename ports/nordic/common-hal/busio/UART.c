@@ -182,7 +182,8 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
         .interrupt_priority = NRFX_UARTE_DEFAULT_CONFIG_IRQ_PRIORITY,
         .hal_cfg = {
             .hwfc = hwfc ? NRF_UARTE_HWFC_ENABLED : NRF_UARTE_HWFC_DISABLED,
-            .parity = (parity == BUSIO_UART_PARITY_NONE) ? NRF_UARTE_PARITY_EXCLUDED : NRF_UARTE_PARITY_INCLUDED
+            .parity = (parity == BUSIO_UART_PARITY_NONE) ? NRF_UARTE_PARITY_EXCLUDED : NRF_UARTE_PARITY_INCLUDED,
+            .stop = (stop == 2 ? NRF_UARTE_STOP_TWO : NRF_UARTE_STOP_ONE),
         }
     };
 

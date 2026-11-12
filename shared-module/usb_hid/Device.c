@@ -12,44 +12,9 @@
 #include "shared-bindings/usb_hid/Device.h"
 #include "shared-module/usb_hid/__init__.h"
 #include "shared-module/usb_hid/Device.h"
+#include "shared-module/usb_hid/report_descriptors.h"
 #include "supervisor/shared/tick.h"
 #include "tusb.h"
-
-static const uint8_t keyboard_report_descriptor[] = {
-    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
-    0x09, 0x06,        // Usage (Keyboard)
-    0xA1, 0x01,        // Collection (Application)
-    0x85, 0x01,        //   Report ID (1)
-    0x05, 0x07,        //   Usage Page (Kbrd/Keypad)
-    0x19, 0xE0,        //   Usage Minimum (0xE0)
-    0x29, 0xE7,        //   Usage Maximum (0xE7)
-    0x15, 0x00,        //   Logical Minimum (0)
-    0x25, 0x01,        //   Logical Maximum (1)
-    0x75, 0x01,        //   Report Size (1)
-    0x95, 0x08,        //   Report Count (8)
-    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x01,        //   Report Count (1)
-    0x75, 0x08,        //   Report Size (8)
-    0x81, 0x01,        //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x05,        //   Report Count (5)
-    0x75, 0x01,        //   Report Size (1)
-    0x05, 0x08,        //   Usage Page (LEDs)
-    0x19, 0x01,        //   Usage Minimum (Num Lock)
-    0x29, 0x05,        //   Usage Maximum (Kana)
-    0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0x95, 0x01,        //   Report Count (1)
-    0x75, 0x03,        //   Report Size (3)
-    0x91, 0x01,        //   Output (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0x95, 0x06,        //   Report Count (6)
-    0x75, 0x08,        //   Report Size (8)
-    0x15, 0x00,        //   Logical Minimum (0)
-    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
-    0x05, 0x07,        //   Usage Page (Kbrd/Keypad)
-    0x19, 0x00,        //   Usage Minimum (0x00)
-    0x2A, 0xFF, 0x00,  //   Usage Maximum (0xFF)
-    0x81, 0x00,        //   Input (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,              // End Collection
-};
 
 const usb_hid_device_obj_t usb_hid_device_keyboard_obj = {
     .base = {
@@ -65,42 +30,6 @@ const usb_hid_device_obj_t usb_hid_device_keyboard_obj = {
     .out_report_lengths = { 1, },
 };
 
-static const uint8_t mouse_report_descriptor[] = {
-    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
-    0x09, 0x02,        // Usage (Mouse)
-    0xA1, 0x01,        // Collection (Application)
-    0x09, 0x01,        //   Usage (Pointer)
-    0xA1, 0x00,        //   Collection (Physical)
-    0x85, 0x02,        //     10, 11 Report ID (2)
-    0x05, 0x09,        //     Usage Page (Button)
-    0x19, 0x01,        //     Usage Minimum (0x01)
-    0x29, 0x05,        //     Usage Maximum (0x05)
-    0x15, 0x00,        //     Logical Minimum (0)
-    0x25, 0x01,        //     Logical Maximum (1)
-    0x95, 0x05,        //     Report Count (5)
-    0x75, 0x01,        //     Report Size (1)
-    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x01,        //     Report Count (1)
-    0x75, 0x03,        //     Report Size (3)
-    0x81, 0x01,        //     Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
-    0x09, 0x30,        //     Usage (X)
-    0x09, 0x31,        //     Usage (Y)
-    0x15, 0x81,        //     Logical Minimum (-127)
-    0x25, 0x7F,        //     Logical Maximum (127)
-    0x75, 0x08,        //     Report Size (8)
-    0x95, 0x02,        //     Report Count (2)
-    0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
-    0x09, 0x38,        //     Usage (Wheel)
-    0x15, 0x81,        //     Logical Minimum (-127)
-    0x25, 0x7F,        //     Logical Maximum (127)
-    0x75, 0x08,        //     Report Size (8)
-    0x95, 0x01,        //     Report Count (1)
-    0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,              //   End Collection
-    0xC0,              // End Collection
-};
-
 const usb_hid_device_obj_t usb_hid_device_mouse_obj = {
     .base = {
         .type = &usb_hid_device_type,
@@ -113,21 +42,6 @@ const usb_hid_device_obj_t usb_hid_device_mouse_obj = {
     .report_ids = { 0x02, },
     .in_report_lengths = { 4, },
     .out_report_lengths = { 0, },
-};
-
-static const uint8_t consumer_control_report_descriptor[] = {
-    0x05, 0x0C,        // Usage Page (Consumer)
-    0x09, 0x01,        // Usage (Consumer Control)
-    0xA1, 0x01,        // Collection (Application)
-    0x85, 0x03,        //   Report ID (3)
-    0x75, 0x10,        //   Report Size (16)
-    0x95, 0x01,        //   Report Count (1)
-    0x15, 0x01,        //   Logical Minimum (1)
-    0x26, 0x8C, 0x02,  //   Logical Maximum (652)
-    0x19, 0x01,        //   Usage Minimum (Consumer Control)
-    0x2A, 0x8C, 0x02,  //   Usage Maximum (AC Send)
-    0x81, 0x00,        //   Input (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,              // End Collection
 };
 
 const usb_hid_device_obj_t usb_hid_device_consumer_control_obj = {
@@ -214,6 +128,19 @@ void common_hal_usb_hid_device_send_report(usb_hid_device_obj_t *self, uint8_t *
     if (!tud_suspended()) {
         if (!tud_hid_ready()) {
             mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("USB busy"));
+        }
+
+        const uint8_t boot_device = usb_hid_boot_device();
+        if (boot_device != 0 && tud_hid_get_protocol() == HID_PROTOCOL_BOOT) {
+            // In boot protocol the host reads the fixed boot report, which carries no report ID,
+            // and ignores every device other than the boot device.
+            if (self->usage_page == HID_USAGE_PAGE_DESKTOP &&
+                ((boot_device == 1 && self->usage == HID_USAGE_DESKTOP_KEYBOARD) ||
+                 (boot_device == 2 && self->usage == HID_USAGE_DESKTOP_MOUSE))) {
+                report_id = 0;
+            } else {
+                return;
+            }
         }
 
         if (!tud_hid_report(report_id, report, len)) {

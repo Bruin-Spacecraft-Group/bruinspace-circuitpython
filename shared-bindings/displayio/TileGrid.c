@@ -17,7 +17,7 @@
 #include "shared-bindings/displayio/ColorConverter.h"
 #include "shared-bindings/displayio/OnDiskBitmap.h"
 #include "shared-bindings/displayio/Palette.h"
-#ifdef CIRCUITPY_TILEPALETTEMAPPER
+#if CIRCUITPY_TILEPALETTEMAPPER
 #include "shared-bindings/tilepalettemapper/TilePaletteMapper.h"
 #endif
 
@@ -132,6 +132,7 @@ static mp_obj_t displayio_tilegrid_make_new(const mp_obj_type_t *type, size_t n_
         bitmap_width / tile_width, bitmap_height / tile_height,
         pixel_shader, args[ARG_width].u_int, args[ARG_height].u_int,
         tile_width, tile_height, x, y, args[ARG_default_tile].u_int);
+
     return MP_OBJ_FROM_PTR(self);
 }
 

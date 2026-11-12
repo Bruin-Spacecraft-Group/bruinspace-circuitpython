@@ -58,7 +58,6 @@ static mp_obj_t imagecapture_parallelimagecapture_make_new(const mp_obj_type_t *
 
     imagecapture_parallelimagecapture_obj_t *self =
         mp_obj_malloc(imagecapture_parallelimagecapture_obj_t, &imagecapture_parallelimagecapture_type);
-
     common_hal_imagecapture_parallelimagecapture_construct(self, pins, pin_count, clock, vsync, href);
 
     return self;

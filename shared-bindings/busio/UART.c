@@ -157,7 +157,7 @@ static mp_obj_t busio_uart_make_new(const mp_obj_type_t *type, size_t n_args, si
     common_hal_busio_uart_construct(self, tx, rx, rts, cts, rs485_dir, rs485_invert,
         args[ARG_baudrate].u_int, bits, parity, stop, timeout,
         buffer_size, NULL, false);
-    return (mp_obj_t)self;
+    return MP_OBJ_FROM_PTR(self);
     #else
     mp_raise_NotImplementedError(NULL);
     #endif  // CIRCUITPY_BUSIO_UART
@@ -277,7 +277,7 @@ static mp_uint_t busio_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_
     return common_hal_busio_uart_write(self, buf, size, errcode);
 }
 
-static mp_uint_t busio_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
+static mp_uint_t busio_uart_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     busio_uart_obj_t *self = native_uart(self_in);
     check_for_deinit(self);
     mp_uint_t ret;

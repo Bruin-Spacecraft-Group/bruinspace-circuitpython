@@ -104,7 +104,7 @@ static mp_obj_t ioexpander_send_init_sequence(size_t n_args, const mp_obj_t *pos
     mp_arg_validate_int_range(cs_bit, 0, max_bit, MP_QSTR_cs_bit);
     mp_arg_validate_int_range(mosi_bit, 0, max_bit, MP_QSTR_mosi_bit);
     mp_arg_validate_int_range(clk_bit, 0, max_bit, MP_QSTR_clk_bit);
-    mp_arg_validate_int_range(gpio_data, 0, (1 << (max_bit * 8)) - 1, MP_QSTR_gpio_data);
+    mp_arg_validate_int_range(gpio_data, 0, (1 << (gpio_data_len * 8)) - 1, MP_QSTR_gpio_data);
     mp_int_t reset_mask = 0;
     if (args[ARG_reset_bit].u_obj != MP_ROM_NONE) {
         mp_int_t reset_bit = mp_arg_validate_int_range(mp_arg_validate_type_int(args[ARG_reset_bit].u_obj, MP_QSTR_reset_bit), 0, max_bit, MP_QSTR_reset_bit);

@@ -446,7 +446,7 @@ static mp_uint_t socket_write(mp_obj_t self_in, const void *buf, mp_uint_t size,
     return ret;
 }
 
-static mp_uint_t socket_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
+static mp_uint_t socket_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     socketpool_socket_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_uint_t ret;
     if (request == MP_STREAM_POLL) {

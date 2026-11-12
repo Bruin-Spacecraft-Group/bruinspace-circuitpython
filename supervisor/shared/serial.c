@@ -17,7 +17,7 @@
 #include "supervisor/shared/serial.h"
 #include "shared-bindings/microcontroller/Pin.h"
 
-#if CIRCUITPY_SERIAL_BLE
+#if CIRCUITPY_BLE_SERIAL_SERVICE
 #include "supervisor/shared/bluetooth/serial.h"
 #endif
 
@@ -219,7 +219,7 @@ void serial_init(void) {
 }
 
 bool serial_connected(void) {
-    #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
     if (tud_vendor_connected()) {
         return true;
     }
@@ -229,17 +229,17 @@ bool serial_connected(void) {
     return true;
     #endif
 
-    #if CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_SERIAL_SERVICE
     if (ble_serial_connected()) {
         return true;
     }
     #endif
 
-    #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_CDC
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_CDC
     if (usb_cdc_console_enabled() && tud_cdc_connected()) {
         return true;
     }
-    #elif CIRCUITPY_USB_DEVICE
+    #elif CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE
     if (tud_cdc_connected()) {
         return true;
     }
@@ -273,7 +273,7 @@ bool serial_connected(void) {
 }
 
 char serial_read(void) {
-    #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
     if (tud_vendor_connected() && tud_vendor_available() > 0) {
         char tiny_buffer;
         tud_vendor_read(&tiny_buffer, 1);
@@ -290,7 +290,7 @@ char serial_read(void) {
     }
     #endif
 
-    #if CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_SERIAL_SERVICE
     if (ble_serial_available() > 0) {
         return ble_serial_read_char();
     }
@@ -327,7 +327,7 @@ char serial_read(void) {
         return -1;
     }
     #endif
-    #if CIRCUITPY_USB_DEVICE
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE
     return (char)tud_cdc_read_char();
     #endif
 
@@ -338,7 +338,7 @@ uint32_t serial_bytes_available(void) {
     // There may be multiple serial input channels, so sum the count from all.
     uint32_t count = 0;
 
-    #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
     if (tud_vendor_connected()) {
         count += tud_vendor_available();
     }
@@ -348,7 +348,7 @@ uint32_t serial_bytes_available(void) {
     count += common_hal_busio_uart_rx_characters_available(&console_uart);
     #endif
 
-    #if CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_SERIAL_SERVICE
     count += ble_serial_available();
     #endif
 
@@ -360,7 +360,7 @@ uint32_t serial_bytes_available(void) {
     count += usb_keyboard_chars_available();
     #endif
 
-    #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_CDC
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_CDC
     if (usb_cdc_console_enabled()) {
         count += tud_cdc_available();
     }
@@ -399,7 +399,7 @@ uint32_t serial_write_substring(const char *text, uint32_t length) {
         return length_sent;
     }
 
-    #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VENDOR
     if (tud_vendor_connected()) {
         length_sent = tud_vendor_write(text, length);
     }
@@ -409,7 +409,7 @@ uint32_t serial_write_substring(const char *text, uint32_t length) {
     length_sent = console_uart_write(text, length);
     #endif
 
-    #if CIRCUITPY_SERIAL_BLE
+    #if CIRCUITPY_BLE_SERIAL_SERVICE
     ble_serial_write(text, length);
     #endif
 
@@ -423,7 +423,7 @@ uint32_t serial_write_substring(const char *text, uint32_t length) {
     }
     #endif
 
-    #if CIRCUITPY_USB_DEVICE
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE
     // Delay the very first write
     if (tud_cdc_connected() && !_first_write_done) {
         mp_hal_delay_ms(50);

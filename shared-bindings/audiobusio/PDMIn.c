@@ -48,7 +48,7 @@
 //|
 //|         **Limitations:** On SAMD and RP2040, supports only 8 or 16 bit mono input, with 64x oversampling.
 //|         On nRF52840, supports only 16 bit mono input at 16 kHz; oversampling is fixed at 64x. Not provided
-//|         on nRF52833 for space reasons. Not available on Espressif.
+//|         on nRF52833 for space reasons. On Espressif, only available on ESP32, ESP32-S3, and ESP32-P4.
 //|
 //|         For example, to record 8-bit unsigned samples to a buffer::
 //|
@@ -96,9 +96,6 @@ static mp_obj_t audiobusio_pdmin_make_new(const mp_obj_type_t *type, size_t n_ar
     const mcu_pin_obj_t *clock_pin = validate_obj_is_free_pin(args[ARG_clock_pin].u_obj, MP_QSTR_clock_pin);
     const mcu_pin_obj_t *data_pin = validate_obj_is_free_pin(args[ARG_data_pin].u_obj, MP_QSTR_data_pin);
 
-    // create PDMIn object from the given pin
-    audiobusio_pdmin_obj_t *self = mp_obj_malloc_with_finaliser(audiobusio_pdmin_obj_t, &audiobusio_pdmin_type);
-
     uint32_t sample_rate = args[ARG_sample_rate].u_int;
     uint8_t bit_depth = args[ARG_bit_depth].u_int;
     if (bit_depth % 8 != 0) {
@@ -115,6 +112,7 @@ static mp_obj_t audiobusio_pdmin_make_new(const mp_obj_type_t *type, size_t n_ar
         : mp_obj_get_float(args[ARG_startup_delay].u_obj);
     mp_arg_validate_float_range(startup_delay, 0.0f, 1.0f, MP_QSTR_startup_delay);
 
+    audiobusio_pdmin_obj_t *self = mp_obj_malloc_with_finaliser(audiobusio_pdmin_obj_t, &audiobusio_pdmin_type);
     common_hal_audiobusio_pdmin_construct(self, clock_pin, data_pin, sample_rate,
         bit_depth, mono, oversample);
 
@@ -155,11 +153,11 @@ static void check_for_deinit(audiobusio_pdmin_obj_t *self) {
 //  Provided by context manager helper.
 
 
-//|     def record(self, destination: WriteableBuffer, destination_length: int) -> None:
+//|     def record(self, destination: WriteableBuffer, destination_length: int) -> int:
 //|         """Records destination_length bytes of samples to destination. This is
 //|         blocking.
 //|
-//|         An IOError may be raised when the destination is too slow to record the
+//|         An OSError may be raised when the destination is too slow to record the
 //|         audio at the given rate. For internal flash, writing all 1s to the file
 //|         before recording is recommended to speed up writes.
 //|
@@ -176,22 +174,22 @@ static mp_obj_t audiobusio_pdmin_obj_record(mp_obj_t self_obj, mp_obj_t destinat
     mp_buffer_info_t bufinfo;
     if (mp_obj_is_type(destination, &mp_type_fileio)) {
         mp_raise_NotImplementedError(MP_ERROR_TEXT("Cannot record to a file"));
-    } else if (mp_get_buffer(destination, &bufinfo, MP_BUFFER_WRITE)) {
-        if (bufinfo.len / mp_binary_get_size('@', bufinfo.typecode, NULL) < length) {
-            mp_raise_ValueError(MP_ERROR_TEXT("Destination capacity is smaller than destination_length."));
-        }
-        uint8_t bit_depth = common_hal_audiobusio_pdmin_get_bit_depth(self);
-        if (bufinfo.typecode != 'H' && bit_depth == 16) {
-            mp_raise_ValueError(MP_ERROR_TEXT("destination buffer must be an array of type 'H' for bit_depth = 16"));
-        } else if (bufinfo.typecode != 'B' && bufinfo.typecode != BYTEARRAY_TYPECODE && bit_depth == 8) {
-            mp_raise_ValueError(MP_ERROR_TEXT("destination buffer must be a bytearray or array of type 'B' for bit_depth = 8"));
-        }
-        // length is the buffer length in slots, not bytes.
-        uint32_t length_written =
-            common_hal_audiobusio_pdmin_record_to_buffer(self, bufinfo.buf, length);
-        return MP_OBJ_NEW_SMALL_INT(length_written);
     }
-    return mp_const_none;
+
+    mp_get_buffer_raise(destination, &bufinfo, MP_BUFFER_WRITE);
+    if (bufinfo.len / mp_binary_get_size('@', bufinfo.typecode, NULL) < length) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Destination capacity is smaller than destination_length."));
+    }
+    uint8_t bit_depth = common_hal_audiobusio_pdmin_get_bit_depth(self);
+    if (bufinfo.typecode != 'H' && bit_depth == 16) {
+        mp_raise_ValueError(MP_ERROR_TEXT("destination buffer must be an array of type 'H' for bit_depth = 16"));
+    } else if (bufinfo.typecode != 'B' && bufinfo.typecode != BYTEARRAY_TYPECODE && bit_depth == 8) {
+        mp_raise_ValueError(MP_ERROR_TEXT("destination buffer must be a bytearray or array of type 'B' for bit_depth = 8"));
+    }
+    // length is the buffer length in slots, not bytes.
+    uint32_t length_written =
+        common_hal_audiobusio_pdmin_record_to_buffer(self, bufinfo.buf, length);
+    return MP_OBJ_NEW_SMALL_INT(length_written);
 }
 MP_DEFINE_CONST_FUN_OBJ_3(audiobusio_pdmin_record_obj, audiobusio_pdmin_obj_record);
 

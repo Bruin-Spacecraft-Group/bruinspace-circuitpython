@@ -33,7 +33,6 @@
 //|         ...
 //|
 static mp_obj_t spitarget_spi_target_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    spitarget_spi_target_obj_t *self = mp_obj_malloc(spitarget_spi_target_obj_t, &spitarget_spi_target_type);
     enum { ARG_sck, ARG_mosi, ARG_miso, ARG_ss };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_sck, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -49,7 +48,9 @@ static mp_obj_t spitarget_spi_target_make_new(const mp_obj_type_t *type, size_t 
     const mcu_pin_obj_t *miso = validate_obj_is_free_pin(args[ARG_miso].u_obj, MP_QSTR_miso);
     const mcu_pin_obj_t *ss = validate_obj_is_free_pin(args[ARG_ss].u_obj, MP_QSTR_ss);
 
+    spitarget_spi_target_obj_t *self = mp_obj_malloc(spitarget_spi_target_obj_t, &spitarget_spi_target_type);
     common_hal_spitarget_spi_target_construct(self, sck, mosi, miso, ss);
+
     return MP_OBJ_FROM_PTR(self);
 }
 

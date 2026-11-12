@@ -22,6 +22,14 @@
 #include "supervisor/shared/translate/translate.h"
 #include "supervisor/shared/tick.h"
 
+#if CIRCUITPY_SETTINGS_TOML
+#include "supervisor/shared/settings.h"
+#endif
+
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#endif
+
 #define SAFE_MODE_DATA_GUARD 0xad0000af
 #define SAFE_MODE_DATA_GUARD_MASK 0xff0000ff
 
@@ -50,10 +58,10 @@ safe_mode_t wait_for_safe_mode_reset(void) {
     }
 
     const mcu_reset_reason_t reset_reason = common_hal_mcu_processor_get_reset_reason();
-    if (reset_reason != RESET_REASON_POWER_ON &&
-        reset_reason != RESET_REASON_RESET_PIN &&
-        reset_reason != RESET_REASON_UNKNOWN &&
-        reset_reason != RESET_REASON_SOFTWARE) {
+    // Skip safe-mode wait if the reset reason was due to a problem.
+    if (reset_reason == MCU_RESET_REASON_BROWNOUT ||
+        reset_reason == MCU_RESET_REASON_WATCHDOG ||
+        reset_reason == MCU_RESET_REASON_RESCUE_DEBUG) {
         return SAFE_MODE_NONE;
     }
     #if CIRCUITPY_SKIP_SAFE_MODE_WAIT
@@ -65,30 +73,39 @@ safe_mode_t wait_for_safe_mode_reset(void) {
     #if CIRCUITPY_STATUS_LED
     status_led_init();
     #endif
+
+    #define DEFAULT_SAFE_MODE_DELAY_MSECS (1000)
+    #define DEFAULT_SAFE_MODE_DELAY_SECS (((mp_float_t)DEFAULT_SAFE_MODE_DELAY_MSECS) / 1000.0f)
+    uint32_t safe_mode_delay_msecs = DEFAULT_SAFE_MODE_DELAY_MSECS;
+
+    #if CIRCUITPY_SETTINGS_TOML
+    mp_float_t safe_mode_delay_secs = DEFAULT_SAFE_MODE_DELAY_SECS;
+    // Will update safe_mode_delay_secs if setting is present.
+    settings_get_float("CIRCUITPY_SAFE_MODE_DELAY", &safe_mode_delay_secs);
+    if (safe_mode_delay_secs >= 0.0f && safe_mode_delay_secs <= (mp_float_t)UINT32_MAX) {
+        safe_mode_delay_msecs = safe_mode_delay_secs * 1000;
+    }
+    #endif
+
     uint64_t start_ticks = supervisor_ticks_ms64();
     uint64_t diff = 0;
     bool boot_in_safe_mode = false;
-    while (diff < 1000) {
+    while (diff < safe_mode_delay_msecs) {
         #if CIRCUITPY_STATUS_LED
-        // Blink on for 100, off for 100
-        bool led_on = (diff % 250) < 125;
+        // Blink on for 125, off for 125
+        bool led_on = boot_in_safe_mode || (diff % 250) < 125;
         if (led_on) {
             new_status_color(SAFE_MODE);
         } else {
             new_status_color(BLACK);
         }
         #endif
-        // Init the boot button every time in case it is used for LEDs.
-        #ifdef CIRCUITPY_BOOT_BUTTON
-        digitalio_digitalinout_obj_t boot_button;
-        common_hal_digitalio_digitalinout_construct(&boot_button, CIRCUITPY_BOOT_BUTTON);
-        common_hal_digitalio_digitalinout_switch_to_input(&boot_button, PULL_UP);
-        common_hal_time_delay_ms(1);
-        bool button_pressed = !common_hal_digitalio_digitalinout_get_value(&boot_button);
-        common_hal_digitalio_digitalinout_deinit(&boot_button);
-        if (button_pressed) {
+        if (!boot_in_safe_mode && port_boot_button_pressed()) {
             boot_in_safe_mode = true;
-            break;
+            // Show solid yellow as feedback that the press was accepted, for the
+            // default duration.
+            start_ticks = supervisor_ticks_ms64();
+            safe_mode_delay_msecs = DEFAULT_SAFE_MODE_DELAY_MSECS;
         }
         #endif
         diff = supervisor_ticks_ms64() - start_ticks;
@@ -112,10 +129,19 @@ void PLACE_IN_ITCM(safe_mode_on_next_reset)(safe_mode_t reason) {
 // Don't inline this so it's easy to break on it from GDB.
 void __attribute__((noinline, )) PLACE_IN_ITCM(reset_into_safe_mode)(safe_mode_t reason) {
     if (_safe_mode > SAFE_MODE_BROWNOUT && reason > SAFE_MODE_BROWNOUT) {
+        #ifdef __ZEPHYR__
+        printk("Already in safe mode\n");
+        printk("Reason: %d\n", reason);
+        printk("Current safe mode: %d\n", _safe_mode);
+        while (true) {
+            k_cpu_idle();
+        }
+        #else
         while (true) {
             // This very bad because it means running in safe mode didn't save us. Only ignore brownout
             // because it may be due to a switch bouncing.
         }
+        #endif
     }
 
     safe_mode_on_next_reset(reason);

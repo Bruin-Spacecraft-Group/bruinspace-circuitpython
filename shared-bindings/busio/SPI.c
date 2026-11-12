@@ -9,17 +9,17 @@
 
 #include <string.h>
 
-#include "shared-bindings/microcontroller/Pin.h"
-#include "shared-bindings/busio/SPI.h"
-#include "shared-bindings/util.h"
-
-#include "shared/runtime/buffer_helper.h"
-#include "shared/runtime/context_manager_helpers.h"
 #include "py/binary.h"
 #include "py/mperrno.h"
 #include "py/objproperty.h"
 #include "py/runtime.h"
-
+#include "shared-bindings/microcontroller/Pin.h"
+#include "shared-bindings/busio/SPI.h"
+#include "shared-bindings/util.h"
+#include "shared/runtime/buffer_helper.h"
+#include "shared/runtime/context_manager_helpers.h"
+#include "shared/runtime/interrupt_char.h"
+#include "supervisor/shared/tick.h"
 
 //| class SPI:
 //|     """A 3-4 wire serial protocol
@@ -88,7 +88,6 @@
 // TODO(tannewt): Support LSB SPI.
 static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if CIRCUITPY_BUSIO_SPI
-    busio_spi_obj_t *self = mp_obj_malloc(busio_spi_obj_t, &busio_spi_type);
     enum { ARG_clock, ARG_MOSI, ARG_MISO, ARG_half_duplex };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_clock, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -107,6 +106,7 @@ static mp_obj_t busio_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
         mp_raise_ValueError(MP_ERROR_TEXT("Must provide MISO or MOSI pin"));
     }
 
+    busio_spi_obj_t *self = mp_obj_malloc_with_finaliser(busio_spi_obj_t, &busio_spi_type);
     common_hal_busio_spi_construct(self, clock, mosi, miso, args[ARG_half_duplex].u_bool);
     return MP_OBJ_FROM_PTR(self);
     #else
@@ -140,7 +140,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(busio_spi_deinit_obj, busio_spi_obj_deinit);
 //  Provided by context manager helper.
 
 static void check_lock(busio_spi_obj_t *self) {
-    asm ("");
+    __asm__ ("");
     if (!common_hal_busio_spi_has_lock(self)) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Function requires lock"));
     }
@@ -157,9 +157,12 @@ static void check_for_deinit(busio_spi_obj_t *self) {
 //|     ) -> None:
 //|         """Configures the SPI bus. The SPI object must be locked.
 //|
-//|         :param int baudrate: the desired clock rate in Hertz. The actual clock rate may be higher or lower
-//|           due to the granularity of available clock settings.
+//|         :param int baudrate: the desired clock rate in Hertz. The value is treated as a ceiling:
+//|           the actual clock rate may be lower due to the granularity of available clock settings,
+//|           but it will not exceed the given value.
 //|           Check the `frequency` attribute for the actual clock rate.
+//|           **Limitations**: On Zephyr, the ceiling behavior may be violated, and
+//|           the `frequency` value does not reflect the actual baudrate.
 //|         :param int polarity: the base state of the clock line (0 or 1)
 //|         :param int phase: the edge of the clock that data is captured. First (0)
 //|           or second (1). Rising or falling depends on clock polarity.
@@ -168,13 +171,7 @@ static void check_for_deinit(busio_spi_obj_t *self) {
 //|         .. note:: On the SAMD21, it is possible to set the baudrate to 24 MHz, but that
 //|            speed is not guaranteed to work. 12 MHz is the next available lower speed, and is
 //|            within spec for the SAMD21.
-//|
-//|         .. note:: On the nRF52840, these baudrates are available: 125kHz, 250kHz, 1MHz, 2MHz, 4MHz,
-//|           and 8MHz.
-//|           If you pick a a baudrate other than one of these, the nearest lower
-//|           baudrate will be chosen, with a minimum of 125kHz.
-//|           Two SPI objects may be created, except on the Circuit Playground Bluefruit,
-//|           which allows only one (to allow for an additional I2C object)."""
+//|         """
 //|         ...
 //|
 
@@ -445,9 +442,14 @@ static mp_obj_t busio_spi_write_readinto(size_t n_args, const mp_obj_t *pos_args
 MP_DEFINE_CONST_FUN_OBJ_KW(busio_spi_write_readinto_obj, 1, busio_spi_write_readinto);
 
 //|     frequency: int
-//|     """The actual SPI bus frequency. This may not match the frequency requested
-//|     due to internal limitations."""
+//|     """The actual SPI bus frequency. This may be lower than the frequency requested
+//|     due to internal limitations, but it will not be higher.
 //|
+//|     **Limitations**: On Zephyr, the returned value does not reflect the actual baudrate,
+//|     because there is `no way to fetch the actual chosen frequency
+//|     <https://github.com/zephyrproject-rtos/zephyr/issues/77922>`_.
+//|     In addition, on Zephyr, the ceiling behavior described in `configure` may be violated.
+//|     """
 //|
 
 static mp_obj_t busio_spi_obj_get_frequency(mp_obj_t self_in) {
@@ -466,6 +468,7 @@ MP_PROPERTY_GETTER(busio_spi_frequency_obj,
 static const mp_rom_map_elem_t busio_spi_locals_dict_table[] = {
     #if CIRCUITPY_BUSIO_SPI
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&busio_spi_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&busio_spi_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
     { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
 
@@ -492,4 +495,18 @@ MP_DEFINE_CONST_OBJ_TYPE(
 
 busio_spi_obj_t *validate_obj_is_spi_bus(mp_obj_t obj, qstr arg_name) {
     return mp_arg_validate_type(obj, &busio_spi_type, arg_name);
+}
+
+// Wait as long as needed for the lock. This is used by SD card access from USB.
+// The default implementation is to busy-wait while running the background tasks. espressif is different.
+bool common_hal_busio_spi_wait_for_lock(busio_spi_obj_t *self, uint32_t timeout_ms) {
+    uint64_t deadline = supervisor_ticks_ms64() + timeout_ms;
+    while (supervisor_ticks_ms64() < deadline &&
+           !mp_hal_is_interrupted()) {
+        if (common_hal_busio_spi_try_lock(self)) {
+            return true;
+        }
+        RUN_BACKGROUND_TASKS;
+    }
+    return false;
 }

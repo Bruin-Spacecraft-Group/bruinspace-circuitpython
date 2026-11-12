@@ -32,3 +32,6 @@
 #define DEFAULT_TFT_CS (&pin_GPIO39)
 #define DEFAULT_TFT_DC (&pin_GPIO5)
 #define DEFAULT_TFT_RST (&pin_GPIO40)
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

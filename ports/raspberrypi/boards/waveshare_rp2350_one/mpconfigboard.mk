@@ -10,3 +10,6 @@ CHIP_FAMILY = rp2
 EXTERNAL_FLASH_DEVICES = "W25Q32JVxQ"
 
 CIRCUITPY__EVE = 1
+
+# GPIO12-19 needed for picodvi, but GPIO16 is not broken out and is used for NeoPixel.
+CIRCUITPY_PICODVI = 0

@@ -26,4 +26,6 @@ typedef struct {
     #else
     uint16_t level;
     #endif
+    int32_t active_lo_level;
+    int32_t active_hi_level;
 } audiomixer_mixervoice_obj_t;

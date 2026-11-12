@@ -331,6 +331,9 @@ void common_hal_audioio_audioout_play(audioio_audioout_obj_t *self,
     if (common_hal_audioio_audioout_get_playing(self)) {
         common_hal_audioio_audioout_stop(self);
     }
+
+    audiosample_check(sample);
+
     audio_dma_result result = AUDIO_DMA_OK;
     uint32_t sample_rate = audiosample_get_sample_rate(sample);
     #ifdef SAMD21

@@ -36,4 +36,31 @@ void mp_virtual_pin_write(mp_obj_t pin, int value) {
     mp_obj_base_t *s = (mp_obj_base_t *)MP_OBJ_TO_PTR(pin);
     mp_pin_p_t *pin_p = (mp_pin_p_t *)MP_OBJ_TYPE_GET_SLOT(s->type, protocol);
     pin_p->ioctl(pin, MP_PIN_WRITE, value, NULL);
+// Both init functions below accept the full stack size. Set the
+// MICROPY_STACK_CHECK_MARGIN to the number of bytes subtracted to account
+// for stack usage between checks.
+
+void mp_cstack_init_with_sp_here(size_t stack_size);
+
+static inline void mp_cstack_init_with_top(void *top, size_t stack_size) {
+    MP_STATE_THREAD(stack_top) = (char *)top;
+
+    #if MICROPY_STACK_CHECK
+    assert(stack_size > MICROPY_STACK_CHECK_MARGIN); // Should be enforced by port
+    MP_STATE_THREAD(stack_limit) = stack_size - MICROPY_STACK_CHECK_MARGIN;
+    #else
+    (void)stack_size;
+    #endif
+}
+
+mp_uint_t mp_cstack_usage(void);
+
+#if MICROPY_STACK_CHECK
+
+void mp_cstack_check(void);
+
+#else
+
+static inline void mp_cstack_check(void) {
+    // No-op when stack checking is disabled
 }

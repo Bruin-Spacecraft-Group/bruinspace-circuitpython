@@ -12,7 +12,15 @@
 
 #include "lib/mbedtls_config/crt_bundle.h"
 
+#include "psa/crypto.h"
+
 void common_hal_ssl_sslcontext_construct(ssl_sslcontext_obj_t *self) {
+    // TLS is built on PSA crypto, which has to be initialized before any of it is
+    // used. OK to psa_crypto_init() multiple times. On espressif, ESP-IDF has already done this during
+    // its own system init and this call is a no-op.
+    if (psa_crypto_init() != PSA_SUCCESS) {
+        mp_raise_RuntimeError_varg(MP_ERROR_TEXT("%q init failed"), MP_QSTR_ssl);
+    }
     common_hal_ssl_sslcontext_set_default_verify_paths(self);
 }
 

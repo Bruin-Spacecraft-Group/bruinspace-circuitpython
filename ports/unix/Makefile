@@ -27,6 +27,9 @@ FROZEN_MANIFEST ?= variants/manifest.py
 # This should be configured by the mpconfigvariant.mk
 PROG ?= micropython
 
+# For use in test rules below
+ABS_PROG = $(abspath $(BUILD)/$(PROG))
+
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS += qstrdefsport.h
 QSTR_GLOBAL_DEPENDENCIES += $(VARIANT_DIR)/mpconfigvariant.h
@@ -46,8 +49,18 @@ INC += -I$(BUILD)
 
 # compiler settings
 CWARN = -Wall -Werror
-CWARN += -Wextra -Wno-unused-parameter -Wpointer-arith -Wdouble-promotion -Wfloat-conversion
-CFLAGS += $(INC) $(CWARN) -std=gnu99 -DUNIX $(COPT) -I$(VARIANT_DIR) $(CFLAGS_EXTRA)
+# CIRCUITPY-CHANGE: add  -Wno-missing-field-initializers
+CWARN += -Wextra -Wno-unused-parameter -Wpointer-arith -Wdouble-promotion -Wfloat-conversion -Wno-missing-field-initializers
+# CIRCUITPY-CHANGE: use gnu11 instead of gnu99
+CFLAGS += $(INC) $(CWARN) -std=gnu11 -DUNIX $(COPT) -I$(VARIANT_DIR) $(CFLAGS_EXTRA)
+
+# Force the use of 64-bits for file sizes in C library functions on 32-bit platforms.
+# This option has no effect on 64-bit builds.
+CFLAGS += -D_FILE_OFFSET_BITS=64
+
+# Force the use of 64-bits for time_t in C library functions on 32-bit platforms.
+# This option has no effect on 64-bit builds.
+CFLAGS += -D_TIME_BITS=64
 
 # Debugging/Optimization
 ifdef DEBUG
@@ -135,7 +148,11 @@ ifeq ($(MICROPY_PY_SOCKET),1)
 CFLAGS += -DMICROPY_PY_SOCKET=1
 endif
 ifeq ($(MICROPY_PY_THREAD),1)
+ifeq ($(MICROPY_PY_THREAD_GIL),1)
+CFLAGS += -DMICROPY_PY_THREAD=1 -DMICROPY_PY_THREAD_GIL=1
+else
 CFLAGS += -DMICROPY_PY_THREAD=1 -DMICROPY_PY_THREAD_GIL=0
+endif
 LDFLAGS += $(LIBPTHREAD)
 endif
 
@@ -204,6 +221,8 @@ SRC_C += \
 	input.c \
 	alloc.c \
 	fatfs_port.c \
+	shared-module/os/__init__.c \
+	supervisor/shared/settings.c \
 	supervisor/stub/filesystem.c \
 	supervisor/stub/safe_mode.c \
 	supervisor/stub/stack.c \
@@ -219,6 +238,7 @@ $(BUILD)/supervisor/shared/translate/translate.o: $(HEADER_BUILD)/qstrdefs.gener
 
 SHARED_SRC_C += $(addprefix shared/,\
 	runtime/gchelper_generic.c \
+	runtime/pyexec.c \
 	timeutils/timeutils.c \
 	$(SHARED_SRC_C_EXTRA) \
 	)
@@ -243,7 +263,8 @@ CFLAGS += -DMPZ_DIG_SIZE=16 # force 16 bits to work on both 32 and 64 bit archs
 CFLAGS += -DMICROPY_MODULE_FROZEN_STR
 endif
 
-CXXFLAGS += $(filter-out -Wmissing-prototypes -Wold-style-definition -std=gnu99,$(CFLAGS) $(CXXFLAGS_MOD))
+# CIRCUITPY-CHANGE: use gnu11 instead of gnu99
+CXXFLAGS += $(filter-out -Wmissing-prototypes -Wold-style-definition -std=gnu11,$(CFLAGS) $(CXXFLAGS_MOD))
 
 ifeq ($(MICROPY_FORCE_32BIT),1)
 RUN_TESTS_MPY_CROSS_FLAGS = --mpy-cross-flags='-march=x86'
@@ -274,7 +295,7 @@ print-failures clean-failures:
 TEST_ARGS ?=
 test: $(BUILD)/$(PROG) $(TOP)/tests/run-tests.py
 	$(eval DIRNAME=ports/$(notdir $(CURDIR)))
-	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py $(TEST_ARGS)
+	cd $(TOP)/tests && MICROPY_MICROPYTHON=../$(DIRNAME)/$(BUILD)/$(PROG) ./run-tests.py
 
 test_full: $(BUILD)/$(PROG) $(TOP)/tests/run-tests.py
 	$(eval DIRNAME=ports/$(notdir $(CURDIR)))

@@ -1,0 +1,5 @@
+CIRCUITPY_BUILD_EXTENSIONS = ["elf"]
+BLOBS=["hal_nxp"]
+
+[blob_fetch_args]
+hal_nxp = ["--allow-regex", "^rw61x/"]

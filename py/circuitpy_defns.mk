@@ -122,6 +122,9 @@ endif
 ifeq ($(CIRCUITPY_AUDIOBUSIO),1)
 SRC_PATTERNS += audiobusio/%
 endif
+ifeq ($(CIRCUITPY_AUDIOI2SIN),1)
+SRC_PATTERNS += audioi2sin/%
+endif
 ifeq ($(CIRCUITPY_AUDIOIO),1)
 SRC_PATTERNS += audioio/%
 endif
@@ -142,6 +145,12 @@ SRC_PATTERNS += audiomixer/%
 endif
 ifeq ($(CIRCUITPY_AUDIOMP3),1)
 SRC_PATTERNS += audiomp3/%
+endif
+ifeq ($(CIRCUITPY_AUDIOSPEED),1)
+SRC_PATTERNS += audiospeed/%
+endif
+ifeq ($(CIRCUITPY_AUDIOFILEWRITER),1)
+SRC_PATTERNS += audiofilewriter/%
 endif
 ifeq ($(CIRCUITPY_AURORA_EPAPER),1)
 SRC_PATTERNS += aurora_epaper/%
@@ -198,8 +207,17 @@ endif
 ifeq ($(CIRCUITPY_DISPLAYIO),1)
 SRC_PATTERNS += displayio/%
 endif
+ifeq ($(CIRCUITPY_DOTCLOCKFRAMEBUFFER),1)
+SRC_PATTERNS += dotclockframebuffer/%
+endif
+ifeq ($(CIRCUITPY_DUALBANK),1)
+SRC_PATTERNS += dualbank/%
+endif
 ifeq ($(CIRCUITPY__EVE),1)
 SRC_PATTERNS += _eve/%
+endif
+ifeq ($(CIRCUITPY_EMMCIO),1)
+SRC_PATTERNS += emmcio/%
 endif
 ifeq ($(CIRCUITPY_EPAPERDISPLAY),1)
 SRC_PATTERNS += epaperdisplay/%
@@ -249,6 +267,9 @@ endif
 ifeq ($(CIRCUITPY_I2CTARGET),1)
 SRC_PATTERNS += i2ctarget/%
 endif
+ifeq ($(CIRCUITPY_I2CIOEXPANDER),1)
+SRC_PATTERNS += i2cioexpander/%
+endif
 ifeq ($(CIRCUITPY_IMAGECAPTURE),1)
 SRC_PATTERNS += imagecapture/%
 endif
@@ -276,6 +297,12 @@ endif
 ifeq ($(CIRCUITPY_MAX3421E),1)
 SRC_PATTERNS += max3421e/%
 endif
+ifeq ($(CIRCUITPY_MCP4822),1)
+SRC_PATTERNS += mcp4822/%
+endif
+ifeq ($(CIRCUITPY_MDNS),1)
+SRC_PATTERNS += mdns/%
+endif
 ifeq ($(CIRCUITPY_MEMORYMAP),1)
 SRC_PATTERNS += memorymap/%
 endif
@@ -285,8 +312,8 @@ endif
 ifeq ($(CIRCUITPY_MICROCONTROLLER),1)
 SRC_PATTERNS += microcontroller/%
 endif
-ifeq ($(CIRCUITPY_MDNS),1)
-SRC_PATTERNS += mdns/%
+ifeq ($(CIRCUITPY_MIPIDSI),1)
+SRC_PATTERNS += mipidsi/%
 endif
 ifeq ($(CIRCUITPY_MSGPACK),1)
 SRC_PATTERNS += msgpack/%
@@ -342,8 +369,8 @@ endif
 ifeq ($(CIRCUITPY_RGBMATRIX),1)
 SRC_PATTERNS += rgbmatrix/%
 endif
-ifeq ($(CIRCUITPY_DOTCLOCKFRAMEBUFFER),1)
-SRC_PATTERNS += dotclockframebuffer/%
+ifeq ($(CIRCUITPY_QSPIBUS),1)
+SRC_PATTERNS += qspibus/%
 endif
 ifeq ($(CIRCUITPY_RP2PIO),1)
 SRC_PATTERNS += rp2pio/%
@@ -377,6 +404,9 @@ SRC_PATTERNS += ssl/%
 endif
 ifeq ($(CIRCUITPY_STAGE),1)
 SRC_PATTERNS += _stage/%
+endif
+ifeq ($(CIRCUITPY_PICOGAME),1)
+SRC_PATTERNS += picogame/%
 endif
 ifeq ($(CIRCUITPY_STORAGE),1)
 SRC_PATTERNS += storage/%
@@ -423,6 +453,9 @@ endif
 ifeq ($(CIRCUITPY_USB_VIDEO),1)
 SRC_PATTERNS += usb_video/%
 endif
+ifeq ($(CIRCUITPY_USB_AUDIO),1)
+SRC_PATTERNS += usb_audio/%
+endif
 ifeq ($(CIRCUITPY_USB_HOST),1)
 SRC_PATTERNS += usb_host/%
 endif
@@ -449,6 +482,9 @@ SRC_PATTERNS += watchdog/%
 endif
 ifeq ($(CIRCUITPY_WIFI),1)
 SRC_PATTERNS += wifi/%
+endif
+ifeq ($(CIRCUITPY_WIZNET),1)
+SRC_PATTERNS += wiznet/%
 endif
 ifeq ($(CIRCUITPY_ZLIB),1)
 SRC_PATTERNS += zlib/%
@@ -481,6 +517,8 @@ SRC_COMMON_HAL_ALL = \
 	audiobusio/I2SOut.c \
 	audiobusio/PDMIn.c \
 	audiobusio/__init__.c \
+	audioi2sin/I2SIn.c \
+	audioi2sin/__init__.c \
 	audioio/AudioOut.c \
 	audioio/__init__.c \
 	audiopwmio/PWMAudioOut.c \
@@ -502,6 +540,8 @@ SRC_COMMON_HAL_ALL = \
 	dotclockframebuffer/DotClockFramebuffer.c \
 	dotclockframebuffer/__init__.c \
 	dualbank/__init__.c \
+	emmcio/EMMC.c \
+	emmcio/__init__.c \
 	floppyio/__init__.c \
 	frequencyio/FrequencyIn.c \
 	frequencyio/__init__.c \
@@ -514,6 +554,8 @@ SRC_COMMON_HAL_ALL = \
 	i2ctarget/I2CTarget.c \
 	i2ctarget/__init__.c \
 	max3421e/Max3421E.c \
+	mcp4822/__init__.c \
+	mcp4822/MCP4822.c \
 	memorymap/__init__.c \
 	memorymap/AddressRange.c \
 	microcontroller/__init__.c \
@@ -522,6 +564,9 @@ SRC_COMMON_HAL_ALL = \
 	mdns/__init__.c \
 	mdns/Server.c \
 	mdns/RemoteService.c \
+	mipidsi/Bus.c \
+	mipidsi/Display.c \
+	mipidsi/__init__.c \
 	neopixel_write/__init__.c \
 	nvm/ByteArray.c \
 	nvm/__init__.c \
@@ -534,6 +579,11 @@ SRC_COMMON_HAL_ALL = \
 	pulseio/__init__.c \
 	pwmio/PWMOut.c \
 	pwmio/__init__.c \
+	qspibus/QSPIBus.c \
+	qspibus/__init__.c \
+	rclcpy/__init__.c \
+	rclcpy/Node.c \
+	rclcpy/Publisher.c \
 	rgbmatrix/RGBMatrix.c \
 	rgbmatrix/__init__.c \
 	rotaryio/IncrementalEncoder.c \
@@ -558,6 +608,14 @@ SRC_COMMON_HAL_ALL = \
 	wifi/ScannedNetworks.c \
 	wifi/__init__.c \
 
+# The fast Display backend is the only common-hal picogame source; include it
+# only on ports that provide it (others use the portable bus.send renderer).
+ifeq ($(CIRCUITPY_PICOGAME_FAST_DISPLAY),1)
+SRC_COMMON_HAL_ALL += picogame/Display.c
+endif
+
+SRC_COMMON_HAL = $(filter $(SRC_PATTERNS), $(SRC_COMMON_HAL_ALL))
+
 ifeq ($(CIRCUITPY_BLEIO_HCI),1)
 # Helper code for _bleio HCI.
 SRC_C += \
@@ -573,6 +631,11 @@ SRC_COMMON_HAL = $(filter $(SRC_PATTERNS), $(SRC_COMMON_HAL_ALL))
 # All possible sources are listed here, and are filtered by SRC_PATTERNS.
 SRC_BINDINGS_ENUMS = \
 $(filter $(SRC_PATTERNS), \
+	picogame/Bitmap.c \
+	picogame/Sprite.c \
+	picogame/StripDraw.c \
+	picogame/Triangles.c \
+	picogame/Framebuffer.c \
 	_bleio/Address.c \
 	_bleio/Attribute.c \
 	_bleio/ScanEntry.c \
@@ -582,6 +645,7 @@ $(filter $(SRC_PATTERNS), \
 	canio/Match.c \
 	codeop/__init__.c \
 	countio/Edge.c \
+	digitalio/DigitalInOutProtocol.c \
 	digitalio/Direction.c \
 	digitalio/DriveMode.c \
 	digitalio/Pull.c \
@@ -625,18 +689,34 @@ SRC_SHARED_MODULE_ALL = \
 	_stage/Layer.c \
 	_stage/Text.c \
 	_stage/__init__.c \
+	picogame/__init__.c \
+	picogame/Scene.c \
+	picogame/Tilemap.c \
+	picogame/Particles.c \
+	picogame/Canvas.c \
 	aesio/__init__.c \
 	aesio/aes.c \
 	atexit/__init__.c \
 	audiocore/RawSample.c \
 	audiocore/WaveFile.c \
 	audiocore/__init__.c \
+	audiospeed/Resampler.c \
+	audiospeed/SpeedChanger.c \
+	audiospeed/__init__.c \
 	audiodelays/Echo.c \
+	audiodelays/Chorus.c \
+	audiodelays/Flanger.c \
 	audiodelays/PitchShift.c \
+	audiodelays/GranularPitchShift.c \
+	audiodelays/MultiTapDelay.c \
 	audiodelays/__init__.c \
 	audiofilters/Distortion.c \
 	audiofilters/Filter.c \
 	audiofilters/__init__.c \
+	audiofreeverb/__init__.c \
+	audiofreeverb/Freeverb.c \
+	audiofilewriter/AudioFileWriter.c \
+	audiofilewriter/__init__.c \
 	audioio/__init__.c \
 	audiomixer/Mixer.c \
 	audiomixer/MixerVoice.c \
@@ -670,8 +750,12 @@ SRC_SHARED_MODULE_ALL = \
 	displayio/area.c \
 	displayio/__init__.c \
 	dotclockframebuffer/__init__.c \
+	emmcio/__init__.c \
 	epaperdisplay/__init__.c \
 	epaperdisplay/EPaperDisplay.c \
+	i2cioexpander/IOExpander.c \
+	i2cioexpander/IOPin.c \
+	i2cioexpander/__init__.c \
 	floppyio/__init__.c \
 	fontio/BuiltinFont.c \
 	fontio/__init__.c \
@@ -834,15 +918,58 @@ $(BUILD)/lib/tjpgd/src/tjpgd.o: CFLAGS += -Wno-shadow -Wno-cast-align
 endif
 
 ifeq ($(CIRCUITPY_HASHLIB_MBEDTLS_ONLY),1)
-SRC_MOD += $(addprefix lib/mbedtls/library/, \
-        sha1.c \
-        sha256.c \
-        sha512.c \
-        platform_util.c \
-	)
+# mbedtls 4.x moved the crypto implementations out of lib/mbedtls/library into the
+# tf-psa-crypto submodule and made the legacy mbedtls_sha256_*() headers private, so
+# hashlib goes through the PSA hash API. That needs the PSA core, whose driver dispatch
+# layer is generated rather than shipped -- see the same rule in ports/raspberrypi/Makefile.
+SRC_MOD += \
+	$(addprefix lib/mbedtls/tf-psa-crypto/core/, \
+		psa_crypto.c \
+		psa_crypto_client.c \
+		psa_crypto_slot_management.c \
+		psa_util.c \
+	) \
+	$(addprefix lib/mbedtls/tf-psa-crypto/drivers/builtin/src/, \
+		psa_crypto_hash.c \
+		psa_util_internal.c \
+		sha1.c \
+		sha256.c \
+	) \
+	$(addprefix lib/mbedtls/tf-psa-crypto/platform/, \
+		platform.c \
+		platform_util.c \
+	) \
+	lib/mbedtls/tf-psa-crypto/utilities/constant_time.c \
+	lib/mbedtls_config/hashlib_psa_port.c
+
+MBEDTLS_HASHLIB_GEN := $(BUILD)/tf-psa-crypto
+MBEDTLS_HASHLIB_WRAPPERS_H := $(MBEDTLS_HASHLIB_GEN)/psa_crypto_driver_wrappers.h
+MBEDTLS_HASHLIB_WRAPPERS_C := $(MBEDTLS_HASHLIB_GEN)/psa_crypto_driver_wrappers_no_static.c
+SRC_MOD += $(MBEDTLS_HASHLIB_WRAPPERS_C:$(BUILD)/%=%)
+
+# The script writes both files at once; naming both as targets would run it twice.
+$(MBEDTLS_HASHLIB_WRAPPERS_C): $(MBEDTLS_HASHLIB_WRAPPERS_H)
+	@true
+
+$(MBEDTLS_HASHLIB_WRAPPERS_H): $(TOP)/lib/mbedtls/tf-psa-crypto/scripts/generate_driver_wrappers.py
+	$(STEPECHO) "GEN $@"
+	$(Q)mkdir -p $(MBEDTLS_HASHLIB_GEN)
+	$(Q)PYTHONPATH=$(TOP)/lib/mbedtls/framework/scripts $(PYTHON) $< $(MBEDTLS_HASHLIB_GEN)
+
+# psa_crypto.c and friends #include the generated header.
+$(addprefix $(BUILD)/, $(SRC_MOD:.c=.o)): $(MBEDTLS_HASHLIB_WRAPPERS_H)
+
 CFLAGS += \
-	  -isystem $(TOP)/lib/mbedtls/include \
-	  -DMBEDTLS_CONFIG_FILE='"$(TOP)/lib/mbedtls_config/mbedtls_config_hashlib.h"' \
+	  -I$(MBEDTLS_HASHLIB_GEN) \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/include \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/drivers/builtin/include \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/drivers/builtin/src \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/core \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/dispatch \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/extras \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/platform \
+	  -isystem $(TOP)/lib/mbedtls/tf-psa-crypto/utilities \
+	  -DTF_PSA_CRYPTO_CONFIG_FILE='"$(TOP)/lib/mbedtls_config/tf_psa_crypto_config_hashlib.h"' \
 
 endif
 
@@ -879,7 +1006,6 @@ SRC_SHARED_MODULE_INTERNAL = \
 $(filter $(SRC_PATTERNS), \
 	displayio/bus_core.c \
 	displayio/display_core.c \
-	os/getenv.c \
 	usb/utf16le.c \
 )
 

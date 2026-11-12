@@ -41,10 +41,10 @@
 //|         ...
 //|
 static mp_obj_t camera_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    camera_obj_t *self = mp_obj_malloc(camera_obj_t, &camera_type);
     // No arguments
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
 
+    camera_obj_t *self = mp_obj_malloc(camera_obj_t, &camera_type);
     common_hal_camera_construct(self);
     return MP_OBJ_FROM_PTR(self);
 }

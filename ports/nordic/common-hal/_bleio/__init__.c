@@ -70,12 +70,15 @@ void check_sec_status(uint8_t sec_status) {
 
     switch (sec_status) {
         case BLE_GAP_SEC_STATUS_UNSPECIFIED:
-            mp_raise_bleio_SecurityError(MP_ERROR_TEXT("Unspecified issue. Can be that the pairing prompt on the other device was declined or ignored."));
+            mp_raise_bleio_SecurityError(MP_ERROR_TEXT("Unspecified issue. The pairing request on the other device may have been declined or ignored."));
             return;
         default:
             mp_raise_bleio_SecurityError(MP_ERROR_TEXT("Unknown security error: 0x%04x"), sec_status);
     }
 }
+
+uint16_t bleio_gatts_min_handle = 0xFFFF;
+uint16_t bleio_gatts_max_handle;
 
 void common_hal_bleio_init(void) {
 }
@@ -85,6 +88,30 @@ void bleio_user_reset() {
         // Stop any user scanning or advertising.
         common_hal_bleio_adapter_stop_scan(&common_hal_bleio_adapter_obj);
         common_hal_bleio_adapter_stop_advertising(&common_hal_bleio_adapter_obj);
+
+        // Disconnect the connections that user code initiated or accepted with its
+        // own advertising. The BLE workflow connection is not user-owned and stays up.
+        //
+        // Clear each connection's pointers into the VM heap first: the heap is about
+        // to go away, and a disconnect completes asynchronously, possibly after it
+        // has. The disconnect event handler dereferences connection_obj unless it is
+        // mp_const_none.
+        for (size_t i = 0; i < BLEIO_TOTAL_CONNECTION_COUNT; i++) {
+            bleio_connection_internal_t *connection = &bleio_connections[i];
+            connection->connection_obj = mp_const_none;
+            connection->remote_service_list = NULL;
+            if (connection->conn_handle != BLE_CONN_HANDLE_INVALID && connection->user_owned) {
+                common_hal_bleio_connection_disconnect(connection);
+            }
+        }
+
+        // Clear the adapter's remaining pointers into the VM heap. The full stack
+        // reset in bleio_reset() used to do this implicitly, but it no longer always
+        // runs. The adapter struct is a GC root, so a pointer left over from this
+        // heap would be scanned as a live object in the next VM's heap.
+        common_hal_bleio_adapter_obj.connection_objs = NULL;
+        common_hal_bleio_adapter_obj.advertising_data = NULL;
+        common_hal_bleio_adapter_obj.scan_response_data = NULL;
     }
 
     ble_drv_remove_heap_handlers();
@@ -101,6 +128,16 @@ void bleio_reset() {
         return;
     }
 
+    // The SoftDevice cannot remove individual services from its GATT table: the
+    // disable/enable cycle below is the only way to clear them, and it drops every
+    // connection, the BLE workflow's included. So run it only when user code created
+    // services. All other user BLE state has already been torn down individually by
+    // bleio_user_reset().
+    if (!bleio_get_user_services_created()) {
+        return;
+    }
+    bleio_clear_user_services_created();
+
     supervisor_stop_bluetooth();
     bleio_adapter_reset(&common_hal_bleio_adapter_obj);
     common_hal_bleio_adapter_set_enabled(&common_hal_bleio_adapter_obj, false);
@@ -112,14 +149,14 @@ void bleio_reset() {
 // It currently only has properties and no state. Inited by bleio_reset
 bleio_adapter_obj_t common_hal_bleio_adapter_obj;
 
-void common_hal_bleio_check_connected(uint16_t conn_handle) {
+void bleio_check_connected(uint16_t conn_handle) {
     if (conn_handle == BLE_CONN_HANDLE_INVALID) {
         mp_raise_ConnectionError(MP_ERROR_TEXT("Not connected"));
     }
 }
 
 // GATTS read of a Characteristic or Descriptor.
-size_t common_hal_bleio_gatts_read(uint16_t handle, uint16_t conn_handle, uint8_t *buf, size_t len) {
+size_t bleio_gatts_read(uint16_t handle, uint16_t conn_handle, uint8_t *buf, size_t len) {
     // conn_handle is ignored unless this is a system attribute.
     // If we're not connected, that's OK, because we can still read and write the local value.
 
@@ -133,7 +170,7 @@ size_t common_hal_bleio_gatts_read(uint16_t handle, uint16_t conn_handle, uint8_
     return gatts_value.len;
 }
 
-void common_hal_bleio_gatts_write(uint16_t handle, uint16_t conn_handle, mp_buffer_info_t *bufinfo) {
+void bleio_gatts_write(uint16_t handle, uint16_t conn_handle, mp_buffer_info_t *bufinfo) {
     // conn_handle is ignored unless this is a system attribute.
     // If we're not connected, that's OK, because we can still read and write the local value.
 
@@ -188,8 +225,8 @@ static bool _on_gattc_read_rsp_evt(ble_evt_t *ble_evt, void *param) {
     return true;
 }
 
-size_t common_hal_bleio_gattc_read(uint16_t handle, uint16_t conn_handle, uint8_t *buf, size_t len) {
-    common_hal_bleio_check_connected(conn_handle);
+size_t bleio_gattc_read(uint16_t handle, uint16_t conn_handle, uint8_t *buf, size_t len) {
+    bleio_check_connected(conn_handle);
 
     read_info_t read_info;
     read_info.buf = buf;
@@ -213,15 +250,15 @@ size_t common_hal_bleio_gattc_read(uint16_t handle, uint16_t conn_handle, uint8_
         RUN_BACKGROUND_TASKS;
     }
     // Test if we were disconnected while reading
-    common_hal_bleio_check_connected(read_info.conn_handle);
+    bleio_check_connected(read_info.conn_handle);
 
     ble_drv_remove_event_handler(_on_gattc_read_rsp_evt, &read_info);
     check_gatt_status(read_info.status);
     return read_info.final_len;
 }
 
-void common_hal_bleio_gattc_write(uint16_t handle, uint16_t conn_handle, mp_buffer_info_t *bufinfo, bool write_no_response) {
-    common_hal_bleio_check_connected(conn_handle);
+void bleio_gattc_write(uint16_t handle, uint16_t conn_handle, mp_buffer_info_t *bufinfo, bool write_no_response) {
+    bleio_check_connected(conn_handle);
 
     ble_gattc_write_params_t write_params = {
         .write_op = write_no_response ? BLE_GATT_OP_WRITE_CMD: BLE_GATT_OP_WRITE_REQ,

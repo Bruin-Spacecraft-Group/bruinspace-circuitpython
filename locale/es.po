@@ -8,20 +8,20 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-04 12:55-0600\n"
-"PO-Revision-Date: 2025-02-09 17:02+0000\n"
-"Last-Translator: karlos g liberal <karlosgliberal@gmail.com>\n"
+"PO-Revision-Date: 2026-05-06 18:11+0000\n"
+"Last-Translator: Francisco Serrador <fserrador@gmail.com>\n"
 "Language-Team: \n"
 "Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
+<<<<<<< HEAD
 "X-Generator: Weblate 5.10-dev\n"
-
-#: main.c
-msgid ""
+=======
+"X-Generator: Weblate 5.17.1\n"
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 "\n"
-"Code done running.\n"
 msgstr ""
 "\n"
 "El código terminó de ejecutar.\n"
@@ -1049,7 +1049,11 @@ msgstr "Error al crear canales continuos: no encontrado"
 
 #: ports/espressif/common-hal/audioio/AudioOut.c
 msgid "Failed to enable continuous"
+<<<<<<< HEAD
 msgstr ""
+=======
+msgstr "Ha fallado al habilitar continuo"
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 
 #: shared-module/audiomp3/MP3Decoder.c
 msgid "Failed to parse MP3 file"
@@ -1877,6 +1881,13 @@ msgstr "El tamaño del programa no es correcto"
 msgid "Program too long"
 msgstr "El programa es demasiado grande"
 
+<<<<<<< HEAD
+=======
+#: shared-bindings/rclcpy/Publisher.c
+msgid "Publishers can only be created from a parent node"
+msgstr "Las publicadores solo pueden ser creadas desde un nodo antecesor"
+
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 #: shared-bindings/digitalio/DigitalInOut.c
 msgid "Pull not used when direction is output."
 msgstr "Pull no se usa cuando la dirección es output."
@@ -2107,6 +2118,13 @@ msgstr "Índice de mosaico fuera de límites"
 msgid "Tile width must exactly divide bitmap width"
 msgstr "Ancho del Tile debe dividir exactamente el ancho de mapa de bits"
 
+<<<<<<< HEAD
+=======
+#: shared-module/tilepalettemapper/TilePaletteMapper.c
+msgid "TilePaletteMapper may only be bound to a TileGrid once"
+msgstr "TilePaletteMapper solo puede vincularse una vez a un TileGrid"
+
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 #: shared-bindings/alarm/time/TimeAlarm.c
 msgid "Time is in the past."
 msgstr "Tiempo suministrado esta en el pasado."

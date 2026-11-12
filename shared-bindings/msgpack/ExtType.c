@@ -18,7 +18,6 @@
 //|         :param bytes data: representation."""
 //|
 static mp_obj_t mod_msgpack_exttype_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    mod_msgpack_extype_obj_t *self = mp_obj_malloc(mod_msgpack_extype_obj_t, &mod_msgpack_exttype_type);
     enum { ARG_code, ARG_data };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_code, MP_ARG_INT | MP_ARG_REQUIRED },
@@ -28,11 +27,12 @@ static mp_obj_t mod_msgpack_exttype_make_new(const mp_obj_type_t *type, size_t n
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     int code = mp_arg_validate_int_range(args[ARG_code].u_int, 0, 127, MP_QSTR_code);
-
-    self->code = code;
-
     mp_obj_t data = args[ARG_data].u_obj;
+
+    mod_msgpack_extype_obj_t *self = mp_obj_malloc(mod_msgpack_extype_obj_t, &mod_msgpack_exttype_type);
+    self->code = code;
     self->data = data;
+
     return MP_OBJ_FROM_PTR(self);
 }
 

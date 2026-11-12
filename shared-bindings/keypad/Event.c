@@ -26,7 +26,6 @@
 //|         ...
 //|
 static mp_obj_t keypad_event_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    keypad_event_obj_t *self = mp_obj_malloc(keypad_event_obj_t, &keypad_event_type);
     enum { ARG_key_number, ARG_pressed, ARG_timestamp };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_key_number, MP_ARG_INT, {.u_int = 0} },
@@ -45,7 +44,9 @@ static mp_obj_t keypad_event_make_new(const mp_obj_type_t *type, size_t n_args, 
     }
 
     (void)mp_obj_get_int_truncated(timestamp); // ensure that timestamp is an integer
+    keypad_event_obj_t *self = mp_obj_malloc(keypad_event_obj_t, &keypad_event_type);
     common_hal_keypad_event_construct(self, key_number, args[ARG_pressed].u_bool, timestamp);
+
     return MP_OBJ_FROM_PTR(self);
 }
 

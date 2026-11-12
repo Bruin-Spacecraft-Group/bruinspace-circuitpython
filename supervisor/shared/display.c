@@ -36,8 +36,81 @@
 
 #if CIRCUITPY_TERMINALIO
 #include "supervisor/port.h"
-#if CIRCUITPY_OS_GETENV
-#include "shared-module/os/__init__.h"
+
+#if CIRCUITPY_SETTINGS_TOML
+#include "supervisor/shared/settings.h"
+#endif
+
+#if CIRCUITPY_LVFONTIO
+#include "shared-bindings/lvfontio/OnDiskFont.h"
+#include "supervisor/filesystem.h"
+#include "extmod/vfs_fat.h"
+#include "lib/oofatfs/ff.h"
+
+#include "supervisor/shared/serial.h"
+
+// Check if a custom font file exists and return its path if found
+// Returns true if font file exists, false otherwise
+static bool check_for_custom_font(const char **font_path_out) {
+    if (!filesystem_present()) {
+        return false;
+    }
+
+    fs_user_mount_t *vfs = filesystem_circuitpy();
+    if (vfs == NULL) {
+        return false;
+    }
+
+    // Use FATFS directly to check if file exists
+    FILINFO file_info;
+    const char *default_font_path = "/fonts/terminal.lvfontbin";
+    const char *font_path = default_font_path;
+
+    #if CIRCUITPY_SETTINGS_TOML
+    // Buffer for storing custom font path
+    static char custom_font_path[128];
+    if (settings_get_str("CIRCUITPY_TERMINAL_FONT", custom_font_path, sizeof(custom_font_path)) == SETTINGS_OK) {
+        // Use custom font path from environment variable
+        font_path = custom_font_path;
+    }
+    #endif
+
+    FRESULT result = f_stat(&vfs->fatfs, font_path, &file_info);
+    if (result == FR_OK) {
+        if (font_path_out != NULL) {
+            *font_path_out = font_path;
+        }
+        return true;
+    }
+
+    // If custom font path doesn't exist, use default font
+    font_path = default_font_path;
+    result = f_stat(&vfs->fatfs, font_path, &file_info);
+
+    if (result == FR_OK) {
+        if (font_path_out != NULL) {
+            *font_path_out = font_path;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+// Initialize a BuiltinFont object with the specified font file and max_slots
+// Returns true on success, false on failure
+static bool init_lvfont(lvfontio_ondiskfont_t *font, const char *font_path, uint16_t max_slots) {
+    if (font == NULL) {
+        return false;
+    }
+
+    font->base.type = &lvfontio_ondiskfont_type;
+
+    // Pass false for use_gc_allocator during startup when garbage collector isn't fully initialized
+    common_hal_lvfontio_ondiskfont_construct(font, font_path, max_slots, false);
+
+    return !common_hal_lvfontio_ondiskfont_deinited(font);
+}
 #endif
 #endif
 
@@ -50,6 +123,10 @@ extern displayio_group_t circuitpython_splash;
 #if CIRCUITPY_TERMINALIO
 static uint8_t *tilegrid_tiles = NULL;
 static size_t tilegrid_tiles_size = 0;
+#endif
+
+#if CIRCUITPY_LVFONTIO && CIRCUITPY_TERMINALIO
+static lvfontio_ondiskfont_t *lvfont = NULL;
 #endif
 
 void supervisor_start_terminal(uint16_t width_px, uint16_t height_px) {
@@ -69,8 +146,8 @@ void supervisor_start_terminal(uint16_t width_px, uint16_t height_px) {
     if (width_in_tiles <= 80) {
         scale = 1;
     }
-    #if CIRCUITPY_OS_GETENV
-    (void)common_hal_os_getenv_int("CIRCUITPY_TERMINAL_SCALE", &scale);
+    #if CIRCUITPY_SETTINGS_TOML
+    (void)settings_get_int("CIRCUITPY_TERMINAL_SCALE", &scale);
     #endif
 
     width_in_tiles = MAX(1, width_px / (scroll_area->tile_width * scale));

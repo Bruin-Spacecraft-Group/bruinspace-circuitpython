@@ -59,15 +59,15 @@ else ifeq ($(ARCH),armv6m)
 
 # thumb
 CROSS = arm-none-eabi-
-CFLAGS += -mthumb -mcpu=cortex-m0
-MICROPY_FLOAT_IMPL ?= none
+CFLAGS_ARCH += -mthumb -mcpu=cortex-m0
+MICROPY_FLOAT_IMPL ?= float
 
 else ifeq ($(ARCH),armv7m)
 
 # thumb
 CROSS = arm-none-eabi-
-CFLAGS += -mthumb -mcpu=cortex-m3
-MICROPY_FLOAT_IMPL ?= none
+CFLAGS_ARCH += -mthumb -mcpu=cortex-m3
+MICROPY_FLOAT_IMPL ?= float
 
 else ifeq ($(ARCH),armv7emsp)
 
@@ -103,8 +103,61 @@ else
 $(error architecture '$(ARCH)' not supported)
 endif
 
+ifneq ($(findstring -musl,$(shell $(CROSS)gcc -dumpmachine)),)
+USE_MUSL := 1
+endif
+
 MICROPY_FLOAT_IMPL_UPPER = $(shell echo $(MICROPY_FLOAT_IMPL) | tr '[:lower:]' '[:upper:]')
+<<<<<<< HEAD
 CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_$(MICROPY_FLOAT_IMPL_UPPER)
+=======
+CFLAGS += $(CFLAGS_ARCH) -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_$(MICROPY_FLOAT_IMPL_UPPER)
+
+ifeq ($(LINK_RUNTIME),1)
+# All of these picolibc-specific directives are here to work around a
+# limitation of Ubuntu 22.04's RISC-V bare metal toolchain.  In short, the
+# specific version of GCC in use (10.2.0) does not seem to take into account
+# extra paths provided by an explicitly passed specs file when performing name
+# resolution via `--print-file-name`.
+#
+# If Picolibc is used and libc.a fails to resolve, then said file's path will
+# be computed by searching the Picolibc libraries root for a libc.a file in a
+# subdirectory whose path is built using the current `-march` and `-mabi`
+# flags that are passed to GCC.  The `PICOLIBC_ROOT` environment variable is
+# checked to override the starting point for the library file search, and if
+# it is not set then the default value is used, assuming that this is running
+# on an Ubuntu 22.04 machine.
+#
+# This should be revised when the CI base image is updated to a newer Ubuntu
+# version (that hopefully contains a newer RISC-V compiler) or to another Linux
+# distribution.
+ifeq ($(USE_PICOLIBC),1)
+LIBM_NAME := libc.a
+else ifeq ($(USE_MUSL),1)
+LIBM_NAME := libc.a
+else
+LIBM_NAME := libm.a
+endif
+LIBGCC_PATH := $(realpath $(shell $(CROSS)gcc $(CFLAGS) --print-libgcc-file-name))
+LIBM_PATH := $(realpath $(shell $(CROSS)gcc $(CFLAGS) --print-file-name=$(LIBM_NAME)))
+ifeq ($(USE_PICOLIBC),1)
+ifeq ($(LIBM_PATH),)
+# The CROSS toolchain prefix usually ends with a dash, but that may not be
+# always the case.  If the prefix ends with a dash it has to be taken out as
+# Picolibc's architecture directory won't have it in its name.  GNU Make does
+# not have any facility to perform character-level text manipulation so we
+# shell out to sed.
+CROSS_PREFIX := $(shell echo $(CROSS) | sed -e 's/-$$//')
+PICOLIBC_ROOT ?= /usr/lib/picolibc/$(CROSS_PREFIX)/lib
+LIBM_PATH := $(PICOLIBC_ROOT)/$(PICOLIBC_ARCH)/$(PICOLIBC_ABI)/$(LIBM_NAME)
+endif
+endif
+MPY_LD_FLAGS += $(addprefix -l, $(LIBGCC_PATH) $(LIBM_PATH))
+endif
+ifneq ($(MPY_EXTERN_SYM_FILE),)
+MPY_LD_FLAGS += --externs "$(realpath $(MPY_EXTERN_SYM_FILE))"
+endif
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 
 CFLAGS += $(CFLAGS_EXTRA)
 

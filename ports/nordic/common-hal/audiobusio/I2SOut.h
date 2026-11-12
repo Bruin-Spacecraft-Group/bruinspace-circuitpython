@@ -28,8 +28,10 @@ typedef struct {
     uint8_t bytes_per_sample;
 
     bool left_justified : 1;
+    bool external_clock : 1;
     bool playing : 1;
     bool stopping : 1;
+    bool last_buffer : 1;
     bool paused : 1;
     bool loop : 1;
     bool samples_signed : 1;

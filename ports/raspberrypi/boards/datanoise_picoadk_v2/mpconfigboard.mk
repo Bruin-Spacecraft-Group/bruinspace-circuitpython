@@ -9,5 +9,8 @@ CHIP_FAMILY = rp2
 
 EXTERNAL_FLASH_DEVICES = "GD25Q32C,W25Q32JVxQ"
 
+# GPIO12-19 needed for picodvi, but many are not available.
+CIRCUITPY_PICODVI = 0
+
 # Include these Python libraries in firmware.
 FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_SD

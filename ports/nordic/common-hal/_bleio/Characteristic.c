@@ -138,10 +138,10 @@ size_t common_hal_bleio_characteristic_get_value(bleio_characteristic_obj_t *sel
     if (self->handle != BLE_GATT_HANDLE_INVALID) {
         uint16_t conn_handle = bleio_connection_get_conn_handle(self->service->connection);
         if (common_hal_bleio_service_get_is_remote(self->service)) {
-            return common_hal_bleio_gattc_read(self->handle, conn_handle, buf, len);
+            return bleio_gattc_read(self->handle, conn_handle, buf, len);
         } else {
             // conn_handle is ignored for non-system attributes.
-            return common_hal_bleio_gatts_read(self->handle, conn_handle, buf, len);
+            return bleio_gatts_read(self->handle, conn_handle, buf, len);
         }
     }
 
@@ -159,7 +159,7 @@ void common_hal_bleio_characteristic_set_value(bleio_characteristic_obj_t *self,
         if (common_hal_bleio_service_get_is_remote(self->service)) {
             uint16_t conn_handle = bleio_connection_get_conn_handle(self->service->connection);
             // Last argument is true if write-no-reponse desired.
-            common_hal_bleio_gattc_write(self->handle, conn_handle, bufinfo,
+            bleio_gattc_write(self->handle, conn_handle, bufinfo,
                 (self->props & CHAR_PROP_WRITE_NO_RESPONSE));
         } else {
             // Validate data length for local characteristics only.
@@ -172,7 +172,7 @@ void common_hal_bleio_characteristic_set_value(bleio_characteristic_obj_t *self,
 
             // Always write the value locally even if no connections are active.
             // conn_handle is ignored for non-system attributes, so we use BLE_CONN_HANDLE_INVALID.
-            common_hal_bleio_gatts_write(self->handle, BLE_CONN_HANDLE_INVALID, bufinfo);
+            bleio_gatts_write(self->handle, BLE_CONN_HANDLE_INVALID, bufinfo);
             // Check to see if we need to notify or indicate any active connections.
             for (size_t i = 0; i < BLEIO_TOTAL_CONNECTION_COUNT; i++) {
                 bleio_connection_internal_t *connection = &bleio_connections[i];
@@ -240,6 +240,8 @@ void common_hal_bleio_characteristic_add_descriptor(bleio_characteristic_obj_t *
     };
 
     check_nrf_error(sd_ble_gatts_descriptor_add(self->handle, &desc_attr, &descriptor->handle));
+    bleio_gatts_min_handle = MIN(bleio_gatts_min_handle, descriptor->handle);
+    bleio_gatts_max_handle = MAX(bleio_gatts_max_handle, descriptor->handle);
 
     mp_obj_list_append(MP_OBJ_FROM_PTR(self->descriptor_list),
         MP_OBJ_FROM_PTR(descriptor));
@@ -255,7 +257,7 @@ void common_hal_bleio_characteristic_set_cccd(bleio_characteristic_obj_t *self, 
     }
 
     const uint16_t conn_handle = bleio_connection_get_conn_handle(self->service->connection);
-    common_hal_bleio_check_connected(conn_handle);
+    bleio_check_connected(conn_handle);
 
     uint16_t cccd_value =
         (notify ? BLE_GATT_HVX_NOTIFICATION : 0) |

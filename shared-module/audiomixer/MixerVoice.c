@@ -38,6 +38,22 @@ void common_hal_audiomixer_mixervoice_set_level(audiomixer_mixervoice_obj_t *sel
     #endif
 }
 
+mp_obj_t common_hal_audiomixer_mixervoice_get_panning(audiomixer_mixervoice_obj_t *self) {
+    #if CIRCUITPY_SYNTHIO
+    return self->panning.obj;
+    #else
+    return mp_obj_new_float((mp_float_t)self->panning / ((1 << 15) - 1));
+    #endif
+}
+
+void common_hal_audiomixer_mixervoice_set_panning(audiomixer_mixervoice_obj_t *self, mp_obj_t arg) {
+    #if CIRCUITPY_SYNTHIO
+    synthio_block_assign_slot(arg, &self->panning, MP_QSTR_panning);
+    #else
+    self->panning = (int16_t)(mp_arg_validate_obj_float_range(arg, -1, 1, MP_QSTR_panning) * ((1 << 15) - 1));
+    #endif
+}
+
 bool common_hal_audiomixer_mixervoice_get_loop(audiomixer_mixervoice_obj_t *self) {
     return self->loop;
 }
@@ -53,11 +69,17 @@ void common_hal_audiomixer_mixervoice_play(audiomixer_mixervoice_obj_t *self, mp
     self->sample = sample;
     self->loop = loop;
 
-    audiosample_reset_buffer(sample, false, 0);
-    audioio_get_buffer_result_t result = audiosample_get_buffer(sample, false, 0, (uint8_t **)&self->remaining_buffer, &self->buffer_length);
-    // Track length in terms of words.
-    self->buffer_length /= sizeof(uint32_t);
-    self->more_data = result == GET_BUFFER_MORE_DATA;
+    common_hal_audiomixer_mixervoice_reset_buffer(self);
+}
+
+void common_hal_audiomixer_mixervoice_reset_buffer(audiomixer_mixervoice_obj_t *self) {
+    if (self->sample != NULL) {
+        audiosample_reset_buffer(self->sample, false, 0);
+        audioio_get_buffer_result_t result = audiosample_get_buffer(self->sample, false, 0, (uint8_t **)&self->remaining_buffer, &self->buffer_length);
+        // Track length in terms of words.
+        self->buffer_length /= sizeof(uint32_t);
+        self->more_data = result == GET_BUFFER_MORE_DATA;
+    }
 }
 
 bool common_hal_audiomixer_mixervoice_get_playing(audiomixer_mixervoice_obj_t *self) {

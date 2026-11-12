@@ -32,6 +32,9 @@
 #if CIRCUITPY_RTC
 #include "shared-bindings/rtc/__init__.h"
 #endif
+#if CIRCUITPY_AUDIOIO
+#include "common-hal/audioio/AudioOut.h"
+#endif
 
 #include "peripherals/clocks.h"
 #include "peripherals/gpio.h"
@@ -39,7 +42,7 @@
 
 #include STM32_HAL_H
 
-void NVIC_SystemReset(void) NORETURN;
+void NVIC_SystemReset(void) MP_NORETURN;
 
 #if (CPY_STM32H7) || (CPY_STM32F7)
 
@@ -157,7 +160,151 @@ __attribute__((used, naked)) void Reset_Handler(void) {
 // Low power clock variables
 static volatile uint32_t systick_ms;
 
+#if  defined(CIRCUITPY_HW_SDRAM_SIZE)
+static tlsf_t _heap = NULL;
+static pool_t pools[CIRCUITPY_RAM_DEVICE_COUNT] = {NULL};
+
+
+void port_heap_init(void) {
+    // heap init in _port_heap_init called from port_init
+}
+
+void stm_add_sdram_to_heap(void) {
+    size_t sdram_memory_size = sdram_size();
+    pools[1] = tlsf_add_pool(_heap, sdram_start(), sdram_memory_size);
+}
+
+static void _port_heap_init(void) {
+    uint32_t *heap_bottom = port_heap_get_bottom();
+    uint32_t *heap_top = port_heap_get_top();
+    size_t size = (heap_top - heap_bottom) * sizeof(uint32_t);
+    size_t sdram_memory_size = sdram_size();
+
+    _heap = tlsf_create_with_pool(heap_bottom, size, size + sdram_memory_size);
+    pools[0] = tlsf_get_pool(_heap);
+}
+
+static bool max_size_walker(void *ptr, size_t size, int used, void *user) {
+    size_t *max_size = (size_t *)user;
+    if (!used && *max_size < size) {
+        *max_size = size;
+    }
+    return true;
+}
+
+size_t port_heap_get_largest_free_size(void) {
+    size_t max_size = 0;
+    for (size_t i = 0; i < CIRCUITPY_RAM_DEVICE_COUNT; i++) {
+        if (pools[i]) {
+            tlsf_walk_pool(pools[i], max_size_walker, &max_size);
+        }
+    }
+    return tlsf_fit_size(_heap, max_size);
+}
+
+void *port_malloc(size_t size, bool dma_capable) {
+    void *block = tlsf_malloc(_heap, size);
+    return block;
+}
+
+void port_free(void *ptr) {
+    tlsf_free(_heap, ptr);
+}
+
+void *port_realloc(void *ptr, size_t size, bool dma_capable) {
+    return tlsf_realloc(_heap, ptr, size);
+}
+#endif
+
+// Pending request for the ST system bootloader. This lives in the saved word,
+// RAM that startup does not clear, which is where the other ports keep theirs:
+// _bootloader_dbl_tap on atmel-samd, NRF_POWER->GPREGRET on nordic,
+// SNVS->LPGPR[3] on mimxrt10xx. The low byte is the attempt count.
+#define BOOTLOADER_MAGIC 0xf05a0000
+#define BOOTLOADER_MAGIC_MASK 0xffff0000
+// Magic in the top half, RTC seconds of the last attempt in bits 15:8, attempt
+// count in bits 7:0.
+#define BOOTLOADER_SECONDS_SHIFT 8
+#define BOOTLOADER_FIELD_MASK 0xff
+
+// A retry only counts if it follows the previous attempt closely. The ROM fails
+// and resets within a second, so anything slower is the part being reset by
+// something else while the bootloader was running, and the request is stale.
+// Without this, exiting DFU with a software reset lands straight back in DFU.
+#define BOOTLOADER_RETRY_WINDOW_S 5
+
+// The ROM clocks USB from the HSE but does not know which crystal is fitted, so
+// it measures one against the HSI and resets the part when that misses: AN2606
+// Figure 32/33, "HSE detected" -> no -> "Generate System reset". On the 12 MHz
+// Feather STM32F405 Express one attempt reached DFU 5 times in 12.
+#define BOOTLOADER_MAX_ATTEMPTS 16
+
+#if CPY_STM32F4
+// Seconds field of the RTC clock, read straight from the register because the
+// HAL handle is not initialised this early. rtc_init() leaves shadow bypass on
+// and that setting survives a reset, so the register reads live. Only a read is
+// needed, so the backup domain does not have to be unlocked for write.
+static uint32_t bootloader_rtc_seconds(void) {
+    uint32_t tr = RTC->TR;
+    return ((tr >> 4) & 0x7) * 10 + (tr & 0xF);
+}
+
+// Naked so nothing touches the stack between setting MSP and the branch.
+MP_NORETURN static __attribute__((naked)) void branch_to_bootloader(uint32_t bl_addr) {
+    __asm volatile (
+        "ldr r2, [r0, #0]\n"
+        "msr msp, r2\n"
+        "ldr r2, [r0, #4]\n"
+        "bx r2\n"
+        );
+}
+
+// Runs before HAL_Init() starts SysTick, so the ROM gets the part close to reset
+// state. The ROM sets its own VTOR and runs from 0x1FFF0000, so no SYSCFG remap
+// is needed here.
+static void check_enter_bootloader(void) {
+    uint32_t request = port_get_saved_word();
+    if ((request & BOOTLOADER_MAGIC_MASK) != BOOTLOADER_MAGIC) {
+        // Not our word. Safe mode shares it, so leave it alone.
+        return;
+    }
+
+    // The ROM signals its HSE-detect failure with a software reset, so SFTRSTF is
+    // what tells a retry apart from a cold boot, and a power cycle always leaves
+    // the bootloader.
+    if (!(RCC->CSR & RCC_CSR_SFTRSTF)) {
+        port_set_saved_word(0);
+        return;
+    }
+
+    uint32_t now = bootloader_rtc_seconds();
+    uint32_t then = (request >> BOOTLOADER_SECONDS_SHIFT) & BOOTLOADER_FIELD_MASK;
+    if ((now + 60 - then) % 60 > BOOTLOADER_RETRY_WINDOW_S) {
+        port_set_saved_word(0);
+        return;
+    }
+
+    uint32_t attempts = request & BOOTLOADER_FIELD_MASK;
+    if (attempts >= BOOTLOADER_MAX_ATTEMPTS) {
+        port_set_saved_word(0);
+        return;
+    }
+    port_set_saved_word(BOOTLOADER_MAGIC |
+        (now << BOOTLOADER_SECONDS_SHIFT) | (attempts + 1));
+    // Clearing the flags cancels the request once the ROM succeeds: leaving DFU
+    // is a jump, not a reset, so SFTRSTF stays clear and the branch above zeroes
+    // the flag on the way back into the application.
+    RCC->CSR |= RCC_CSR_RMVF;
+
+    branch_to_bootloader(0x1FFF0000);
+}
+#endif
+
 safe_mode_t port_init(void) {
+    #if CPY_STM32F4
+    check_enter_bootloader();
+    #endif
+
     HAL_Init(); // Turns on SysTick
     __HAL_RCC_SYSCFG_CLK_ENABLE();
 
@@ -224,14 +371,11 @@ void SysTick_Handler(void) {
 }
 
 void reset_port(void) {
-    reset_all_pins();
-
     #if CIRCUITPY_RTC
     rtc_reset();
     #endif
 
     #if CIRCUITPY_BUSIO
-    spi_reset();
     uart_reset();
     #endif
     #if CIRCUITPY_SDIOIO
@@ -240,47 +384,19 @@ void reset_port(void) {
     #if CIRCUITPY_ALARM
     exti_reset();
     #endif
+    #if CIRCUITPY_AUDIOIO
+    audioout_reset();
+    #endif
 }
 
 void reset_to_bootloader(void) {
-
-/*
-From STM AN2606:
-Before jumping to bootloader user must:
-• Disable all peripheral clocks
-• Disable used PLL
-• Disable interrupts
-• Clear pending interrupts
-System memory boot mode can be exited by getting out from bootloader activation
-condition and generating hardware reset or using Go command to execute user code
-*/
-    HAL_RCC_DeInit();
-    HAL_DeInit();
-
-    // Disable all pending interrupts using NVIC
-    for (uint8_t i = 0; i < MP_ARRAY_SIZE(NVIC->ICER); ++i) {
-        NVIC->ICER[i] = 0xFFFFFFFF;
-    }
-
-    // if it is necessary to ensure an interrupt will not be triggered after disabling it in the NVIC,
-    // add a DSB instruction and then an ISB instruction. (ARM Cortex™-M Programming Guide to
-    // Memory Barrier Instructions, 4.6 Disabling Interrupts using NVIC)
-    __DSB();
-    __ISB();
-
-    // Clear all pending interrupts using NVIC
-    for (uint8_t i = 0; i < MP_ARRAY_SIZE(NVIC->ICPR); ++i) {
-        NVIC->ICPR[i] = 0xFFFFFFFF;
-    }
-
-    // information about jump addresses has been taken from STM AN2606.
-    #if defined(STM32F4)
-    __set_MSP(*((uint32_t *)0x1FFF0000));
-    ((void (*)(void)) * ((uint32_t *)0x1FFF0004))();
-    #else
-    // DFU mode for STM32 variant note implemented.
-    NVIC_SystemReset();
+    #if CPY_STM32F4
+    // Record the request and reset, rather than jumping from a running
+    // application. check_enter_bootloader() jumps on the way back up.
+    port_set_saved_word(BOOTLOADER_MAGIC |
+        (bootloader_rtc_seconds() << BOOTLOADER_SECONDS_SHIFT));
     #endif
+    NVIC_SystemReset();
 
     while (true) {
         asm ("nop;");

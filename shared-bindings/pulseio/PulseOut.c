@@ -62,6 +62,7 @@ static mp_obj_t pulseio_pulseout_make_new(const mp_obj_type_t *type, size_t n_ar
 
     pulseio_pulseout_obj_t *self = mp_obj_malloc_with_finaliser(pulseio_pulseout_obj_t, &pulseio_pulseout_type);
     common_hal_pulseio_pulseout_construct(self, pin, frequency, duty_cycle);
+
     return MP_OBJ_FROM_PTR(self);
     #else
     mp_raise_NotImplementedError(NULL);

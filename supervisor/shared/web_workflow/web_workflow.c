@@ -8,6 +8,8 @@
 #define _GNU_SOURCE
 
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "extmod/vfs.h"
@@ -42,12 +44,16 @@
 #include "shared-bindings/socketpool/Socket.h"
 #include "shared-bindings/socketpool/SocketPool.h"
 
+#if CIRCUITPY_HOSTNETWORK
+#include "bindings/hostnetwork/__init__.h"
+#endif
+
 #if CIRCUITPY_WIFI
 #include "shared-bindings/wifi/__init__.h"
 #endif
 
-#if CIRCUITPY_OS_GETENV
-#include "shared-module/os/__init__.h"
+#if CIRCUITPY_SETTINGS_TOML
+#include "supervisor/shared/settings.h"
 #endif
 
 enum request_state {
@@ -84,12 +90,18 @@ typedef struct {
     char websocket_key[24 + 1];
 } _request;
 
+#if CIRCUITPY_WIFI
 static wifi_radio_error_t _wifi_status = WIFI_RADIO_ERROR_NONE;
+#endif
 
-#if CIRCUITPY_STATUS_BAR
+#if CIRCUITPY_STATUS_BAR && (CIRCUITPY_WIFI || CIRCUITPY_HOSTNETWORK)
 // Store various last states to compute if status bar needs an update.
 static bool _last_enabled = false;
 static uint32_t _last_ip = 0;
+static mp_int_t _last_web_api_port = 80;
+#endif
+
+#if CIRCUITPY_STATUS_BAR && CIRCUITPY_WIFI
 static wifi_radio_error_t _last_wifi_status = WIFI_RADIO_ERROR_NONE;
 #endif
 
@@ -171,11 +183,7 @@ static bool _base64_in_place(char *buf, size_t in_len, size_t out_len) {
     return true;
 }
 
-static void _update_encoded_ip(void) {
-    uint32_t ipv4_address = 0;
-    if (common_hal_wifi_radio_get_enabled(&common_hal_wifi_radio_obj)) {
-        ipv4_address = wifi_radio_get_ipv4_address(&common_hal_wifi_radio_obj);
-    }
+static void _update_encoded_ip(uint32_t ipv4_address) {
     if (_encoded_ip != ipv4_address) {
         uint8_t *octets = (uint8_t *)&ipv4_address;
         snprintf(_our_ip_encoded, sizeof(_our_ip_encoded), "%d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);
@@ -183,75 +191,127 @@ static void _update_encoded_ip(void) {
     }
 }
 
+static bool _get_web_workflow_ip(uint32_t *ipv4_address) {
+    *ipv4_address = 0;
+    #if CIRCUITPY_WIFI
+    if (!common_hal_wifi_radio_get_enabled(&common_hal_wifi_radio_obj)) {
+        return false;
+    }
+    *ipv4_address = wifi_radio_get_ipv4_address(&common_hal_wifi_radio_obj);
+    return true;
+    #elif CIRCUITPY_HOSTNETWORK
+    // hostnetwork uses the host network namespace and is reachable via localhost.
+    *ipv4_address = 0x0100007f; // 127.0.0.1
+    return true;
+    #else
+    return false;
+    #endif
+}
+
+#if CIRCUITPY_STATUS_BAR
+static void _print_web_workflow_endpoint(void) {
+    mp_printf(&mp_plat_print, "%s", _our_ip_encoded);
+    if (web_api_port != 80) {
+        mp_printf(&mp_plat_print, ":%d", web_api_port);
+    }
+}
+#endif
+
 mdns_server_obj_t *supervisor_web_workflow_mdns(mp_obj_t network_interface) {
-    #if CIRCUITPY_MDNS
+    #if CIRCUITPY_MDNS && CIRCUITPY_WIFI
     if (network_interface == &common_hal_wifi_radio_obj &&
         mdns.base.type == &mdns_server_type) {
         return &mdns;
     }
     #endif
+    (void)network_interface;
     return NULL;
 }
 
 #if CIRCUITPY_STATUS_BAR
 bool supervisor_web_workflow_status_dirty(void) {
-    return common_hal_wifi_radio_get_enabled(&common_hal_wifi_radio_obj) != _last_enabled ||
-           _encoded_ip != _last_ip ||
-           _last_wifi_status != _wifi_status;
+    #if CIRCUITPY_WIFI || CIRCUITPY_HOSTNETWORK
+    uint32_t ipv4_address = 0;
+    bool enabled = _get_web_workflow_ip(&ipv4_address);
+    if (enabled != _last_enabled || ipv4_address != _last_ip || web_api_port != _last_web_api_port) {
+        return true;
+    }
+    #if CIRCUITPY_WIFI
+    if (_last_wifi_status != _wifi_status) {
+        return true;
+    }
+    #endif
+    return false;
+    #else
+    return false;
+    #endif
 }
 #endif
 
 #if CIRCUITPY_STATUS_BAR
 void supervisor_web_workflow_status(void) {
-    _last_enabled = common_hal_wifi_radio_get_enabled(&common_hal_wifi_radio_obj);
+    #if CIRCUITPY_WIFI || CIRCUITPY_HOSTNETWORK
+    uint32_t ipv4_address = 0;
+    _last_enabled = _get_web_workflow_ip(&ipv4_address);
+    _last_web_api_port = web_api_port;
+
     if (_last_enabled) {
-        uint32_t ipv4_address = wifi_radio_get_ipv4_address(&common_hal_wifi_radio_obj);
+        _update_encoded_ip(ipv4_address);
+        _last_ip = _encoded_ip;
+
         if (ipv4_address != 0) {
-            _update_encoded_ip();
-            _last_ip = _encoded_ip;
-            mp_printf(&mp_plat_print, "%s", _our_ip_encoded);
-            if (web_api_port != 80) {
-                mp_printf(&mp_plat_print, ":%d", web_api_port);
-            }
+            _print_web_workflow_endpoint();
             // TODO: Use these unicode to show signal strength: ▂▄▆█
             return;
         }
-        serial_write_compressed(MP_ERROR_TEXT("Wi-Fi: "));
-        _last_wifi_status = _wifi_status;
-        if (_wifi_status == WIFI_RADIO_ERROR_AUTH_EXPIRE ||
-            _wifi_status == WIFI_RADIO_ERROR_AUTH_FAIL) {
-            serial_write_compressed(MP_ERROR_TEXT("Authentication failure"));
-        } else if (_wifi_status != WIFI_RADIO_ERROR_NONE) {
-            mp_printf(&mp_plat_print, "%d", _wifi_status);
-        } else if (ipv4_address == 0) {
-            _last_ip = 0;
-            serial_write_compressed(MP_ERROR_TEXT("No IP"));
-        } else {
-        }
-    } else {
-        // Keep Wi-Fi print separate so its data can be matched with the one above.
-        serial_write_compressed(MP_ERROR_TEXT("Wi-Fi: "));
-        serial_write_compressed(MP_ERROR_TEXT("off"));
     }
+
+    #if CIRCUITPY_WIFI
+    serial_write_compressed(MP_ERROR_TEXT("Wi-Fi: "));
+    _last_wifi_status = _wifi_status;
+    if (!_last_enabled) {
+        serial_write_compressed(MP_ERROR_TEXT("off"));
+    } else if (_wifi_status == WIFI_RADIO_ERROR_AUTH_EXPIRE ||
+               _wifi_status == WIFI_RADIO_ERROR_AUTH_FAIL) {
+        serial_write_compressed(MP_ERROR_TEXT("Authentication failure"));
+    } else if (_wifi_status != WIFI_RADIO_ERROR_NONE) {
+        mp_printf(&mp_plat_print, "%d", _wifi_status);
+    } else {
+        _last_ip = 0;
+        serial_write_compressed(MP_ERROR_TEXT("No IP"));
+    }
+    #endif
+    #else
+    return;
+    #endif
 }
 #endif
 
 bool supervisor_start_web_workflow(void) {
-    #if CIRCUITPY_WEB_WORKFLOW && CIRCUITPY_WIFI && CIRCUITPY_OS_GETENV
+    #if CIRCUITPY_WEB_WORKFLOW && CIRCUITPY_SETTINGS_TOML && (CIRCUITPY_WIFI || CIRCUITPY_HOSTNETWORK)
 
+    #if CIRCUITPY_WIFI
+    mp_obj_t socketpool_radio = MP_OBJ_FROM_PTR(&common_hal_wifi_radio_obj);
+    #else
+    mp_obj_t socketpool_radio = MP_OBJ_FROM_PTR(&common_hal_hostnetwork_obj);
+    #endif
+
+    settings_err_t result;
+
+    #if CIRCUITPY_WIFI
     char ssid[33];
     char password[64];
 
-    os_getenv_err_t result = common_hal_os_getenv_str("CIRCUITPY_WIFI_SSID", ssid, sizeof(ssid));
-    if (result != GETENV_OK || strlen(ssid) < 1) {
+    result = settings_get_str("CIRCUITPY_WIFI_SSID", ssid, sizeof(ssid));
+    if (result != SETTINGS_OK || strlen(ssid) < 1) {
         return false;
     }
 
-    result = common_hal_os_getenv_str("CIRCUITPY_WIFI_PASSWORD", password, sizeof(password));
-    if (result == GETENV_ERR_NOT_FOUND) {
+    result = settings_get_str("CIRCUITPY_WIFI_PASSWORD", password, sizeof(password));
+    if (result == SETTINGS_ERR_NOT_FOUND) {
         // if password is unspecified, assume an open network
         password[0] = '\0';
-    } else if (result != GETENV_OK) {
+    } else if (result != SETTINGS_OK) {
         return false;
     }
 
@@ -275,31 +335,29 @@ bool supervisor_start_web_workflow(void) {
         common_hal_wifi_radio_set_enabled(&common_hal_wifi_radio_obj, false);
         return false;
     }
+    #endif
 
-    // Skip starting the workflow if we're not starting from power on or reset.
+    // Skip starting the workflow if the reset reason reflects a problem.
     const mcu_reset_reason_t reset_reason = common_hal_mcu_processor_get_reset_reason();
-    if (reset_reason != RESET_REASON_POWER_ON &&
-        reset_reason != RESET_REASON_RESET_PIN &&
-        reset_reason != RESET_REASON_DEEP_SLEEP_ALARM &&
-        reset_reason != RESET_REASON_UNKNOWN &&
-        reset_reason != RESET_REASON_SOFTWARE) {
+    if (reset_reason == MCU_RESET_REASON_BROWNOUT ||
+        reset_reason == MCU_RESET_REASON_RESCUE_DEBUG) {
         return false;
     }
 
     bool initialized = pool.base.type == &socketpool_socketpool_type;
 
     if (!initialized) {
-        result = common_hal_os_getenv_str("CIRCUITPY_WEB_INSTANCE_NAME", web_instance_name, sizeof(web_instance_name));
-        if (result != GETENV_OK || web_instance_name[0] == '\0') {
+        result = settings_get_str("CIRCUITPY_WEB_INSTANCE_NAME", web_instance_name, sizeof(web_instance_name));
+        if (result != SETTINGS_OK || web_instance_name[0] == '\0') {
             strcpy(web_instance_name, MICROPY_HW_BOARD_NAME);
         }
 
         // (leaves new_port unchanged on any failure)
-        (void)common_hal_os_getenv_int("CIRCUITPY_WEB_API_PORT", &web_api_port);
+        (void)settings_get_int("CIRCUITPY_WEB_API_PORT", &web_api_port);
 
         const size_t api_password_len = sizeof(_api_password) - 1;
-        result = common_hal_os_getenv_str("CIRCUITPY_WEB_API_PASSWORD", _api_password + 1, api_password_len);
-        if (result == GETENV_OK) {
+        result = settings_get_str("CIRCUITPY_WEB_API_PASSWORD", _api_password + 1, api_password_len);
+        if (result == SETTINGS_OK) {
             _api_password[0] = ':';
             _base64_in_place(_api_password, strlen(_api_password), sizeof(_api_password) - 1);
         } else { // Skip starting web-workflow when no password is passed.
@@ -307,7 +365,7 @@ bool supervisor_start_web_workflow(void) {
         }
 
         pool.base.type = &socketpool_socketpool_type;
-        common_hal_socketpool_socketpool_construct(&pool, &common_hal_wifi_radio_obj);
+        common_hal_socketpool_socketpool_construct(&pool, socketpool_radio);
 
         socketpool_socket_reset(&listening);
         socketpool_socket_reset(&active);
@@ -339,14 +397,33 @@ bool supervisor_start_web_workflow(void) {
 
         if (common_hal_socketpool_socket_get_closed(&listening)) {
             #if CIRCUITPY_SOCKETPOOL_IPV6
-            socketpool_socket(&pool, SOCKETPOOL_AF_INET6, SOCKETPOOL_SOCK_STREAM, 0, &listening);
+            bool opened = socketpool_socket(&pool, SOCKETPOOL_AF_INET6, SOCKETPOOL_SOCK_STREAM, 0, &listening);
             #else
-            socketpool_socket(&pool, SOCKETPOOL_AF_INET, SOCKETPOOL_SOCK_STREAM, 0, &listening);
+            bool opened = socketpool_socket(&pool, SOCKETPOOL_AF_INET, SOCKETPOOL_SOCK_STREAM, 0, &listening);
             #endif
+            // Ports with an offloaded network stack can refuse to create a
+            // socket until the interface has an address (this board returns
+            // ENOTCONN before DHCP completes). Binding and listening on the
+            // unset descriptor then fails with EBADF, and reporting success
+            // leaves the supervisor polling a socket that was never opened.
+            //
+            // Returning false avoids that but is not a retry: the background
+            // callback never re-enters this function, so the next attempt is
+            // the next supervisor_workflow_reset(), i.e. a VM restart. A board
+            // that only gets an address after boot will not bring the workflow
+            // up on its own until then.
+            if (!opened) {
+                return false;
+            }
             common_hal_socketpool_socket_settimeout(&listening, 0);
-            // Bind to any ip. (Not checking for failures)
-            common_hal_socketpool_socket_bind(&listening, "", 0, web_api_port);
-            common_hal_socketpool_socket_listen(&listening, 1);
+            if (common_hal_socketpool_socket_bind(&listening, "", 0, web_api_port) != 0) {
+                common_hal_socketpool_socket_close(&listening);
+                return false;
+            }
+            if (!common_hal_socketpool_socket_listen(&listening, 1)) {
+                common_hal_socketpool_socket_close(&listening);
+                return false;
+            }
         }
         // Wake polling thread (maybe)
         socketpool_socket_poll_resume();
@@ -373,7 +450,7 @@ void web_workflow_send_raw(socketpool_socket_obj_t *socket, bool flush, const ui
             total_sent += sent;
             if (total_sent < len) {
                 // Yield so that network code can run.
-                port_yield();
+                port_task_sleep_ms(4);
             }
         }
     }
@@ -825,7 +902,6 @@ static void _reply_with_devices_json(socketpool_socket_obj_t *socket, _request *
             "\"instance_name\": \"%s\", "
             "\"port\": %d, "
             "\"ip\": \"%d.%d.%d.%d\"}", hostname, instance_name, port, octets[0], octets[1], octets[2], octets[3]);
-        common_hal_mdns_remoteservice_deinit(&found_devices[i]);
     }
     #endif
     _send_chunk(socket, "]}");
@@ -847,7 +923,9 @@ static void _reply_with_version_json(socketpool_socket_obj_t *socket, _request *
         instance_name = common_hal_mdns_server_get_instance_name(&mdns);
     }
     #endif
-    _update_encoded_ip();
+    uint32_t ipv4_address = 0;
+    (void)_get_web_workflow_ip(&ipv4_address);
+    _update_encoded_ip(ipv4_address);
     // Note: this leverages the fact that C concats consecutive string literals together.
     mp_printf(&_socket_print,
         "{\"web_api_version\": 4, "
@@ -977,7 +1055,7 @@ static void _write_file_and_reply(socketpool_socket_obj_t *socket, _request *req
     if (result == FR_NO_FILE) {
         new_file = true;
         result = f_open(fs, &active_file, path, FA_WRITE | FA_OPEN_ALWAYS);
-    } else {
+    } else if (result == FR_OK) {
         old_length = f_size(&active_file);
     }
 
@@ -986,6 +1064,18 @@ static void _write_file_and_reply(socketpool_socket_obj_t *socket, _request *req
         filesystem_unlock(fs_mount);
         _discard_incoming(socket, request->content_length);
         _reply_missing(socket, request);
+        return;
+    }
+    if (result == FR_WRITE_PROTECTED) {
+        // The filesystem is held by something else with write access (most
+        // commonly USB-MSC: the host has CIRCUITPY mounted, so CircuitPython
+        // can't write through FatFS). Match the mkdir/move/delete paths and
+        // reply 409 Conflict so clients can show an actionable message
+        // ("eject CIRCUITPY / disable USB MSC") instead of a generic 500.
+        override_fattime(0);
+        filesystem_unlock(fs_mount);
+        _discard_incoming(socket, request->content_length);
+        _reply_conflict(socket, request);
         return;
     }
     if (result != FR_OK) {
@@ -1085,6 +1175,10 @@ static void _reply_static(socketpool_socket_obj_t *socket, _request *request, co
         "Content-Encoding: gzip\r\n",
         "Content-Length: ", encoded_len, "\r\n",
         "Content-Type: ", content_type, "\r\n",
+        #if CIRCUITPY_DEBUG == 0
+        "Cache-Control: max-age=31536000\r\n", // Cache for a year.
+        "Vary: Accept\r\n",
+        #endif
         "\r\n", NULL);
     web_workflow_send_raw(socket, true, response, response_len);
 }

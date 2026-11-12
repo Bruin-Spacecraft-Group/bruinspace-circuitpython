@@ -14,7 +14,7 @@
 #include "hardware/regs/addressmap.h"
 
 // RP2 address map ranges, must be arranged in order by ascending start address
-#ifdef PICO_RP2040
+#if PICO_RP2040
 addressmap_rp2_range_t rp2_ranges[] = {
     {(uint8_t *)ROM_BASE,           0x00004000, ROM},        // boot ROM
     {(uint8_t *)XIP_BASE,           0x00100000, XIP},        // XIP normal cache operation
@@ -36,7 +36,7 @@ addressmap_rp2_range_t rp2_ranges[] = {
     {(uint8_t *)PPB_BASE,           0x00004000, IO}          // PPB registers
 };
 #endif
-#ifdef PICO_RP2350
+#if PICO_RP2350
 addressmap_rp2_range_t rp2_ranges[] = {
     {(uint8_t *)ROM_BASE,           0x00004000, ROM},        // boot ROM
     {(uint8_t *)XIP_BASE,           0x00100000, XIP},        // XIP normal cache operation

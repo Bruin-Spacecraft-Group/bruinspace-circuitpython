@@ -103,7 +103,10 @@ static mp_obj_t audioio_audioout_make_new(const mp_obj_type_t *type, size_t n_ar
 
     // create AudioOut object from the given pin
     audioio_audioout_obj_t *self = mp_obj_malloc_with_finaliser(audioio_audioout_obj_t, &audioio_audioout_type);
-    common_hal_audioio_audioout_construct(self, left_channel_pin, right_channel_pin, args[ARG_quiescent_value].u_int);
+    common_hal_audioio_audioout_construct(self,
+        left_channel_pin,
+        right_channel_pin,
+        args[ARG_quiescent_value].u_int);
 
     return MP_OBJ_FROM_PTR(self);
 }

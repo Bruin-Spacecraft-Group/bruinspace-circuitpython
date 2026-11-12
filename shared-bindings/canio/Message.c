@@ -41,7 +41,8 @@ static mp_obj_t canio_message_make_new(const mp_obj_type_t *type, size_t n_args,
 
     canio_message_obj_t *self = mp_obj_malloc(canio_message_obj_t, &canio_message_type);
     common_hal_canio_message_construct(self, args[ARG_id].u_int, data.buf, data.len, args[ARG_extended].u_bool);
-    return self;
+
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //|     id: int

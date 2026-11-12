@@ -140,7 +140,7 @@ void common_hal_busio_uart_construct(busio_uart_obj_t *self,
         uart_config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
     } else if (have_rts) {
         uart_config.flow_ctrl = UART_HW_FLOWCTRL_RTS;
-    } else if (have_rts) {
+    } else if (have_cts) {
         uart_config.flow_ctrl = UART_HW_FLOWCTRL_CTS;
     }
 

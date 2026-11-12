@@ -9,7 +9,8 @@
 #include "py/mphal.h"
 #include "py/runtime.h"
 
-#include "components/driver/i2c/include/driver/i2c.h"
+#include "driver/gpio.h"
+#include "soc/soc_caps.h"
 
 #include "bindings/espidf/__init__.h"
 #include "shared-bindings/microcontroller/__init__.h"
@@ -88,6 +89,19 @@ void common_hal_busio_i2c_construct(busio_i2c_obj_t *self,
     }
     CHECK_ESP_RESULT(result);
 
+    // Record which port the auto-selected bus landed on. There is no public accessor to map
+    // a bus handle back to its port, so match the handle against each initialized port.
+    // Other code (e.g. espcamera) needs the port number to reuse this same bus rather than
+    // create a second master bus on the same pins.
+    self->port = -1;
+    for (i2c_port_num_t port = 0; port < (int)SOC_HP_I2C_NUM; port++) {
+        i2c_master_bus_handle_t bus_handle;
+        if (i2c_master_get_bus_handle(port, &bus_handle) == ESP_OK && bus_handle == self->handle) {
+            self->port = port;
+            break;
+        }
+    }
+
     self->xSemaphore = xSemaphoreCreateMutex();
     if (self->xSemaphore == NULL) {
         i2c_del_master_bus(self->handle);
@@ -128,6 +142,12 @@ void common_hal_busio_i2c_deinit(busio_i2c_obj_t *self) {
     i2c_del_master_bus(self->handle);
     self->handle = NULL;
 
+    // Release the mutex before we delete it. Otherwise FreeRTOS gets unhappy.
+    xSemaphoreGive(self->xSemaphore);
+    vSemaphoreDelete(self->xSemaphore);
+    self->xSemaphore = NULL;
+    self->has_lock = false;
+
     common_hal_reset_pin(self->sda_pin);
     common_hal_reset_pin(self->scl_pin);
     common_hal_busio_i2c_mark_deinit(self);
@@ -160,20 +180,23 @@ bool common_hal_busio_i2c_has_lock(busio_i2c_obj_t *self) {
 }
 
 void common_hal_busio_i2c_unlock(busio_i2c_obj_t *self) {
+    if (common_hal_busio_i2c_deinited(self)) {
+        return;
+    }
     xSemaphoreGive(self->xSemaphore);
     self->has_lock = false;
 }
 
-static uint8_t convert_esp_err(esp_err_t result) {
+static mp_negative_errno_t convert_esp_err(esp_err_t result) {
     switch (result) {
         case ESP_OK:
             return 0;
         case ESP_FAIL:
-            return MP_ENODEV;
+            return -MP_ENODEV;
         case ESP_ERR_TIMEOUT:
-            return MP_ETIMEDOUT;
+            return -MP_ETIMEDOUT;
         default:
-            return MP_EIO;
+            return -MP_EIO;
     }
 }
 
@@ -184,7 +207,7 @@ static size_t _transaction_duration_ms(size_t frequency, size_t len) {
     return (len + 1) / bytes_per_ms + 1000;
 }
 
-uint8_t common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr, const uint8_t *data, size_t len) {
+mp_negative_errno_t common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr, const uint8_t *data, size_t len) {
     i2c_device_config_t dev_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = addr,
@@ -197,7 +220,7 @@ uint8_t common_hal_busio_i2c_write(busio_i2c_obj_t *self, uint16_t addr, const u
     return convert_esp_err(result);
 }
 
-uint8_t common_hal_busio_i2c_read(busio_i2c_obj_t *self, uint16_t addr, uint8_t *data, size_t len) {
+mp_negative_errno_t common_hal_busio_i2c_read(busio_i2c_obj_t *self, uint16_t addr, uint8_t *data, size_t len) {
     i2c_device_config_t dev_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = addr,
@@ -210,7 +233,7 @@ uint8_t common_hal_busio_i2c_read(busio_i2c_obj_t *self, uint16_t addr, uint8_t 
     return convert_esp_err(result);
 }
 
-uint8_t common_hal_busio_i2c_write_read(busio_i2c_obj_t *self, uint16_t addr,
+mp_negative_errno_t common_hal_busio_i2c_write_read(busio_i2c_obj_t *self, uint16_t addr,
     uint8_t *out_data, size_t out_len, uint8_t *in_data, size_t in_len) {
     i2c_device_config_t dev_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,

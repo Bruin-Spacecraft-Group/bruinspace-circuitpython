@@ -160,6 +160,8 @@ void common_hal_audiopwmio_pwmaudioout_play(audiopwmio_pwmaudioout_obj_t *self, 
         common_hal_audiopwmio_pwmaudioout_stop(self);
     }
 
+    audiosample_check(sample);
+
     // TODO: Share pacing timers based on frequency.
     size_t pacing_timer = NUM_DMA_TIMERS;
     for (size_t i = 0; i < NUM_DMA_TIMERS; i++) {

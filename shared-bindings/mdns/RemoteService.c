@@ -93,18 +93,6 @@ MP_DEFINE_CONST_FUN_OBJ_1(mdns_remoteservice_get_ipv4_address_obj, _mdns_remotes
 MP_PROPERTY_GETTER(mdns_remoteservice_ipv4_address_obj,
     (mp_obj_t)&mdns_remoteservice_get_ipv4_address_obj);
 
-//|     def __del__(self) -> None:
-//|         """Deletes the RemoteService object."""
-//|         ...
-//|
-//|
-static mp_obj_t mdns_remoteservice_obj_deinit(mp_obj_t self_in) {
-    mdns_remoteservice_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    common_hal_mdns_remoteservice_deinit(self);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_1(mdns_remoteservice_deinit_obj, mdns_remoteservice_obj_deinit);
-
 static const mp_rom_map_elem_t mdns_remoteservice_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_hostname),       MP_ROM_PTR(&mdns_remoteservice_hostname_obj) },
     { MP_ROM_QSTR(MP_QSTR_instance_name),  MP_ROM_PTR(&mdns_remoteservice_instance_name_obj) },
@@ -112,8 +100,6 @@ static const mp_rom_map_elem_t mdns_remoteservice_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_protocol),       MP_ROM_PTR(&mdns_remoteservice_protocol_obj) },
     { MP_ROM_QSTR(MP_QSTR_port),           MP_ROM_PTR(&mdns_remoteservice_port_obj) },
     { MP_ROM_QSTR(MP_QSTR_ipv4_address),   MP_ROM_PTR(&mdns_remoteservice_ipv4_address_obj) },
-
-    { MP_ROM_QSTR(MP_QSTR___del__),        MP_ROM_PTR(&mdns_remoteservice_deinit_obj) },
 };
 
 static MP_DEFINE_CONST_DICT(mdns_remoteservice_locals_dict, mdns_remoteservice_locals_dict_table);

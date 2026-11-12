@@ -16,6 +16,10 @@
 #include "py/runtime.h"
 #include "shared-bindings/os/__init__.h"
 
+#if CIRCUITPY_SETTINGS_TOML
+#include "supervisor/shared/settings.h"
+#endif
+
 // This provides all VFS related OS functions so that ports can share the code
 // as needed. It does not provide uname.
 
@@ -61,6 +65,82 @@ static mp_obj_t mp_vfs_proxy_call(mp_vfs_mount_t *vfs, qstr meth_name, size_t n_
         memcpy(meth + 2, args, n_args * sizeof(*args));
     }
     return mp_call_method_n_kw(n_args, 0, meth);
+}
+
+const char *common_hal_os_path_abspath(const char *path) {
+    const char *cwd;
+    if (path[0] == '/') {
+        cwd = "";
+    } else {
+        cwd = MP_STATE_VM(cwd_path);
+        if (cwd == NULL) {
+            char *new_cwd = m_malloc_without_collect(2);
+            strcpy(new_cwd, "/");
+            MP_STATE_VM(cwd_path) = new_cwd;
+            cwd = new_cwd;
+        }
+    }
+
+    // Store the current output length for previous components so we can rewind to before them.
+    char *full_path = m_malloc_without_collect(strlen(cwd) + strlen(path) + 2);
+    size_t full_path_len = 0;
+    memcpy(full_path, cwd, strlen(cwd));
+    full_path_len += strlen(cwd);
+    if (full_path_len > 0 && full_path[full_path_len - 1] != '/') {
+        full_path[full_path_len++] = '/';
+    }
+    memcpy(full_path + full_path_len, path, strlen(path) + 1);
+
+    // Scan to see if the path has any `..` in it and return the same string if it doesn't
+    bool found_dot_dot = false;
+    size_t slash_count = 0;
+    for (size_t i = 0; i < strlen(full_path); i++) {
+        if (full_path[i] == '/') {
+            slash_count++;
+        }
+        if (i + 2 < strlen(full_path) && full_path[i] == '/' && full_path[i + 1] == '.' && full_path[i + 2] == '.' && (i + 3 == strlen(full_path) || full_path[i + 3] == '/')) {
+            found_dot_dot = true;
+        }
+    }
+    if (!found_dot_dot) {
+        return full_path;
+    }
+
+    size_t slashes[slash_count];
+    size_t output_len = 0;
+    size_t component_len = 0;
+    slash_count = 0;
+
+    // Remove `..` and `.`
+    size_t original_len = strlen(full_path);
+    for (size_t i = 0; i <= original_len; i++) {
+        full_path[output_len++] = full_path[i];
+        // Treat the final nul character as a slash.
+        if (full_path[i] == '/' || full_path[i] == '\0') {
+            if (component_len == 1 && full_path[i - 1] == '.') {
+                // Remove the dot
+                output_len = slashes[slash_count - 1];
+            } else if (component_len == 2 && full_path[i - 1] == '.' && full_path[i - 2] == '.') {
+                // Remove the double dot and the previous component if it exists.
+                // Never rewind past the root: if the root is the only recorded
+                // boundary (slash_count == 1), ".." at the root is a no-op instead of
+                // underflowing slash_count to SIZE_MAX and reading slashes[SIZE_MAX]
+                // out of bounds (matches POSIX "cd .. from / stays at /" semantics).
+                if (slash_count > 1) {
+                    slash_count--;
+                }
+                output_len = slashes[slash_count - 1];
+            } else {
+                slashes[slash_count] = output_len;
+                slash_count++;
+            }
+            component_len = 0;
+        } else {
+            component_len++;
+        }
+    }
+    full_path[output_len] = '\0';
+    return full_path;
 }
 
 void common_hal_os_chdir(const char *path) {
@@ -199,3 +279,18 @@ void common_hal_os_utime(const char *path, mp_obj_t times) {
     args[1] = times;
     mp_vfs_proxy_call(vfs, MP_QSTR_utime, 2, args);
 }
+
+#if CIRCUITPY_SETTINGS_TOML
+mp_obj_t common_hal_os_getenv(const char *key, mp_obj_t default_) {
+    vstr_t vstr;
+    vstr_init(&vstr, 64);
+
+    settings_err_t result = settings_get_raw_vstr(key, &vstr);
+    if (result == SETTINGS_OK) {
+        return mp_obj_new_str_from_vstr(&vstr);
+    }
+    return default_;
+}
+#endif
+
+MP_REGISTER_ROOT_POINTER(const char *cwd_path);

@@ -30,7 +30,7 @@
 //|
 //|
 MP_DEFINE_USB_CORE_EXCEPTION(USBError, OSError)
-NORETURN void mp_raise_usb_core_USBError(mp_rom_error_text_t fmt, ...) {
+MP_NORETURN void mp_raise_usb_core_USBError(mp_rom_error_text_t fmt, ...) {
     mp_obj_t exception;
     if (fmt == NULL) {
         exception = mp_obj_new_exception(&mp_type_usb_core_USBError);
@@ -50,7 +50,7 @@ NORETURN void mp_raise_usb_core_USBError(mp_rom_error_text_t fmt, ...) {
 //|
 //|
 MP_DEFINE_USB_CORE_EXCEPTION(USBTimeoutError, usb_core_USBError)
-NORETURN void mp_raise_usb_core_USBTimeoutError(void) {
+MP_NORETURN void mp_raise_usb_core_USBTimeoutError(void) {
     mp_raise_type(&mp_type_usb_core_USBTimeoutError);
 }
 
@@ -90,9 +90,10 @@ static mp_obj_t _next_device(usb_core_devices_obj_t *iter) {
         // We passed the filters. Now make a properly allocated object to
         // return to the user.
         usb_core_device_obj_t *self = mp_obj_malloc(usb_core_device_obj_t, &usb_core_device_type);
-
         common_hal_usb_core_device_construct(self, i);
+
         iter->next_index = i + 1;
+
         return MP_OBJ_FROM_PTR(self);
     }
     // Iter is done.

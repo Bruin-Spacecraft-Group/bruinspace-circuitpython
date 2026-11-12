@@ -32,6 +32,12 @@
 #include "py/gc.h"
 #include "py/runtime.h"
 
+#if defined(__ZEPHYR__)
+#include <zephyr/autoconf.h>
+#include <zephyr/kernel.h>
+#include <zephyr/sys/util.h>
+#endif
+
 #if MICROPY_DEBUG_VALGRIND
 #include <valgrind/memcheck.h>
 #endif
@@ -41,6 +47,12 @@
 
 #if CIRCUITPY_MEMORYMONITOR
 #include "shared-module/memorymonitor/__init__.h"
+#endif
+
+#if defined(__ZEPHYR__) && defined(CONFIG_TRACING_PERFETTO) && defined(CONFIG_BOARD_NATIVE_SIM)
+#include "perfetto_encoder.h"
+#define CIRCUITPY_PERFETTO_VM_HEAP_USED_UUID 0x3001ULL
+#define CIRCUITPY_PERFETTO_VM_HEAP_MAX_FREE_UUID 0x3002ULL
 #endif
 
 #if MICROPY_ENABLE_GC
@@ -143,6 +155,44 @@ void __attribute__ ((noinline)) gc_log_change(uint32_t start_block, uint32_t len
 #pragma GCC pop_options
 #endif
 
+#if defined(__ZEPHYR__) && defined(CONFIG_TRACING_PERFETTO) && defined(CONFIG_BOARD_NATIVE_SIM)
+static void gc_perfetto_emit_heap_stats(void) {
+    if (!perfetto_start()) {
+        return;
+    }
+    gc_info_t info;
+    gc_info(&info);
+    perfetto_emit_counter(CIRCUITPY_PERFETTO_VM_HEAP_USED_UUID, (int64_t)info.used);
+    Z_SPIN_DELAY(1);
+}
+
+static void gc_perfetto_emit_heap_stopped(void) {
+    if (!perfetto_start()) {
+        return;
+    }
+    perfetto_emit_counter(CIRCUITPY_PERFETTO_VM_HEAP_USED_UUID, 0);
+    Z_SPIN_DELAY(1);
+}
+#else
+static inline void gc_perfetto_emit_heap_stats(void) {
+}
+
+static inline void gc_perfetto_emit_heap_stopped(void) {
+}
+#endif
+
+// Static functions for individual steps of the GC mark/sweep sequence
+static void gc_collect_start_common(void);
+static void *gc_get_ptr(void **ptrs, int i);
+#if MICROPY_GC_SPLIT_HEAP
+static void gc_mark_subtree(mp_state_mem_area_t *area, size_t block);
+#else
+static void gc_mark_subtree(size_t block);
+#endif
+static void gc_deal_with_stack_overflow(void);
+static void gc_sweep_run_finalisers(void);
+static void gc_sweep_free_blocks(void);
+
 // TODO waste less memory; currently requires that all entries in alloc_table have a corresponding block in pool
 static void gc_setup_area(mp_state_mem_area_t *area, void *start, void *end) {
     // calculate parameters for GC (T=total, A=alloc table, F=finaliser table, P=pool; all in bytes):
@@ -233,9 +283,14 @@ void gc_init(void *start, void *end) {
     MP_STATE_MEM(gc_alloc_amount) = 0;
     #endif
 
+<<<<<<< HEAD
     #if MICROPY_PY_THREAD && !MICROPY_PY_THREAD_GIL
     mp_thread_mutex_init(&MP_STATE_MEM(gc_mutex));
     #endif
+=======
+    GC_MUTEX_INIT();
+    gc_perfetto_emit_heap_stats();
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 }
 
 #if MICROPY_GC_SPLIT_HEAP
@@ -357,6 +412,7 @@ void gc_deinit(void) {
     // Run any finalisers before we stop using the heap. This will also free
     // any additional heap areas (but not the first.)
     gc_sweep_all();
+    gc_perfetto_emit_heap_stopped();
     memset(&MP_STATE_MEM(area), 0, sizeof(MP_STATE_MEM(area)));
 }
 
@@ -691,6 +747,7 @@ void gc_collect_end(void) {
     }
     MP_STATE_THREAD(gc_lock_depth)--;
     GC_EXIT();
+    gc_perfetto_emit_heap_stats();
 }
 
 void gc_sweep_all(void) {
@@ -953,6 +1010,8 @@ found:
     memorymonitor_track_allocation(end_block - start_block + 1);
     #endif
 
+    gc_perfetto_emit_heap_stats();
+
     return ret_ptr;
 }
 
@@ -1040,6 +1099,7 @@ void gc_free(void *ptr) {
     } while (ATB_GET_KIND(area, block) == AT_TAIL);
 
     GC_EXIT();
+    gc_perfetto_emit_heap_stats();
 
     #if EXTENSIVE_HEAP_PROFILING
     gc_dump_alloc_table(&mp_plat_print);
@@ -1208,6 +1268,8 @@ void *gc_realloc(void *ptr_in, size_t n_bytes, bool allow_move) {
         memorymonitor_track_allocation(new_blocks);
         #endif
 
+        gc_perfetto_emit_heap_stats();
+
         return ptr_in;
     }
 
@@ -1244,6 +1306,8 @@ void *gc_realloc(void *ptr_in, size_t n_bytes, bool allow_move) {
         #if CIRCUITPY_MEMORYMONITOR
         memorymonitor_track_allocation(new_blocks);
         #endif
+
+        gc_perfetto_emit_heap_stats();
 
         return ptr_in;
     }
@@ -1308,7 +1372,7 @@ void gc_dump_alloc_table(const mp_print_t *print) {
                     }
                     if (bl2 - bl >= 2 * DUMP_BYTES_PER_LINE) {
                         // there are at least 2 lines containing only free blocks, so abbreviate their printing
-                        mp_printf(print, "\n       (%u lines all free)", (uint)(bl2 - bl) / DUMP_BYTES_PER_LINE);
+                        mp_printf(print, "\n       (%u lines all free)", (uint)((bl2 - bl) / DUMP_BYTES_PER_LINE));
                         bl = bl2 & (~(DUMP_BYTES_PER_LINE - 1));
                         if (bl >= area->gc_alloc_table_byte_len * BLOCKS_PER_ATB) {
                             // got to end of heap
@@ -1351,7 +1415,7 @@ void gc_dump_alloc_table(const mp_print_t *print) {
                     break;
                 }
                 */
-                /* this prints the uPy object type of the head block */
+                /* this prints the MicroPython object type of the head block */
                 case AT_HEAD: {
                     // CIRCUITPY-CHANGE: compiler warning avoidance
                     #pragma GCC diagnostic push

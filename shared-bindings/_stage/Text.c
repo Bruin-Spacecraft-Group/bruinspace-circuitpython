@@ -38,31 +38,31 @@ static mp_obj_t text_make_new(const mp_obj_type_t *type, size_t n_args,
     size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 5, 5, false);
 
-    text_obj_t *self = mp_obj_malloc(text_obj_t, type);
+    mp_uint_t width = mp_arg_validate_int_min(mp_obj_get_int(args[0]), 0, MP_QSTR_width);
+    mp_uint_t height = mp_arg_validate_int_min(mp_obj_get_int(args[1]), 0, MP_QSTR_height);
 
-    self->width = mp_obj_get_int(args[0]);
-    self->height = mp_obj_get_int(args[1]);
-    self->x = 0;
-    self->y = 0;
+    mp_buffer_info_t font_bufinfo;
+    mp_get_buffer_raise(args[2], &font_bufinfo, MP_BUFFER_READ);
+    mp_arg_validate_length(font_bufinfo.len, 2048, MP_QSTR_font);
 
-    mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
-    self->font = bufinfo.buf;
-    if (bufinfo.len != 2048) {
-        mp_raise_ValueError(MP_ERROR_TEXT("font must be 2048 bytes long"));
-    }
+    mp_buffer_info_t palette_bufinfo;
+    mp_get_buffer_raise(args[3], &palette_bufinfo, MP_BUFFER_READ);
+    mp_arg_validate_length(palette_bufinfo.len, 32, MP_QSTR_palette);
 
-    mp_get_buffer_raise(args[3], &bufinfo, MP_BUFFER_READ);
-    self->palette = bufinfo.buf;
-    if (bufinfo.len != 32) {
-        mp_raise_ValueError(MP_ERROR_TEXT("palette must be 32 bytes long"));
-    }
-
-    mp_get_buffer_raise(args[4], &bufinfo, MP_BUFFER_READ);
-    self->chars = bufinfo.buf;
-    if (bufinfo.len < self->width * self->height) {
+    mp_buffer_info_t chars_bufinfo;
+    mp_get_buffer_raise(args[4], &chars_bufinfo, MP_BUFFER_READ);
+    if (chars_bufinfo.len < width * height) {
         mp_raise_ValueError(MP_ERROR_TEXT("chars buffer too small"));
     }
+
+    text_obj_t *self = mp_obj_malloc(text_obj_t, type);
+    self->width = width;
+    self->height = height;
+    self->x = 0;
+    self->y = 0;
+    self->font = font_bufinfo.buf;
+    self->palette = palette_bufinfo.buf;
+    self->chars = chars_bufinfo.buf;
 
     return MP_OBJ_FROM_PTR(self);
 }
