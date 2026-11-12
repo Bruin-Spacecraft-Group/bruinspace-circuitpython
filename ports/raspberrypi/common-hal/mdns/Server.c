@@ -42,10 +42,23 @@ void mdns_server_construct(mdns_server_obj_t *self, bool workflow) {
     }
     self->inited = true;
 
-    uint8_t mac[6];
-    wifi_radio_get_mac_address(&common_hal_wifi_radio_obj, mac);
-    snprintf(self->default_hostname, sizeof(self->default_hostname), "cpy-%02x%02x%02x", mac[3], mac[4], mac[5]);
-    common_hal_mdns_server_set_hostname(self, self->default_hostname);
+    self->instance_name[0] = '\0';
+    self->num_txt_records = 0;
+    self->txt_storage = NULL;
+
+    // Seed the mDNS hostname from the netif hostname configured via
+    // CIRCUITPY_WIFI_HOSTNAME.  Fall back to the historical MAC-based
+    // cpy-XXXXXX name when the user hasn't set one, so existing default
+    // hostnames keep working.
+    if (common_hal_wifi_radio_obj.hostname[0] != '\0') {
+        common_hal_mdns_server_set_hostname(self, common_hal_wifi_radio_obj.hostname);
+    } else {
+        uint8_t mac[6];
+        wifi_radio_get_mac_address(&common_hal_wifi_radio_obj, mac);
+        char default_hostname[sizeof("cpy-XXXXXX")];
+        snprintf(default_hostname, sizeof(default_hostname), "cpy-%02x%02x%02x", mac[3], mac[4], mac[5]);
+        common_hal_mdns_server_set_hostname(self, default_hostname);
+    }
 
     if (workflow) {
         // Add a second host entry to respond to "circuitpython.local" queries as well.
@@ -91,15 +104,18 @@ void common_hal_mdns_server_set_hostname(mdns_server_obj_t *self, const char *ho
         mdns_resp_add_netif(NETIF_STA, hostname);
     }
 
-    self->hostname = hostname;
+    strlcpy(self->hostname, hostname, sizeof(self->hostname));
 }
 
 const char *common_hal_mdns_server_get_instance_name(mdns_server_obj_t *self) {
+    if (self->instance_name[0] == '\0') {
+        return self->hostname;
+    }
     return self->instance_name;
 }
 
 void common_hal_mdns_server_set_instance_name(mdns_server_obj_t *self, const char *instance_name) {
-    self->instance_name = instance_name;
+    strlcpy(self->instance_name, instance_name, sizeof(self->instance_name));
 }
 
 typedef struct {
@@ -288,15 +304,64 @@ static void srv_txt_cb(struct mdns_service *service, void *ptr) {
     }
 }
 
+// Take our own copies of the TXT records. lwip only stores srv_txt_cb and this
+// object, and calls back at packet-build time, so the caller's strings must
+// outlive the call -- and the caller hands us pointers into GC-heap strings.
+//
+// WARNING: the copies live on the GC heap, which is only safe because TXT
+// records can reach us solely through the Python binding, so the VM is
+// necessarily running and this object is itself a GC object that dies with the
+// same heap. The supervisor's static mdns_server_obj_t never gets TXT records
+// (web_workflow.c passes NULL, 0). If supervisor code ever needs to advertise
+// TXT records, this must move off the GC heap first -- an inline pool in
+// mdns_server_obj_t, or port_malloc -- or the records will dangle after the
+// first VM reset.
 static void assign_txt_records(mdns_server_obj_t *self, const char *txt_records[], size_t num_txt_records) {
-    size_t allowed_num_txt_records = MDNS_MAX_TXT_RECORDS < num_txt_records ? MDNS_MAX_TXT_RECORDS : num_txt_records;
-    self->num_txt_records = allowed_num_txt_records;
-    for (size_t i = 0; i < allowed_num_txt_records; i++) {
-        self->txt_records[i] = txt_records[i];
+    size_t total = 0;
+    for (size_t i = 0; i < num_txt_records; i++) {
+        total += strlen(txt_records[i]) + 1;
     }
+
+    // Build the replacement before touching self, so that the allocation, and
+    // any MemoryError it raises, happens outside the lwip lock below.
+    char *storage = NULL;
+    const char *records[MDNS_MAX_TXT_RECORDS];
+    if (total > 0) {
+        storage = m_malloc_maybe(total);
+        if (storage == NULL) {
+            m_malloc_fail(total);
+        }
+        char *next = storage;
+        for (size_t i = 0; i < num_txt_records; i++) {
+            size_t size = strlen(txt_records[i]) + 1;
+            memcpy(next, txt_records[i], size);
+            records[i] = next;
+            next += size;
+        }
+    }
+
+    // srv_txt_cb reads these from the lwip IRQ, so hold lwip off while they
+    // change. Otherwise a callback already part way through the old records
+    // keeps pointers into storage we are about to release.
+    MICROPY_PY_LWIP_ENTER
+    char *old_storage = self->txt_storage;
+    for (size_t i = 0; i < num_txt_records; i++) {
+        self->txt_records[i] = records[i];
+    }
+    self->txt_storage = storage;
+    self->num_txt_records = num_txt_records;
+    MICROPY_PY_LWIP_EXIT
+
+    // Nothing can be holding pointers into it now, so release it here rather
+    // than leaving the GC to do it at an unpredictable time.
+    m_free(old_storage);
 }
 
 void common_hal_mdns_server_advertise_service(mdns_server_obj_t *self, const char *service_type, const char *protocol, mp_int_t port, const char *txt_records[], size_t num_txt_records) {
+    // Check before touching any state, so a rejected call leaves the existing
+    // advertisement alone.
+    mp_arg_validate_length_max(num_txt_records, MDNS_MAX_TXT_RECORDS, MP_QSTR_txt_records);
+
     enum mdns_sd_proto proto = DNSSD_PROTO_UDP;
     if (strcmp(protocol, "_tcp") == 0) {
         proto = DNSSD_PROTO_TCP;
@@ -316,7 +381,7 @@ void common_hal_mdns_server_advertise_service(mdns_server_obj_t *self, const cha
     }
 
     assign_txt_records(self, txt_records, num_txt_records);
-    int8_t slot = mdns_resp_add_service(NETIF_STA, self->instance_name, service_type, proto, port, srv_txt_cb, self);
+    int8_t slot = mdns_resp_add_service(NETIF_STA, common_hal_mdns_server_get_instance_name(self), service_type, proto, port, srv_txt_cb, self);
     if (slot < 0) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Out of MDNS service slots"));
         return;

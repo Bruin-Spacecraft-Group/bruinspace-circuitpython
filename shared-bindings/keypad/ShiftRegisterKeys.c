@@ -88,8 +88,6 @@
 
 static mp_obj_t keypad_shiftregisterkeys_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if CIRCUITPY_KEYPAD_SHIFTREGISTERKEYS
-    keypad_shiftregisterkeys_obj_t *self =
-        mp_obj_malloc(keypad_shiftregisterkeys_obj_t, &keypad_shiftregisterkeys_type);
     enum { ARG_clock, ARG_data, ARG_latch, ARG_value_to_latch, ARG_key_count, ARG_value_when_pressed, ARG_interval, ARG_max_events, ARG_debounce_threshold };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_clock, MP_ARG_KW_ONLY | MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -160,6 +158,8 @@ static mp_obj_t keypad_shiftregisterkeys_make_new(const mp_obj_type_t *type, siz
     const size_t max_events = (size_t)mp_arg_validate_int_min(args[ARG_max_events].u_int, 1, MP_QSTR_max_events);
     const uint8_t debounce_threshold = (uint8_t)mp_arg_validate_int_range(args[ARG_debounce_threshold].u_int, 1, 127, MP_QSTR_debounce_threshold);
 
+    keypad_shiftregisterkeys_obj_t *self =
+        mp_obj_malloc(keypad_shiftregisterkeys_obj_t, &keypad_shiftregisterkeys_type);
     common_hal_keypad_shiftregisterkeys_construct(
         self, clock, num_data_pins, data_pins_array, latch, value_to_latch, num_key_counts, key_count_array, value_when_pressed, interval, max_events, debounce_threshold);
 

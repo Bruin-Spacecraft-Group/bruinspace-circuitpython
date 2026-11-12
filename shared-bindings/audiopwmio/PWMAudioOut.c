@@ -100,8 +100,10 @@ static mp_obj_t audiopwmio_pwmaudioout_make_new(const mp_obj_type_t *type, size_
     // create AudioOut object from the given pin
     // The object is created with a finaliser as some ports use these (rather than 'reset' functions)
     // to ensure resources are collected at interpreter shutdown.
-    audiopwmio_pwmaudioout_obj_t *self = mp_obj_malloc_with_finaliser(audiopwmio_pwmaudioout_obj_t, &audiopwmio_pwmaudioout_type);
-    common_hal_audiopwmio_pwmaudioout_construct(self, left_channel_pin, right_channel_pin, args[ARG_quiescent_value].u_int);
+    audiopwmio_pwmaudioout_obj_t *self =
+        mp_obj_malloc_with_finaliser(audiopwmio_pwmaudioout_obj_t, &audiopwmio_pwmaudioout_type);
+    common_hal_audiopwmio_pwmaudioout_construct(self,
+        left_channel_pin, right_channel_pin, args[ARG_quiescent_value].u_int);
 
     return MP_OBJ_FROM_PTR(self);
 }

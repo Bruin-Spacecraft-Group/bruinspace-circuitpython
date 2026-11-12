@@ -17,10 +17,8 @@
 // Always 1: defined in circuitpy_mpconfig.mk
 // #define CIRCUITPY (1)
 
-// Can be removed once CircuitPython 10 is released.
-// Print warnings or not about deprecated names. See objmodule.c.
-#ifndef CIRCUITPY_9_10_WARNINGS
-#define CIRCUITPY_9_10_WARNINGS (1)
+#ifndef MP_SSIZE_MAX
+#define MP_SSIZE_MAX (0x7fffffff)
 #endif
 
 // REPR_C encodes qstrs, 31-bit ints, and 30-bit floats in a single 32-bit word.
@@ -47,9 +45,17 @@ extern void common_hal_mcu_enable_interrupts(void);
 #define MICROPY_PY_BLUETOOTH             (0)
 #define MICROPY_PY_LWIP_SLIP             (0)
 #define MICROPY_PY_OS_DUPTERM            (0)
+#define MICROPY_PYEXEC_COMPILE_ONLY      (0)
 #define MICROPY_ROM_TEXT_COMPRESSION     (0)
 #define MICROPY_VFS_LFS1                 (0)
 #define MICROPY_VFS_LFS2                 (0)
+
+// Always turn on exit code handling
+#define MICROPY_PYEXEC_ENABLE_EXIT_CODE_HANDLING (1)
+
+#ifndef MICROPY_GCREGS_SETJMP
+#define MICROPY_GCREGS_SETJMP            (0)
+#endif
 
 // Sorted alphabetically for easy finding.
 //
@@ -70,7 +76,9 @@ extern void common_hal_mcu_enable_interrupts(void);
 #define MICROPY_ENABLE_FINALISER         (1)
 #define MICROPY_ENABLE_GC                (1)
 #define MICROPY_ENABLE_PYSTACK           (1)
-#define MICROPY_TRACKED_ALLOC            (CIRCUITPY_SSL_MBEDTLS)
+// mbedtls allocates through m_tracked_calloc/m_tracked_free. hashlib-only ports need
+// them too as of mbedtls 4.x: hashlib uses mbedtls_md_*(), which allocates on the heap.
+#define MICROPY_TRACKED_ALLOC            (CIRCUITPY_SSL_MBEDTLS || CIRCUITPY_HASHLIB_MBEDTLS_ONLY)
 #define MICROPY_ENABLE_SOURCE_LINE       (1)
 #define MICROPY_EPOCH_IS_1970            (1)
 #define MICROPY_ERROR_REPORTING          (CIRCUITPY_FULL_BUILD ? MICROPY_ERROR_REPORTING_NORMAL : MICROPY_ERROR_REPORTING_TERSE)
@@ -88,13 +96,13 @@ extern void common_hal_mcu_enable_interrupts(void);
 #define MICROPY_MEM_STATS                (0)
 #define MICROPY_MODULE_BUILTIN_INIT      (1)
 #define MICROPY_MODULE_BUILTIN_SUBPACKAGES (1)
-#define MICROPY_NONSTANDARD_TYPECODES    (0)
 #define MICROPY_OPT_COMPUTED_GOTO        (1)
 #define MICROPY_OPT_COMPUTED_GOTO_SAVE_SPACE (CIRCUITPY_COMPUTED_GOTO_SAVE_SPACE)
 #define MICROPY_OPT_LOAD_ATTR_FAST_PATH  (CIRCUITPY_OPT_LOAD_ATTR_FAST_PATH)
 #define MICROPY_OPT_MAP_LOOKUP_CACHE  (CIRCUITPY_OPT_MAP_LOOKUP_CACHE)
 #define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE (CIRCUITPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE)
 #define MICROPY_PERSISTENT_CODE_LOAD     (1)
+#define MICROPY_PERSISTENT_CODE_LOAD_NATIVE (CIRCUITPY_LOAD_NATIVE || CIRCUITPY_ENABLE_MPY_NATIVE)
 
 #define MICROPY_PY_ARRAY                 (CIRCUITPY_ARRAY)
 #define MICROPY_PY_ARRAY_SLICE_ASSIGN    (1)
@@ -140,6 +148,7 @@ extern void common_hal_mcu_enable_interrupts(void);
 #define MICROPY_PY_RE                   (CIRCUITPY_RE)
 // Supplanted by shared-bindings/struct
 #define MICROPY_PY_STRUCT                (0)
+#define MICROPY_PY_STRUCT_UNSAFE_TYPECODES (0)
 #define MICROPY_PY_SYS                   (CIRCUITPY_SYS)
 #define MICROPY_PY_SYS_MAXSIZE           (1)
 #define MICROPY_PY_SYS_STDFILES          (1)
@@ -186,21 +195,6 @@ extern void common_hal_mcu_enable_interrupts(void);
 // Track stack usage. Expose results via ustack module.
 #define MICROPY_MAX_STACK_USAGE       (0)
 
-#define UINT_FMT "%u"
-#define INT_FMT "%d"
-#ifdef __LP64__
-typedef long mp_int_t; // must be pointer size
-typedef unsigned long mp_uint_t; // must be pointer size
-#else
-// These are definitions for machines where sizeof(int) == sizeof(void*),
-// regardless of actual size.
-typedef int mp_int_t; // must be pointer size
-typedef unsigned int mp_uint_t; // must be pointer size
-#endif
-#if __GNUC__ >= 10 // on recent gcc versions we can check that this is so
-_Static_assert(sizeof(mp_int_t) == sizeof(void *));
-_Static_assert(sizeof(mp_uint_t) == sizeof(void *));
-#endif
 typedef long mp_off_t;
 
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
@@ -249,6 +243,23 @@ typedef long mp_off_t;
 #define MICROPY_PY_COLLECTIONS_DEQUE_ITER     (CIRCUITPY_FULL_BUILD)
 #define MICROPY_PY_COLLECTIONS_DEQUE_SUBSCR   (CIRCUITPY_FULL_BUILD)
 #endif
+
+#ifndef MICROPY_PY_DELATTR_SETATTR
+#define MICROPY_PY_DELATTR_SETATTR       (CIRCUITPY_FULL_BUILD)
+#endif
+
+#ifndef MICROPY_PY_DOUBLE_TYPECODE
+#define MICROPY_PY_DOUBLE_TYPECODE       (CIRCUITPY_FULL_BUILD ? 1 : 0)
+#endif
+
+#ifndef MICROPY_PY_FUNCTION_ATTRS
+#define MICROPY_PY_FUNCTION_ATTRS            (CIRCUITPY_FULL_BUILD)
+#endif
+
+#ifndef MICROPY_PY_REVERSE_SPECIAL_METHODS
+#define MICROPY_PY_REVERSE_SPECIAL_METHODS   (CIRCUITPY_FULL_BUILD)
+#endif
+
 #define MICROPY_PY_RE_MATCH_GROUPS           (CIRCUITPY_RE)
 #define MICROPY_PY_RE_MATCH_SPAN_START_END   (CIRCUITPY_RE)
 #define MICROPY_PY_RE_SUB                    (CIRCUITPY_RE)
@@ -271,12 +282,10 @@ typedef long mp_off_t;
 
 #ifdef LONGINT_IMPL_MPZ
 #define MICROPY_LONGINT_IMPL (MICROPY_LONGINT_IMPL_MPZ)
-#define MP_SSIZE_MAX (0x7fffffff)
 #endif
 
 #ifdef LONGINT_IMPL_LONGLONG
 #define MICROPY_LONGINT_IMPL (MICROPY_LONGINT_IMPL_LONGLONG)
-#define MP_SSIZE_MAX (0x7fffffff)
 #endif
 
 #ifndef MICROPY_PY_REVERSE_SPECIAL_METHODS
@@ -289,10 +298,17 @@ typedef long mp_off_t;
 
 // Default board buses.
 
+#ifndef CIRCUITPY_MUTABLE_BOARD
+#define CIRCUITPY_MUTABLE_BOARD (0)
+#endif
+
 #ifndef CIRCUITPY_BOARD_I2C
 #if defined(DEFAULT_I2C_BUS_SCL) && defined(DEFAULT_I2C_BUS_SDA)
 #define CIRCUITPY_BOARD_I2C     (1)
 #define CIRCUITPY_BOARD_I2C_PIN {{.scl = DEFAULT_I2C_BUS_SCL, .sda = DEFAULT_I2C_BUS_SDA}}
+#ifndef CIRCUITPY_BOARD_I2C_SPEED
+#define CIRCUITPY_BOARD_I2C_SPEED (100000)
+#endif
 #else
 #define CIRCUITPY_BOARD_I2C     (0)
 #endif
@@ -352,9 +368,11 @@ typedef long mp_off_t;
 #define CIRCUITPY_DISPLAY_LIMIT (1)
 #endif
 
-// Framebuffer area size in bytes. Rounded down to power of four for alignment.
+// Display area buffer size in bytes for _refresh_area() VLA.
+// Allocated on stack; boards with larger displays can override per-board.
+// Default 512 bytes = 128 uint32_t words.
 #ifndef CIRCUITPY_DISPLAY_AREA_BUFFER_SIZE
-#define CIRCUITPY_DISPLAY_AREA_BUFFER_SIZE (128)
+#define CIRCUITPY_DISPLAY_AREA_BUFFER_SIZE (512)
 #endif
 
 #else
@@ -485,6 +503,23 @@ void background_callback_run_all(void);
 
 // USB settings
 
+#ifndef CIRCUITPY_SDCARD_USB
+#if CIRCUITPY_USB_DEVICE
+#define CIRCUITPY_SDCARD_USB (CIRCUITPY_SDCARDIO && CIRCUITPY_USB_MSC)
+// Default value of CIRCUITPY_SDCARD_USB in settings.toml.
+#ifndef CIRCUITPY_SDCARD_USB_DEFAULT
+// True for most boards.
+#define CIRCUITPY_SDCARD_USB_DEFAULT (true)
+#endif
+#else
+#define CIRCUITPY_SDCARD_USB (0)
+#endif
+#endif
+
+#if CIRCUITPY_SDCARD_USB && !(CIRCUITPY_SDCARDIO)
+#error CIRCUITPY_SDCARD_USB requires CIRCUITPY_SDCARDIO
+#endif
+
 // Debug level for TinyUSB. Only outputs over debug UART so it doesn't cause
 // additional USB logging.
 #ifndef CIRCUITPY_DEBUG_TINYUSB
@@ -495,8 +530,16 @@ void background_callback_run_all(void);
 #define CIRCUITPY_USB_DEVICE_INSTANCE 0
 #endif
 
+#ifndef CIRCUITPY_USB_DEVICE_HIGH_SPEED
+#define CIRCUITPY_USB_DEVICE_HIGH_SPEED 0
+#endif
+
 #ifndef CIRCUITPY_USB_HOST_INSTANCE
 #define CIRCUITPY_USB_HOST_INSTANCE -1
+#endif
+
+#ifndef CIRCUITPY_USB_HOST_HIGH_SPEED
+#define CIRCUITPY_USB_HOST_HIGH_SPEED 0
 #endif
 
 // If the port requires certain USB endpoint numbers, define these in mpconfigport.h.
@@ -598,7 +641,7 @@ void background_callback_run_all(void);
 // Align the internal sector buffer. Useful when it is passed into TinyUSB for
 // loads.
 #ifndef MICROPY_FATFS_WINDOW_ALIGNMENT
-#define MICROPY_FATFS_WINDOW_ALIGNMENT CIRCUITPY_TUSB_MEM_ALIGN
+#define MICROPY_FATFS_WINDOW_ALIGNMENT 64 // Espressif is strictest
 #endif
 
 #define FF_FS_CASE_INSENSITIVE_COMPARISON_ASCII_ONLY (1)

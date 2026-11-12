@@ -9,16 +9,18 @@
 # -----------------------------------------------------------------------------
 
 REPO_ROOT="/workspaces/circuitpython"
+CMAKE_VERSION="3.31.12"
 
 echo -e "[common_tools.sh] starting install"
 cd "$REPO_ROOT"
 
 # --- repositories and tools   ------------------------------------------------
 
-echo -e "[common_tools.sh] adding kitware-archive (for current CMAKE)"
-sudo .devcontainer/add_kitware_archive.sh
-echo -e "[common_tools.sh] installing current version of CMAKE"
-sudo apt-get -y install cmake
+echo -e "[common_tools.sh] installing CMAKE $CMAKE_VERSION"
+wget -q https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-$(arch).sh
+chmod +x cmake-$CMAKE_VERSION-linux-$(arch).sh
+sudo ./cmake-$CMAKE_VERSION-linux-$(arch).sh --prefix=/usr/local --skip-license
+rm cmake-$CMAKE_VERSION-linux-$(arch).sh
 
 echo -e "[common_tools.sh] adding pybricks/ppa"
 sudo add-apt-repository -y ppa:pybricks/ppa

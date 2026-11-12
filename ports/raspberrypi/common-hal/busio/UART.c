@@ -50,7 +50,7 @@ static void pin_check(const uint8_t uart, const mcu_pin_obj_t *pin, const uint8_
     if (pins_uart != uart) {
         raise_ValueError_invalid_pins();
     }
-    #ifdef PICO_RP2350
+    #if PICO_RP2350
     if ((pin_type == 0 && pin->number % 4 == 2) ||
         (pin_type == 1 && pin->number % 4 == 3)) {
         return;
@@ -67,7 +67,7 @@ static uint8_t pin_init(const uint8_t uart, const mcu_pin_obj_t *pin, const uint
     }
     claim_pin(pin);
     gpio_function_t function = GPIO_FUNC_UART;
-    #ifdef PICO_RP2350
+    #if PICO_RP2350
     if ((pin_type == 0 && pin->number % 4 == 2) ||
         (pin_type == 1 && pin->number % 4 == 3)) {
         function = GPIO_FUNC_UART_AUX;

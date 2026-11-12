@@ -17,7 +17,10 @@
 #include "shared-bindings/fontio/BuiltinFont.h"
 
 //| class Terminal:
-//|     """Display a character stream with a TileGrid
+//|     """Terminal manages tile indices and cursor position based on VT100 commands. The ``font`` should be
+//|     a `fontio.BuiltinFont` and the ``scroll_area`` TileGrid's bitmap should match the font's bitmap.
+//|
+//|     Display a character stream with a TileGrid
 //|
 //|     ASCII control:
 //|     * ``\\r`` - Move cursor to column 1
@@ -46,16 +49,74 @@
 //|     * ``ESC [ ## ; ## ; ## m`` - Set the terminal display attributes.
 //|
 //|     Supported Display attributes:
-//|     0 - Reset all attributes
-//|     Foreground Colors    Background Colors
-//|     30 - Black           40 - Black
-//|     31 - Red             41 - Red
-//|     32 - Green           42 - Green
-//|     33 - Yellow          43 - Yellow
-//|     34 - Blue            44 - Blue
-//|     35 - Magenta         45 - Magenta
-//|     36 - Cyan            46 - Cyan
-//|     37 - White           47 - White
+//|
+//|     +--------+------------+------------+
+//|     | Color  | Foreground | Background |
+//|     +========+============+============+
+//|     | Reset  | 0          | 0          |
+//|     +--------+------------+------------+
+//|     | Black  | 30         | 40         |
+//|     +--------+------------+------------+
+//|     | Red    | 31         | 41         |
+//|     +--------+------------+------------+
+//|     | Green  | 32         | 42         |
+//|     +--------+------------+------------+
+//|     | Yellow | 33         | 43         |
+//|     +--------+------------+------------+
+//|     | Blue   | 34         | 44         |
+//|     +--------+------------+------------+
+//|     | Magenta| 35         | 45         |
+//|     +--------+------------+------------+
+//|     | Cyan   | 36         | 46         |
+//|     +--------+------------+------------+
+//|     | White  | 37         | 47         |
+//|     +--------+------------+------------+
+//|
+//|     Example Usage:
+//|
+//|     .. code-block:: python
+//|
+//|         import time
+//|         import displayio
+//|         import supervisor
+//|         from displayio import Group, TileGrid
+//|         from terminalio import FONT, Terminal
+//|
+//|         main_group = Group()
+//|         display = supervisor.runtime.display
+//|         font_bb = FONT.get_bounding_box()
+//|         screen_size = (display.width // font_bb[0], display.height // font_bb[1])
+//|         char_size = FONT.get_bounding_box()
+//|
+//|         palette = displayio.Palette(2)
+//|         palette[0] = 0x000000
+//|         palette[1] = 0xffffff
+//|
+//|         tilegrid = TileGrid(
+//|             bitmap=FONT.bitmap, width=screen_size[0], height=screen_size[1],
+//|             tile_width=char_size[0], tile_height=char_size[1], pixel_shader=palette)
+//|
+//|         terminal = Terminal(tilegrid, FONT)
+//|
+//|         main_group.append(tilegrid)
+//|         display.root_group = main_group
+//|
+//|         message = "Hello World\\n"
+//|         terminal.write(message)
+//|
+//|         print(terminal.cursor_x, terminal.cursor_y)
+//|         move_cursor = chr(27) + "[10;10H"
+//|         terminal.write(f"Moving the cursor\\n{move_cursor} To here")
+//|
+//|         cursor_home = chr(27) + f"[{screen_size[1]};0H"
+//|         terminal.write(cursor_home)
+//|         i = 1
+//|         while True:
+//|             terminal.write(f"Writing again {i}\\n")
+//|             i = i + 1
+//|             time.sleep(1)
+//|
+//|
 //|     """
 //|
 //|     def __init__(
@@ -65,8 +126,6 @@
 //|         *,
 //|         status_bar: Optional[displayio.TileGrid] = None,
 //|     ) -> None:
-//|         """Terminal manages tile indices and cursor position based on VT100 commands. The font should be
-//|         a `fontio.BuiltinFont` and the TileGrid's bitmap should match the font's bitmap."""
 //|         ...
 //|
 
@@ -91,8 +150,8 @@ static mp_obj_t terminalio_terminal_make_new(const mp_obj_type_t *type, size_t n
     mp_arg_validate_int_min(scroll_area->width_in_tiles * scroll_area->height_in_tiles, 2, MP_QSTR_scroll_area_area);
 
     terminalio_terminal_obj_t *self = mp_obj_malloc(terminalio_terminal_obj_t, &terminalio_terminal_type);
-
     common_hal_terminalio_terminal_construct(self, scroll_area, font, status_bar);
+
     return MP_OBJ_FROM_PTR(self);
 }
 
@@ -113,7 +172,35 @@ static mp_uint_t terminalio_terminal_write(mp_obj_t self_in, const void *buf_in,
     return common_hal_terminalio_terminal_write(self, buf, size, errcode);
 }
 
+<<<<<<< HEAD
 static mp_uint_t terminalio_terminal_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
+=======
+//|     cursor_x: int
+//|     """The x position of the cursor."""
+//|
+static mp_obj_t terminalio_terminal_obj_get_cursor_x(mp_obj_t self_in) {
+    terminalio_terminal_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    return MP_OBJ_NEW_SMALL_INT(common_hal_terminalio_terminal_get_cursor_x(self));
+}
+MP_DEFINE_CONST_FUN_OBJ_1(terminalio_terminal_get_cursor_x_obj, terminalio_terminal_obj_get_cursor_x);
+
+MP_PROPERTY_GETTER(terminalio_terminal_cursor_x_obj,
+    (mp_obj_t)&terminalio_terminal_get_cursor_x_obj);
+
+//|     cursor_y: int
+//|     """The y position of the cursor."""
+//|
+static mp_obj_t terminalio_terminal_obj_get_cursor_y(mp_obj_t self_in) {
+    terminalio_terminal_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    return MP_OBJ_NEW_SMALL_INT(common_hal_terminalio_terminal_get_cursor_y(self));
+}
+MP_DEFINE_CONST_FUN_OBJ_1(terminalio_terminal_get_cursor_y_obj, terminalio_terminal_obj_get_cursor_y);
+
+MP_PROPERTY_GETTER(terminalio_terminal_cursor_y_obj,
+    (mp_obj_t)&terminalio_terminal_get_cursor_y_obj);
+
+static mp_uint_t terminalio_terminal_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
     terminalio_terminal_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_uint_t ret;
     if (request == MP_STREAM_POLL) {

@@ -9,14 +9,14 @@
 
 #include "shared-bindings/microcontroller/ResetReason.h"
 
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, POWER_ON, RESET_REASON_POWER_ON);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, BROWNOUT, RESET_REASON_BROWNOUT);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, SOFTWARE, RESET_REASON_SOFTWARE);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, DEEP_SLEEP_ALARM, RESET_REASON_DEEP_SLEEP_ALARM);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, RESET_PIN, RESET_REASON_RESET_PIN);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, WATCHDOG, RESET_REASON_WATCHDOG);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, UNKNOWN, RESET_REASON_UNKNOWN);
-MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, RESCUE_DEBUG, RESET_REASON_RESCUE_DEBUG);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, POWER_ON, MCU_RESET_REASON_POWER_ON);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, BROWNOUT, MCU_RESET_REASON_BROWNOUT);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, SOFTWARE, MCU_RESET_REASON_SOFTWARE);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, DEEP_SLEEP_ALARM, MCU_RESET_REASON_DEEP_SLEEP_ALARM);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, RESET_PIN, MCU_RESET_REASON_RESET_PIN);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, WATCHDOG, MCU_RESET_REASON_WATCHDOG);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, UNKNOWN, MCU_RESET_REASON_UNKNOWN);
+MAKE_ENUM_VALUE(mcu_reset_reason_type, reset_reason, RESCUE_DEBUG, MCU_RESET_REASON_RESCUE_DEBUG);
 
 //| class ResetReason:
 //|     """The reason the microcontroller was last reset"""

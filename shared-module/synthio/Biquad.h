@@ -17,4 +17,5 @@ typedef struct {
 
 void synthio_biquad_filter_assign(biquad_filter_state *st, mp_obj_t biquad_obj);
 void synthio_biquad_filter_reset(biquad_filter_state *st);
-void synthio_biquad_filter_samples(biquad_filter_state *st, int32_t *buffer, size_t n_samples);
+void synthio_biquad_filter_samples(mp_obj_t self_in, biquad_filter_state *st, int32_t *buffer, size_t n_samples);
+int32_t synthio_biquad_filter_sample(mp_obj_t self_in, biquad_filter_state *st, int32_t input);

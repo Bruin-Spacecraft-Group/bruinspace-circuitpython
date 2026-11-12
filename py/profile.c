@@ -211,9 +211,9 @@ static void frame_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
     mp_printf(print,
         "<frame at 0x%p, file '%q', line %d, code %q>",
         frame,
-        QSTR_MAP(code->context, 0),
-        frame->lineno,
-        QSTR_MAP(code->context, prelude->qstr_block_name_idx)
+        MP_CODE_QSTR_MAP(code->context, 0),
+        (int)frame->lineno,
+        MP_CODE_QSTR_MAP(code->context, prelude->qstr_block_name_idx)
         );
 }
 

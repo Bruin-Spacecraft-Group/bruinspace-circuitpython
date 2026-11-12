@@ -44,6 +44,7 @@ static mp_obj_t tilepalettemapper_tilepalettemapper_make_new(const mp_obj_type_t
     if (!mp_obj_is_type(palette, &displayio_palette_type)) {
         mp_raise_TypeError_varg(MP_ERROR_TEXT("unsupported %q type"), MP_QSTR_pixel_shader);
     }
+
     tilepalettemapper_tilepalettemapper_t *self = mp_obj_malloc(tilepalettemapper_tilepalettemapper_t, &tilepalettemapper_tilepalettemapper_type);
     common_hal_tilepalettemapper_tilepalettemapper_construct(self, palette, args[ARG_input_color_count].u_int, args[ARG_width].u_int, args[ARG_height].u_int);
 

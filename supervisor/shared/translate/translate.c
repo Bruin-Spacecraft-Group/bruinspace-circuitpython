@@ -114,7 +114,7 @@ static void decompress_vstr(mp_rom_error_text_t compressed, vstr_t *decompressed
         }
         int v = values[searched_length + bits - max_code];
         if (v == 1) {
-            qstr q = get_nbits(&b, translation_qstr_bits) + 1; // honestly no idea why "+1"...
+            qstr q = get_nbits(&b, translation_qstr_bits);
             vstr_add_str(decompressed, qstr_str(q));
         } else {
             put_utf8(decompressed, v);

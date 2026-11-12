@@ -1,0 +1,13 @@
+USB_VID = 0x2E8A
+USB_PID = 0x10C0
+USB_PRODUCT = "Explorer"
+USB_MANUFACTURER = "Pimoroni"
+
+CHIP_VARIANT = RP2350
+CHIP_PACKAGE = B
+CHIP_FAMILY = rp2
+
+EXTERNAL_FLASH_DEVICES = "W25Q128JVxQ"
+
+# GPIO12-19 needed for picodvi, but several are not available.
+CIRCUITPY_PICODVI = 0

@@ -150,7 +150,14 @@ static mp_obj_t _mdns_server_find(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 }
 static MP_DEFINE_CONST_FUN_OBJ_KW(mdns_server_find_obj, 1, _mdns_server_find);
 
-//|     def advertise_service(self, *, service_type: str, protocol: str, port: int) -> None:
+//|     def advertise_service(
+//|         self,
+//|         *,
+//|         service_type: str,
+//|         protocol: str,
+//|         port: int,
+//|         txt_records: Optional[Sequence[str]] = None,
+//|     ) -> None:
 //|         """Respond to queries for the given service with the given port.
 //|
 //|         ``service_type`` and ``protocol`` can only occur on one port. Any call after the first
@@ -158,8 +165,8 @@ static MP_DEFINE_CONST_FUN_OBJ_KW(mdns_server_find_obj, 1, _mdns_server_find);
 //|
 //|         If web workflow is active, the port it uses can't also be used to advertise a service.
 //|
-//|         **Limitations**: Publishing up to 32 TXT records is only supported on the RP2040 Pico W board at
-//|         this time.
+//|         **Limitations**: Publishing TXT records (up to 32) is supported only on RP2xxx.
+//|         There is currently no TXT record support on Espressif boards.
 //|
 //|         :param str service_type: The service type such as "_http"
 //|         :param str protocol: The service protocol such as "_tcp"

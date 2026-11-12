@@ -48,11 +48,13 @@ MP_NATIVE_ARCH_ARMV7EMDP = 8
 MP_NATIVE_ARCH_XTENSA = 9
 MP_NATIVE_ARCH_XTENSAWIN = 10
 MP_PERSISTENT_OBJ_STR = 5
-MP_SCOPE_FLAG_VIPERRELOC = 0x10
-MP_SCOPE_FLAG_VIPERRODATA = 0x20
-MP_SCOPE_FLAG_VIPERBSS = 0x40
+## CIRCUITPY-CHANGE: FLAG_ASYNC
+MP_SCOPE_FLAG_VIPERRELOC = 0x20
+MP_SCOPE_FLAG_VIPERRODATA = 0x40
+MP_SCOPE_FLAG_VIPERBSS = 0x80
 MP_SMALL_INT_BITS = 31
-MP_FUN_TABLE_MP_TYPE_TYPE_OFFSET = 73
+## CIRCUITPY-CHANGE (due to added assert_native_inited)
+MP_FUN_TABLE_MP_TYPE_TYPE_OFFSET = 74
 
 # ELF constants
 R_386_32 = 1
@@ -306,6 +308,7 @@ class LinkEnv:
         self.known_syms = {}  # dict of symbols that are defined
         self.unresolved_syms = []  # list of unresolved symbols
         self.mpy_relocs = []  # list of relocations needed in the output .mpy file
+        self.externs = {}  # dict of externally-defined symbols
 
     def check_arch(self, arch_name):
         if arch_name != self.arch.name:
@@ -395,10 +398,14 @@ def populate_got(env):
         sym = got_entry.sym
         if hasattr(sym, "resolved"):
             sym = sym.resolved
-        sec = sym.section
-        addr = sym["st_value"]
-        got_entry.sec_name = sec.name
-        got_entry.link_addr += sec.addr + addr
+        if sym.name in env.externs:
+            got_entry.sec_name = ".external.fixed_addr"
+            got_entry.link_addr = env.externs[sym.name]
+        else:
+            sec = sym.section
+            addr = sym["st_value"]
+            got_entry.sec_name = sec.name
+            got_entry.link_addr += sec.addr + addr
 
     # Get sorted GOT, sorted by external, text, rodata, bss so relocations can be combined
     got_list = sorted(
@@ -424,6 +431,9 @@ def populate_got(env):
             dest = int(got_entry.name.split("+")[1], 16) // env.arch.word_size
         elif got_entry.sec_name == ".external.mp_fun_table":
             dest = got_entry.sym.mp_fun_table_offset
+        elif got_entry.sec_name == ".external.fixed_addr":
+            # Fixed-address symbols should not be relocated.
+            continue
         elif got_entry.sec_name.startswith(".text"):
             dest = ".text"
         elif got_entry.sec_name.startswith(".rodata"):
@@ -568,6 +578,42 @@ def do_relocation_text(env, text_addr, r):
             return
         assert 0
 
+    elif env.arch.name == "EM_RISCV" and r_info_type in (
+        R_RISCV_TLS_GD_HI20,
+        R_RISCV_TLSDESC_HI20,
+        R_RISCV_TLSDESC_ADD_LO12,
+        R_RISCV_TLSDESC_CALL,
+    ):
+        # TLS relocations are not supported.
+        raise LinkError("{}: RISC-V TLS relocation: {}".format(s.filename, s.name))
+
+    elif env.arch.name == "EM_RISCV" and r_info_type in (
+        R_RISCV_TPREL_HI20,
+        R_RISCV_TPREL_LO12_I,
+        R_RISCV_TPREL_LO12_S,
+        R_RISCV_TPREL_ADD,
+    ):
+        # ThreadPointer-relative relocations are not supported.
+        raise LinkError("{}: RISC-V TP-relative relocation: {}".format(s.filename, s.name))
+
+    elif env.arch.name == "EM_RISCV" and r_info_type in (R_RISCV_SET_ULEB128, R_RISCV_SUB_ULEB128):
+        # 128-bit value relocations are not supported
+        raise LinkError("{}: RISC-V ULEB128 relocation: {}".format(s.filename, s.name))
+
+    elif env.arch.name == "EM_RISCV" and r_info_type in (R_RISCV_RELAX, R_RISCV_ALIGN):
+        # To keep things simple, no relocations are relaxed and thus no
+        # size optimisation is performed even if there is the chance, along
+        # with no offsets to fix up.
+        return
+
+    elif env.arch.name == "EM_RISCV":
+        (addr, value) = process_riscv32_relocation(env, text_addr, r)
+
+    elif env.arch.name == "EM_ARM" and r_info_type == R_ARM_ABS32:
+        # Absolute relocation, handled as a data relocation.
+        do_relocation_data(env, text_addr, r)
+        return
+
     else:
         # Unknown/unsupported relocation
         assert 0, r_info_type
@@ -627,9 +673,11 @@ def do_relocation_data(env, text_addr, r):
     ):
         # Relocation in data.rel.ro to internal/external symbol
         if env.arch.word_size == 4:
-            struct_type = "<I"
+            struct_type = "<i"
         elif env.arch.word_size == 8:
-            struct_type = "<Q"
+            struct_type = "<q"
+        if hasattr(s, "resolved"):
+            s = s.resolved
         sec = s.section
         assert r_offset % env.arch.word_size == 0
         addr = sec.addr + s["st_value"] + r_addend
@@ -698,23 +746,24 @@ def load_object_file(env, felf):
                     for r in sec.reloc:
                         r.sym = symtab[r["r_info_sym"]]
 
-        # Link symbols to their sections, and update known and unresolved symbols
-        for sym in symtab:
-            sym.filename = felf
-            shndx = sym.entry["st_shndx"]
-            if shndx in sections_shndx:
-                # Symbol with associated section
-                sym.section = sections_shndx[shndx]
-                if sym["st_info"]["bind"] == "STB_GLOBAL":
-                    # Defined global symbol
-                    if sym.name in env.known_syms and not sym.name.startswith(
-                        "__x86.get_pc_thunk."
-                    ):
-                        raise LinkError("duplicate symbol: {}".format(sym.name))
-                    env.known_syms[sym.name] = sym
-            elif sym.entry["st_shndx"] == "SHN_UNDEF" and sym["st_info"]["bind"] == "STB_GLOBAL":
-                # Undefined global symbol, needs resolving
-                env.unresolved_syms.append(sym)
+    # Link symbols to their sections, and update known and unresolved symbols
+    dup_errors = []
+    for sym in symtab:
+        sym.filename = felf
+        shndx = sym.entry["st_shndx"]
+        if shndx in sections_shndx:
+            # Symbol with associated section
+            sym.section = sections_shndx[shndx]
+            if sym["st_info"]["bind"] in ("STB_GLOBAL", "STB_WEAK"):
+                # Defined global symbol
+                if sym.name in env.known_syms and not sym.name.startswith("__x86.get_pc_thunk."):
+                    dup_errors.append("duplicate symbol: {}".format(sym.name))
+                env.known_syms[sym.name] = sym
+        elif sym.entry["st_shndx"] == "SHN_UNDEF" and sym["st_info"]["bind"] == "STB_GLOBAL":
+            # Undefined global symbol, needs resolving
+            env.unresolved_syms.append(sym)
+    if dup_errors:
+        raise LinkError("\n".join(dup_errors))
 
 
 def link_objects(env, native_qstr_vals_len):
@@ -787,12 +836,27 @@ def link_objects(env, native_qstr_vals_len):
             sym.section = env.obj_table_section
         elif sym.name in env.known_syms:
             sym.resolved = env.known_syms[sym.name]
+        elif sym.name in env.externs:
+            # Fixed-address symbols do not need pre-processing.
+            continue
         else:
             if sym.name in fun_table:
                 sym.section = mp_fun_table_sec
                 sym.mp_fun_table_offset = fun_table[sym.name]
             else:
-                raise LinkError("{}: undefined symbol: {}".format(sym.filename, sym.name))
+                undef_errors.append("{}: undefined symbol: {}".format(sym.filename, sym.name))
+
+    for sym in env.externs:
+        if sym in env.known_syms:
+            log(
+                LOG_LEVEL_1,
+                "Symbol {} is a fixed-address symbol at {:08x} and is also provided from an object file".format(
+                    sym, env.externs[sym]
+                ),
+            )
+
+    if undef_errors:
+        raise LinkError("\n".join(undef_errors))
 
     # Align sections, assign their addresses, and create full_text
     env.full_text = bytearray(env.arch.asm_jump(8))  # dummy, to be filled in later
@@ -1034,13 +1098,79 @@ def do_link(args):
     log(LOG_LEVEL_2, "qstr vals: " + ", ".join(native_qstr_vals))
     env = LinkEnv(args.arch)
     try:
-        for file in args.files:
-            load_object_file(env, file)
+        if args.externs:
+            env.externs = parse_linkerscript(args.externs)
+
+        # Load object files
+        for fn in args.files:
+            with open(fn, "rb") as f:
+                load_object_file(env, f, fn)
+
+        if args.libs:
+            # Load archive info
+            archives = []
+            for item in args.libs:
+                archives.extend(ar_util.load_archive(item))
+            # List symbols to look for
+            syms = set(sym.name for sym in env.unresolved_syms)
+            # Resolve symbols from libs
+            lib_objs, _ = ar_util.resolve(archives, syms)
+            # Load extra object files from libs
+            for ar, obj in lib_objs:
+                obj_name = ar.fn + ":" + obj
+                log(LOG_LEVEL_2, "using " + obj_name)
+                with ar.open(obj) as f:
+                    load_object_file(env, f, obj_name)
+
         link_objects(env, len(native_qstr_vals))
         build_mpy(env, env.find_addr("mpy_init"), args.output, native_qstr_vals)
     except LinkError as er:
         print("LinkError:", er.args[0])
         sys.exit(1)
+
+
+def parse_linkerscript(source):
+    # This extracts fixed-address symbol lists from linkerscripts, only parsing
+    # a small subset of all possible directives.  Right now the only
+    # linkerscript file this is really tested against is the ESP8266's builtin
+    # ROM functions list ($SDK/ld/eagle.rom.addr.v6.ld).
+    #
+    # The parser should be able to handle symbol entries inside ESP-IDF's ROM
+    # symbol lists for the ESP32 range of MCUs as well (see *.ld files in
+    # $SDK/components/esp_rom/<name>/).
+
+    symbols = {}
+
+    LINE_REGEX = re.compile(
+        r"^(?P<weak>PROVIDE\()?"  # optional weak marker start
+        r"(?P<symbol>[a-zA-Z_]\w*)"  # symbol name
+        r"=0x(?P<address>[\da-fA-F]{1,8})*"  # symbol address
+        r"(?(weak)\));$",  # optional weak marker end and line terminator
+        re.ASCII,
+    )
+
+    inside_comment = False
+    for line in (line.strip() for line in source.readlines()):
+        if line.startswith("/*") and not inside_comment:
+            if not line.endswith("*/"):
+                inside_comment = True
+            continue
+        if inside_comment:
+            if line.endswith("*/"):
+                inside_comment = False
+            continue
+        if line.startswith("//"):
+            continue
+        match = LINE_REGEX.match("".join(line.split()))
+        if not match:
+            continue
+        tokens = match.groupdict()
+        symbol = tokens["symbol"]
+        address = int(tokens["address"], 16)
+        if symbol in symbols:
+            raise ValueError(f"Symbol {symbol} already defined")
+        symbols[symbol] = address
+    return symbols
 
 
 def main():
@@ -1055,6 +1185,13 @@ def main():
     cmd_parser.add_argument("--qstrs", default=None, help="file defining additional qstrs")
     cmd_parser.add_argument(
         "--output", "-o", default=None, help="output .mpy file (default to input with .o->.mpy)"
+    )
+    cmd_parser.add_argument(
+        "--externs",
+        "-e",
+        type=argparse.FileType("rt"),
+        default=None,
+        help="linkerscript providing fixed-address symbols to augment symbol resolution",
     )
     cmd_parser.add_argument("files", nargs="+", help="input files")
     args = cmd_parser.parse_args()

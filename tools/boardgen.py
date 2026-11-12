@@ -108,6 +108,10 @@ class Pin:
             )
         )
 
+    # Iterate over board pin names in consistent sorted order.
+    def board_pin_names(self):
+        return sorted(self._board_pin_names, key=lambda x: x[0])
+
     # Override this to handle an af specified in af.csv.
     def add_af(self, af_idx, af_name, af):
         raise NotImplementedError
@@ -293,7 +297,7 @@ class PinGenerator:
             file=out_source,
         )
         for pin in self.available_pins():
-            for board_pin_name, board_hidden in pin._board_pin_names:
+            for board_pin_name, board_hidden in pin.board_pin_names():
                 if board_hidden:
                     # Don't include hidden pins in Pins.board.
                     continue
@@ -367,7 +371,7 @@ class PinGenerator:
 
             # #define pin_BOARDNAME (pin_CPUNAME)
             if board:
-                for board_pin_name, _board_hidden in pin._board_pin_names:
+                for board_pin_name, _board_hidden in pin.board_pin_names():
                     # Note: Hidden board pins are still available to C via the macro.
                     # Note: The RHS isn't wrapped in (), which is necessary to make the
                     # STATIC_AF_ macro work on STM32.

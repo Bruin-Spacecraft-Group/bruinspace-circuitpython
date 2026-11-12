@@ -69,7 +69,6 @@ static mp_obj_t pulseio_pulsein_make_new(const mp_obj_type_t *type, size_t n_arg
     const mcu_pin_obj_t *pin = validate_obj_is_free_pin(args[ARG_pin].u_obj, MP_QSTR_pin);
 
     pulseio_pulsein_obj_t *self = mp_obj_malloc_with_finaliser(pulseio_pulsein_obj_t, &pulseio_pulsein_type);
-
     common_hal_pulseio_pulsein_construct(self, pin, args[ARG_maxlen].u_int,
         args[ARG_idle_state].u_bool);
 

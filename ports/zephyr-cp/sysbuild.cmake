@@ -13,9 +13,11 @@ if(SB_CONFIG_NET_CORE_IMAGE_HCI_IPC)
         BOARD       ${SB_CONFIG_NET_CORE_BOARD}
     )
 
-    set(${NET_APP}_CONF_FILE
-     ${NET_APP_SRC_DIR}/nrf5340_cpunet_iso-bt_ll_sw_split.conf
+    set(${NET_APP}_OVERLAY_CONFIG
+     ${NET_APP_SRC_DIR}/extra-cis-bt_ll_sw_split.conf
      CACHE INTERNAL ""
     )
 
+    native_simulator_set_child_images(${DEFAULT_IMAGE} ${NET_APP})
+    native_simulator_set_final_executable(${DEFAULT_IMAGE})
 endif()

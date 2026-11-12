@@ -55,8 +55,6 @@
 
 static mp_obj_t aesio_aes_make_new(const mp_obj_type_t *type, size_t n_args,
     size_t n_kw, const mp_obj_t *all_args) {
-    aesio_aes_obj_t *self = mp_obj_malloc(aesio_aes_obj_t, &aesio_aes_type);
-
     enum { ARG_key, ARG_mode, ARG_IV, ARG_counter, ARG_segment_size };
     static const mp_arg_t allowed_args[] = {
         {MP_QSTR_key, MP_ARG_OBJ | MP_ARG_REQUIRED, {.u_obj = MP_OBJ_NULL} },
@@ -100,8 +98,10 @@ static mp_obj_t aesio_aes_make_new(const mp_obj_type_t *type, size_t n_args,
         iv = bufinfo.buf;
     }
 
+    aesio_aes_obj_t *self = mp_obj_malloc(aesio_aes_obj_t, &aesio_aes_type);
     common_hal_aesio_aes_construct(self, key, key_length, iv, mode,
         args[ARG_counter].u_int);
+
     return MP_OBJ_FROM_PTR(self);
 }
 

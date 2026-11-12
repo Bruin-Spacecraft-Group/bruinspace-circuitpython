@@ -32,9 +32,9 @@ void board_init(void) {
     common_hal_fourwire_fourwire_construct(
         bus,
         spi,
-        &pin_GPIO11, // TFT_DC Command or data
-        &pin_GPIO12, // TFT_CS Chip select
-        NULL, // TFT_RST Reset
+        MP_OBJ_FROM_PTR(&pin_GPIO11), // TFT_DC Command or data
+        MP_OBJ_FROM_PTR(&pin_GPIO12), // TFT_CS Chip select
+        mp_const_none, // TFT_RST Reset
         60000000, // Baudrate
         0, // Polarity
         0); // Phase

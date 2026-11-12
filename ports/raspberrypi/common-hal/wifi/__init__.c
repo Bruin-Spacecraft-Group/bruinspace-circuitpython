@@ -15,6 +15,10 @@
 #include "py/mpstate.h"
 #include "py/runtime.h"
 
+#if CIRCUITPY_SETTINGS_TOML
+#include "supervisor/shared/settings.h"
+#endif
+
 wifi_radio_obj_t common_hal_wifi_radio_obj;
 
 #include "supervisor/port.h"
@@ -45,6 +49,15 @@ void common_hal_wifi_init(bool user_initiated) {
 
     // set station mode to avoid the default SoftAP
     common_hal_wifi_radio_start_station(self);
+
+    #if CIRCUITPY_SETTINGS_TOML
+    // Must be set after station starts.
+    char hostname[sizeof(self->hostname)];
+    if (settings_get_str("CIRCUITPY_WIFI_HOSTNAME", hostname, sizeof(hostname)) == SETTINGS_OK) {
+        common_hal_wifi_radio_set_hostname(self, hostname);
+    }
+    #endif
+
     // start wifi
     common_hal_wifi_radio_set_enabled(self, true);
 }

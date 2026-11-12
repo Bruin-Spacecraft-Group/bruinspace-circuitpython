@@ -25,12 +25,28 @@
 #include "hardware/watchdog.h"
 #include "hardware/irq.h"
 
+// DMA interrupt (DMA_IRQ_n) allocation for this port:
+//
+//   DMA_IRQ_0  Shared. audiocore (audio_dma.c) and rp2pio (StateMachine.c) each
+//              register a shared handler with irq_add_shared_handler() and
+//              service only their own DMA channels. Any new code that needs a
+//              DMA completion interrupt should do the same: add a shared handler
+//              on DMA_IRQ_0, check dma_hw->ints0, and acknowledge only its own
+//              channels. Runs at the default IRQ priority and is masked during
+//              flash writes (see common_hal_mcu_disable_interrupts below).
+//   DMA_IRQ_1  Exclusive to picodvi (Framebuffer_RP2040.c / Framebuffer_RP2350.c),
+//              registered with irq_set_exclusive_handler() at the highest
+//              priority. On RP2350 it is deliberately kept enabled during flash
+//              writes via BASEPRI (see below) so the display keeps refreshing.
+//   DMA_IRQ_2  RP2350 only; currently unused / free.
+//   DMA_IRQ_3  RP2350 only; currently unused / free.
+
 void common_hal_mcu_delay_us(uint32_t delay) {
     mp_hal_delay_us(delay);
 }
 
 volatile uint32_t nesting_count = 0;
-#ifdef PICO_RP2040
+#if PICO_RP2040
 void common_hal_mcu_disable_interrupts(void) {
     // We don't use save_and_disable_interrupts() from the sdk because we don't want to worry about PRIMASK.
     // This is what we do on the SAMD21 via CMSIS.

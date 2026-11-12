@@ -15,13 +15,53 @@
 
 // Data storage for singleton instance of SleepMemory.
 // Might be RTC_SLOW_MEM or RTC_FAST_MEM, depending on setting of CONFIG_ESP32S2_RTCDATA_IN_FAST_MEM.
-static RTC_DATA_ATTR uint8_t _sleep_mem[SLEEP_MEMORY_LENGTH];
+#if defined(CONFIG_SOC_RTC_FAST_MEM_SUPPORTED) || defined(CONFIG_SOC_RTC_SLOW_MEM_SUPPORTED)
+static RTC_NOINIT_ATTR uint8_t _sleep_mem[SLEEP_MEMORY_LENGTH];
 
 void alarm_sleep_memory_reset(void) {
-    // ESP-IDF build system takes care of doing esp_sleep_pd_config() or the equivalent with
-    // the correct settings, depending on which RTC mem we are using.
-    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/api-reference/system/sleep_modes.html#power-down-of-rtc-peripherals-and-memories
+    // With RTC_NOINIT_ATTR, the bootloader does not initialize sleep memory.
+    // Preserve contents on resets where the RTC domain stays powered (software
+    // reset, watchdog, panic, deep sleep wake). Clear on everything else —
+    // after power-on, SRAM contents are undefined; after brown-out, the RTC
+    // domain was reset by hardware (System Reset scope per TRM Figure 6.1-1).
+    //
+    // esp_reset_reason() does not change across supervisor reloads,
+    // so do this check only once per chip reset.
+    static bool checked_reset_reason = false;
+    if (checked_reset_reason) {
+        return;
+    }
+    checked_reset_reason = true;
+
+    esp_reset_reason_t reason = esp_reset_reason();
+    switch (reason) {
+        case ESP_RST_SW:        // microcontroller.reset() / esp_restart()
+        case ESP_RST_DEEPSLEEP: // deep sleep wake
+        case ESP_RST_PANIC:     // unhandled exception
+        case ESP_RST_INT_WDT:   // interrupt watchdog
+        case ESP_RST_TASK_WDT:  // task watchdog
+        case ESP_RST_WDT:       // other watchdog
+            // RTC domain was not reset — sleep memory is intact.
+            break;
+        default:
+            // Power-on, brown-out, unknown, or any other reason where
+            // RTC SRAM contents may be undefined. Clear to zero.
+            memset(_sleep_mem, 0, sizeof(_sleep_mem));
+            break;
+    }
 }
+
+#else
+
+// Chips without RTC memory can't persist SleepMemory across deep sleep.
+static uint8_t _sleep_mem[SLEEP_MEMORY_LENGTH];
+
+void alarm_sleep_memory_reset(void) {
+    // Do nothing for chips without RTC memory.
+}
+
+#endif
+
 
 uint32_t common_hal_alarm_sleep_memory_get_length(alarm_sleep_memory_obj_t *self) {
     return sizeof(_sleep_mem);

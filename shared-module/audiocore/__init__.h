@@ -114,3 +114,5 @@ void audiosample_convert_u16m_u8s(uint8_t *buffer_out, const uint16_t *buffer_in
 void audiosample_convert_u16s_u8s(uint8_t *buffer_out, const uint16_t *buffer_in, size_t nframes);
 void audiosample_convert_s16m_u8s(uint8_t *buffer_out, const int16_t *buffer_in, size_t nframes);
 void audiosample_convert_s16s_u8s(uint8_t *buffer_out, const int16_t *buffer_in, size_t nframes);
+
+#define audiosample_cast_obj(obj) ((audiosample_base_t *)MP_OBJ_TO_PTR(obj))

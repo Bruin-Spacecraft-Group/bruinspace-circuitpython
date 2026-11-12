@@ -25,6 +25,7 @@ void common_hal_picodvi_framebuffer_construct(picodvi_framebuffer_obj_t *self,
 void common_hal_picodvi_framebuffer_deinit(picodvi_framebuffer_obj_t *self);
 bool common_hal_picodvi_framebuffer_deinited(picodvi_framebuffer_obj_t *self);
 void common_hal_picodvi_framebuffer_refresh(picodvi_framebuffer_obj_t *self);
+void common_hal_picodvi_framebuffer_wait_for_vblank(picodvi_framebuffer_obj_t *self);
 int common_hal_picodvi_framebuffer_get_width(picodvi_framebuffer_obj_t *self);
 int common_hal_picodvi_framebuffer_get_height(picodvi_framebuffer_obj_t *self);
 int common_hal_picodvi_framebuffer_get_row_stride(picodvi_framebuffer_obj_t *self);

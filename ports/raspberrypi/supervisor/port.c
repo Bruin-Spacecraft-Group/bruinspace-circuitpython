@@ -4,11 +4,16 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "supervisor/background_callback.h"
 #include "supervisor/board.h"
+#include "supervisor/linker.h"
 #include "supervisor/port.h"
 
 #include "bindings/rp2pio/StateMachine.h"
@@ -24,6 +29,7 @@
 
 #if CIRCUITPY_SSL
 #include "shared-module/ssl/__init__.h"
+#include "psa/crypto.h"
 #endif
 
 #if CIRCUITPY_WIFI
@@ -33,10 +39,16 @@
 #include "common-hal/rtc/RTC.h"
 #include "common-hal/busio/UART.h"
 
+#if CIRCUITPY_SDIOIO
+#include "common-hal/sdioio/SDCard.h"
+#endif
+
 #include "supervisor/shared/safe_mode.h"
 #include "supervisor/shared/stack.h"
 #include "supervisor/shared/tick.h"
 
+#include "hardware/clocks.h"
+#include "hardware/structs/scb.h"
 #include "hardware/structs/watchdog.h"
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
@@ -52,7 +64,7 @@
 #include "pico/bootrom.h"
 #include "hardware/watchdog.h"
 
-#ifdef PICO_RP2350
+#if PICO_RP2350
 #include "RP2350.h" // CMSIS
 #endif
 
@@ -63,6 +75,40 @@
 #include "lib/tlsf/tlsf.h"
 
 critical_section_t background_queue_lock;
+
+// The SDK's panic() lives in flash, but core1 may run with flash access
+// disabled by the MPU (usb_host and picodvi lock it out), where a flash call
+// hard faults before anything is printed. -Wl,--wrap=panic routes every
+// panic here instead: core0 keeps the SDK behavior, core1 halts from RAM.
+// Verified by tools/check_core1_flash_calls.py.
+void __wrap_panic(const char *fmt, ...) __attribute__((noreturn, format(printf, 1, 2)));
+void panic_core0(const char *fmt, va_list args) __attribute__((noreturn, format(printf, 1, 0)));
+
+// Flash-resident; only ever called from core0 (see __wrap_panic). Mirrors
+// the SDK implementation. noinline keeps the flash-calling code out of the
+// RAM-resident wrapper below.
+__attribute__((noinline)) void panic_core0(const char *fmt, va_list args) {
+    puts("\n*** PANIC ***\n");
+    if (fmt) {
+        vprintf(fmt, args);
+        puts("");
+    }
+    _exit(1);
+}
+
+void __not_in_flash_func(__wrap_panic)(const char *fmt, ...) {
+    if (get_core_num() == 0) {
+        va_list args;
+        va_start(args, fmt);
+        panic_core0(fmt, args);
+    }
+    // Flash may be MPU-locked on this core and stdio is core0-only, so the
+    // message is unprintable here. Halt in RAM: a debugger stops at the
+    // breakpoint, otherwise spin.
+    __breakpoint();
+    while (1) {
+    }
+}
 
 extern volatile bool mp_msc_enabled;
 
@@ -101,6 +147,9 @@ static size_t _psram_size = 0;
 #include "hardware/structs/xip_ctrl.h"
 
 static void __no_inline_not_in_flash_func(setup_psram)(void) {
+    // Read the system clock before QMI goes into direct mode; clock_get_hz() is
+    // in flash and XIP is reconfigured below.
+    uint32_t sys_clk_khz = clock_get_hz(clk_sys) / 1000;
     gpio_set_function(CIRCUITPY_PSRAM_CHIP_SELECT->number, GPIO_FUNC_XIP_CS1);
     _psram_size = 0;
     common_hal_mcu_disable_interrupts();
@@ -186,14 +235,7 @@ static void __no_inline_not_in_flash_func(setup_psram)(void) {
     // Disable direct csr.
     qmi_hw->direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS);
 
-    qmi_hw->m[1].timing =
-        QMI_M0_TIMING_PAGEBREAK_VALUE_1024 << QMI_M0_TIMING_PAGEBREAK_LSB | // Break between pages.
-            3 << QMI_M0_TIMING_SELECT_HOLD_LSB | // Delay releasing CS for 3 extra system cycles.
-            1 << QMI_M0_TIMING_COOLDOWN_LSB |
-            1 << QMI_M0_TIMING_RXDELAY_LSB |
-            16 << QMI_M0_TIMING_MAX_SELECT_LSB | // In units of 64 system clock cycles. PSRAM says 8us max. 8 / 0.00752 / 64 = 16.62
-            7 << QMI_M0_TIMING_MIN_DESELECT_LSB | // In units of system clock cycles. PSRAM says 50ns.50 / 7.52 = 6.64
-            2 << QMI_M0_TIMING_CLKDIV_LSB;
+    mcu_processor_update_psram_timing(sys_clk_khz);
     qmi_hw->m[1].rfmt = (QMI_M0_RFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_PREFIX_WIDTH_LSB |
             QMI_M0_RFMT_ADDR_WIDTH_VALUE_Q << QMI_M0_RFMT_ADDR_WIDTH_LSB |
             QMI_M0_RFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_SUFFIX_WIDTH_LSB |
@@ -257,7 +299,21 @@ void port_heap_init(void) {
 }
 
 void *port_malloc(size_t size, bool dma_capable) {
+<<<<<<< HEAD
     void *block = tlsf_malloc(_heap, size);
+=======
+    // Prefer internal RAM for everything: it is much faster than PSRAM
+    // (data there skips the external bus and the shared XIP cache). PSRAM, when
+    // present, serves as spillover capacity for allocations that don't need DMA.
+    common_hal_mcu_disable_interrupts();
+    void *block = tlsf_malloc(_heap, size);
+    common_hal_mcu_enable_interrupts();
+    if (block == NULL && !dma_capable && _psram_size > 0) {
+        common_hal_mcu_disable_interrupts();
+        block = tlsf_malloc(_psram_heap, size);
+        common_hal_mcu_enable_interrupts();
+    }
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
     return block;
 }
 
@@ -265,8 +321,28 @@ void port_free(void *ptr) {
     tlsf_free(_heap, ptr);
 }
 
+<<<<<<< HEAD
 void *port_realloc(void *ptr, size_t size) {
     return tlsf_realloc(_heap, ptr, size);
+=======
+void *port_realloc(void *ptr, size_t size, bool dma_capable) {
+    if (ptr == NULL) {
+        // Fresh allocation: same internal-first policy as port_malloc.
+        return port_malloc(size, dma_capable);
+    }
+    if (_psram_size > 0 && ((size_t)ptr) < SRAM_BASE) {
+        common_hal_mcu_disable_interrupts();
+        void *block = tlsf_realloc(_psram_heap, ptr, size);
+        common_hal_mcu_enable_interrupts();
+        if (block) {
+            return block;
+        }
+    }
+    common_hal_mcu_disable_interrupts();
+    void *new_ptr = tlsf_realloc(_heap, ptr, size);
+    common_hal_mcu_enable_interrupts();
+    return new_ptr;
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 }
 
 static bool max_size_walker(void *ptr, size_t size, int used, void *user) {
@@ -294,10 +370,10 @@ safe_mode_t port_init(void) {
     // Load from the XIP memory space that doesn't cache. That way we don't
     // evict anything else. The code we're loading is linked to the RAM address
     // anyway.
-    #ifdef PICO_RP2040
+    #if PICO_RP2040
     size_t nocache = 0x03000000;
     #endif
-    #ifdef PICO_RP2350
+    #if PICO_RP2350
     size_t nocache = 0x04000000;
     #endif
 
@@ -336,6 +412,16 @@ safe_mode_t port_init(void) {
     // Initialize RTC
     #if CIRCUITPY_RTC
     common_hal_rtc_init();
+    #endif
+
+    // Send-event-on-pend, so the WFE in port_idle_until_interrupt wakes on a
+    // pending interrupt (as WFI did) in addition to waking on SEV — including
+    // the SEV core 1 sends via port_wake_main_task() when it queues USB host
+    // work.
+    #if PICO_RP2040
+    scb_hw->scr |= M0PLUS_SCR_SEVONPEND_BITS;
+    #else
+    scb_hw->scr |= M33_SCR_SEVONPEND_BITS;
     #endif
 
     // For the tick.
@@ -380,7 +466,6 @@ safe_mode_t port_init(void) {
 
 void reset_port(void) {
     #if CIRCUITPY_BUSIO
-    reset_spi();
     reset_uart();
     #endif
 
@@ -390,6 +475,10 @@ void reset_port(void) {
 
     #if CIRCUITPY_RP2PIO
     reset_rp2pio_statemachine();
+    #endif
+
+    #if CIRCUITPY_SDIOIO
+    sdioio_reset();
     #endif
 
     #if CIRCUITPY_RTC
@@ -402,6 +491,14 @@ void reset_port(void) {
 
     #if CIRCUITPY_SSL
     ssl_reset();
+
+    // For raspberrypi, we must free PSA crypto, because there are GC-heap objects
+    // in the key slots.  We can't put this call in ssl_reset() because that's a
+    // shared-module implementation. Unlike raspberrypi, espressif ESP-IDF inits PSA
+    // once at boot and would never re-init it.
+    // common_hal_ssl_sslcontext_construct() re-inits PSA on demand.
+    // So for raspberrypi, we must call mbedtls_psa_crypto_free() explicitly.
+    mbedtls_psa_crypto_free();
     #endif
 
     #if CIRCUITPY_WATCHDOG
@@ -411,8 +508,6 @@ void reset_port(void) {
     #if CIRCUITPY_WIFI
     wifi_reset();
     #endif
-
-    reset_all_pins();
 }
 
 void reset_to_bootloader(void) {
@@ -508,7 +603,7 @@ void port_interrupt_after_ticks(uint32_t ticks) {
 }
 
 void port_idle_until_interrupt(void) {
-    #ifdef PICO_RP2040
+    #if PICO_RP2040
     common_hal_mcu_disable_interrupts();
     #if CIRCUITPY_USB_HOST
     if (!background_callback_pending() && !tud_task_event_ready() && !tuh_task_event_ready() && !_woken_up) {
@@ -516,7 +611,11 @@ void port_idle_until_interrupt(void) {
     if (!background_callback_pending() && !tud_task_event_ready() && !_woken_up) {
         #endif
         __DSB();
-        __WFI();
+        // WFE, not WFI: the event register is sticky, so a SEV from core 1
+        // (port_wake_main_task, e.g. a USB host event) that lands between the
+        // checks above and here still terminates the wait. Pending interrupts
+        // wake it too, via SEVONPEND (set in port_init).
+        __wfe();
     }
     common_hal_mcu_enable_interrupts();
     #else
@@ -535,7 +634,8 @@ void port_idle_until_interrupt(void) {
     if (!background_callback_pending() && !tud_task_event_ready() && !_woken_up) {
         #endif
         __DSB();
-        __WFI();
+        // WFE, not WFI: see the RP2040 branch above.
+        __wfe();
     }
 
     // and restore basepri before reenabling interrupts
@@ -546,10 +646,28 @@ void port_idle_until_interrupt(void) {
     #endif
 }
 
+// Called whenever a background callback is queued, including from core 1
+// (which runs the PIO-USB host and posts its events here). SEV is broadcast
+// to both cores and latches in the event register, so it reliably ends the
+// WFE in port_idle_until_interrupt even if it arrives before the WFE starts.
+// Without this, core 0 sleeps through host events for the remainder of a
+// time.sleep(): device removal processing and enumeration stall until the
+// next unrelated wakeup.
+// PLACE_IN_ITCM: core 1 runs with flash execute-never, so this must live in
+// RAM like its background_callback_add_core caller (__sev inlines to a bare
+// instruction).
+void PLACE_IN_ITCM(port_wake_main_task)(void) {
+    __sev();
+}
+
 /**
  * \brief Default interrupt handler for unused IRQs.
  */
+<<<<<<< HEAD
 extern void isr_hardfault(void); // provide a prototype to avoid a missing-prototypes diagnostic
+=======
+extern MP_NORETURN void isr_hardfault(void); // provide a prototype to avoid a missing-prototypes diagnostic
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 __attribute__((used)) void __not_in_flash_func(isr_hardfault)(void) {
     // Only safe mode from core 0 which is running CircuitPython. Core 1 faulting
     // should not be fatal to CP. (Fingers crossed.)
@@ -561,7 +679,11 @@ __attribute__((used)) void __not_in_flash_func(isr_hardfault)(void) {
     }
 }
 
+<<<<<<< HEAD
 void port_yield() {
+=======
+void port_task_yield(void) {
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
     #if CIRCUITPY_CYW43
     cyw43_arch_poll();
     #endif
@@ -576,3 +698,56 @@ void port_boot_info(void) {
     mp_printf(&mp_plat_print, "\n");
     #endif
 }
+<<<<<<< HEAD
+=======
+
+#if CIRCUITPY_BOOT_BUTTON_NO_GPIO
+bool __no_inline_not_in_flash_func(port_boot_button_pressed)(void) {
+    // Sense the state of the boot button. Because this function
+    // disables flash, it cannot be safely called once the second
+    // core has been started. When the BOOTSEL button is sensed as
+    // pressed, return is delayed until the button is released and
+    // a delay has passed in order to debounce the button.
+    const uint32_t CS_PIN_INDEX = 1;
+    #if PICO_RP2040
+    const uint32_t CS_BIT = 1u << 1;
+    #else
+    const uint32_t CS_BIT = SIO_GPIO_HI_IN_QSPI_CSN_BITS;
+    #endif
+    uint32_t int_state = save_and_disable_interrupts();
+    // Wait for any outstanding XIP activity to finish. Flash
+    // must be quiescent before disabling the chip select. Since
+    // there's no XIP busy indication we can test, we delay a
+    // generous 5 ms to allow any XIP activity to finish.
+    busy_wait_us(5000);
+    // Float the flash chip select pin. The line will HI-Z due to
+    // the external 10K pull-up resistor.
+    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
+        GPIO_OVERRIDE_LOW << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
+            IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
+    // Delay 100 us to allow the CS line to stabilize. If BOOTSEL is
+    // pressed, the line will be pulled low by the button and its
+    // 1K external resistor to ground.
+    busy_wait_us(100);
+    bool button_pressed = !(sio_hw->gpio_hi_in & CS_BIT);
+    // Wait for the button to be released.
+    if (button_pressed) {
+        while (!(sio_hw->gpio_hi_in & CS_BIT)) {
+            tight_loop_contents();
+        }
+        // Wait for 50 ms to debounce the button.
+        busy_wait_us(50000);
+    }
+    // Restore the flash chip select pin to its original state.
+    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
+        GPIO_OVERRIDE_NORMAL << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
+            IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
+    // Delay 5 ms to allow the flash chip to re-enable and for the
+    // flash CS pin to stabilize.
+    busy_wait_us(5000);
+    // Restore the interrupt state.
+    restore_interrupts(int_state);
+    return button_pressed;
+}
+#endif
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5

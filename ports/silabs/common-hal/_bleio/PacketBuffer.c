@@ -145,7 +145,7 @@ void _common_hal_bleio_packet_buffer_construct(
     uint32_t *outgoing_buffer1,
     uint32_t *outgoing_buffer2,
     size_t max_packet_size,
-    ble_event_handler_t static_handler_entry) {
+    ble_event_handler_t *static_handler_entry) {
 
     bleio_characteristic_properties_t temp_prop;
     self->characteristic = characteristic;
@@ -387,6 +387,8 @@ bool common_hal_bleio_packet_buffer_deinited(bleio_packet_buffer_obj_t *self) {
 void common_hal_bleio_packet_buffer_deinit(bleio_packet_buffer_obj_t *self) {
     if (!common_hal_bleio_packet_buffer_deinited(self)) {
         ringbuf_deinit(&self->ringbuf);
+        // Mark as deinited, so common_hal_bleio_packet_buffer_deinited() reports it.
+        self->characteristic = NULL;
     }
 }
 

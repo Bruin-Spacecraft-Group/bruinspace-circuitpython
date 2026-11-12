@@ -17,3 +17,6 @@
 
 #define DEFAULT_I2C_BUS_SCL (&pin_GPIO9)
 #define DEFAULT_I2C_BUS_SDA (&pin_GPIO8)
+
+// Reduce wifi.radio.tx_power due to the antenna design of this board
+#define CIRCUITPY_WIFI_DEFAULT_TX_POWER   (15)

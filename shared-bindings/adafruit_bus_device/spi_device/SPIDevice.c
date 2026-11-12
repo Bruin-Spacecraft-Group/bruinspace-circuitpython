@@ -59,8 +59,6 @@
 //|     ...
 //|
 static mp_obj_t adafruit_bus_device_spidevice_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    adafruit_bus_device_spidevice_obj_t *self =
-        mp_obj_malloc(adafruit_bus_device_spidevice_obj_t, &adafruit_bus_device_spidevice_type);
     enum { ARG_spi, ARG_chip_select, ARG_cs_active_value, ARG_baudrate, ARG_polarity, ARG_phase, ARG_extra_clocks };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_spi, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -78,12 +76,11 @@ static mp_obj_t adafruit_bus_device_spidevice_make_new(const mp_obj_type_t *type
 
     mp_arg_validate_type_or_none(args[ARG_chip_select].u_obj, &digitalio_digitalinout_type, MP_QSTR_chip_select);
 
-    common_hal_adafruit_bus_device_spidevice_construct(MP_OBJ_TO_PTR(self), spi, args[ARG_chip_select].u_obj, args[ARG_cs_active_value].u_bool, args[ARG_baudrate].u_int, args[ARG_polarity].u_int,
-        args[ARG_phase].u_int, args[ARG_extra_clocks].u_int);
-
     if (args[ARG_chip_select].u_obj != mp_const_none) {
-        digitalinout_result_t result = common_hal_digitalio_digitalinout_switch_to_output(MP_OBJ_TO_PTR(args[ARG_chip_select].u_obj),
-            true, DRIVE_MODE_PUSH_PULL);
+        digitalinout_result_t result =
+            common_hal_digitalio_digitalinout_switch_to_output(MP_OBJ_TO_PTR(args[ARG_chip_select].u_obj),
+                true,
+                DRIVE_MODE_PUSH_PULL);
         #if CIRCUITPY_DIGITALIO_HAVE_INPUT_ONLY
         if (result == DIGITALINOUT_INPUT_ONLY) {
             mp_raise_NotImplementedError(MP_ERROR_TEXT("Pin is input only"));
@@ -93,7 +90,19 @@ static mp_obj_t adafruit_bus_device_spidevice_make_new(const mp_obj_type_t *type
         #endif
     }
 
-    return (mp_obj_t)self;
+    adafruit_bus_device_spidevice_obj_t *self =
+        mp_obj_malloc(adafruit_bus_device_spidevice_obj_t, &adafruit_bus_device_spidevice_type);
+    common_hal_adafruit_bus_device_spidevice_construct(MP_OBJ_TO_PTR(self),
+        spi,
+        args[ARG_chip_select].u_obj,
+        args[ARG_cs_active_value].u_bool,
+        args[ARG_baudrate].u_int,
+        args[ARG_polarity].u_int,
+        args[ARG_phase].u_int,
+        args[ARG_extra_clocks].u_int);
+
+
+    return MP_OBJ_FROM_PTR(self);
 }
 
 //|     def __enter__(self) -> busio.SPI:

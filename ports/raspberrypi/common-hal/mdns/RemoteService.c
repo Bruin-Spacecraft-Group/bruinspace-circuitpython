@@ -39,6 +39,3 @@ mp_obj_t common_hal_mdns_remoteservice_get_ipv4_address(mdns_remoteservice_obj_t
     }
     return common_hal_ipaddress_new_ipv4address(addr);
 }
-
-void common_hal_mdns_remoteservice_deinit(mdns_remoteservice_obj_t *self) {
-}

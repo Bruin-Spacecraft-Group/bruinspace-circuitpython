@@ -255,6 +255,9 @@ void common_hal_audiopwmio_pwmaudioout_play(audiopwmio_pwmaudioout_obj_t *self, 
     if (active_audio) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Another PWMAudioOut is already active")); // TODO
     }
+
+    audiosample_check(sample);
+
     self->sample = sample;
     self->loop = loop;
 

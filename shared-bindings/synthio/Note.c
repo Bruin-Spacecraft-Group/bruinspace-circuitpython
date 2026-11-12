@@ -61,11 +61,11 @@ static mp_obj_t synthio_note_make_new(const mp_obj_type_t *type_in, size_t n_arg
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(note_properties), note_properties, args);
 
     synthio_note_obj_t *self = mp_obj_malloc(synthio_note_obj_t, &synthio_note_type);
+    mp_obj_t self_obj = MP_OBJ_FROM_PTR(self);
 
-    mp_obj_t result = MP_OBJ_FROM_PTR(self);
-    properties_construct_helper(result, note_properties, args, MP_ARRAY_SIZE(note_properties));
+    properties_construct_helper(self_obj, note_properties, args, MP_ARRAY_SIZE(note_properties));
 
-    return result;
+    return self_obj;
 };
 
 //|     frequency: float

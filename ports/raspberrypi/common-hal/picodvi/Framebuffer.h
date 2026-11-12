@@ -6,7 +6,7 @@
 
 #pragma once
 
-#ifdef PICO_RP2040
+#if PICO_RP2040
 #include "Framebuffer_RP2040.h"
 #else
 #include "Framebuffer_RP2350.h"

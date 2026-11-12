@@ -122,7 +122,6 @@
 //|         :param int native_frames_per_second: Number of display refreshes per second that occur with the given init_sequence.
 //|         :param bool backlight_on_high: If True, pulling the backlight pin high turns the backlight on.
 //|         :param bool SH1107_addressing: Special quirk for SH1107, use upper/lower column set and page set
-//|         :param int set_vertical_scroll: This parameter is accepted but ignored for backwards compatibility. It will be removed in a future release.
 //|         :param int backlight_pwm_frequency: The frequency to use to drive the PWM for backlight brightness control. Default is 50000.
 //|         """
 //|         ...
@@ -133,7 +132,7 @@ static mp_obj_t busdisplay_busdisplay_make_new(const mp_obj_type_t *type, size_t
            ARG_rotation, ARG_color_depth, ARG_grayscale, ARG_pixels_in_byte_share_row,
            ARG_bytes_per_cell, ARG_reverse_pixels_in_byte, ARG_reverse_bytes_in_word,
            ARG_set_column_command, ARG_set_row_command, ARG_write_ram_command,
-           ARG_set_vertical_scroll, ARG_backlight_pin, ARG_brightness_command,
+           ARG_backlight_pin, ARG_brightness_command,
            ARG_brightness, ARG_single_byte_bounds, ARG_data_as_commands,
            ARG_auto_refresh, ARG_native_frames_per_second, ARG_backlight_on_high,
            ARG_SH1107_addressing, ARG_backlight_pwm_frequency };
@@ -154,7 +153,6 @@ static mp_obj_t busdisplay_busdisplay_make_new(const mp_obj_type_t *type, size_t
         { MP_QSTR_set_column_command, MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0x2a} },
         { MP_QSTR_set_row_command, MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0x2b} },
         { MP_QSTR_write_ram_command, MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0x2c} },
-        { MP_QSTR_set_vertical_scroll, MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0x0} },
         { MP_QSTR_backlight_pin, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = mp_const_none} },
         { MP_QSTR_brightness_command, MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = NO_BRIGHTNESS_COMMAND} },
         { MP_QSTR_brightness, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NEW_SMALL_INT(1)} },

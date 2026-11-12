@@ -10,3 +10,6 @@ CHIP_FAMILY = rp2
 EXTERNAL_FLASH_DEVICES = "P25Q32SH"
 
 CIRCUITPY__EVE = 1
+
+# GPIO12-19 needed for picodvi, but GPIO16-19 are not available.
+CIRCUITPY_PICODVI = 0

@@ -38,8 +38,7 @@ ifeq ($(DEBUG), 1)
 	CFLAGS += -fno-inline -fno-ipa-sra
 else
 	CFLAGS += -DNDEBUG
-	OPTIMIZATION_FLAGS ?= -O2 -fno-inline-functions
-	CFLAGS += -ggdb3
+	OPTIMIZATION_FLAGS ?= -O2
 endif
 
 # to override compiler optimization level, set in boards/$(BOARD)/mpconfigboard.mk
@@ -197,23 +196,20 @@ ifneq ($(CIRCUITPY_AUDIOBUSIO_PDMIN),0)
 endif
 
 ifneq ($(CIRCUITPY_USB),0)
-SRC_C += \
-	lib/tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c \
-	lib/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c
+	ifeq ($(MCU_VARIANT),$(filter $(MCU_VARIANT),STM32L433xx))
+		SRC_C += lib/tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+		SRC_C += lib/tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c
+	else
+		SRC_C += lib/tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c
+		SRC_C += lib/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c
+	endif
 endif
 
 SRC_S = \
-	supervisor/cpu.s \
+	shared/runtime/gchelper_thumb1.s \
 	st_driver/cmsis_device_$(MCU_SERIES_LOWER)/Source/Templates/gcc/startup_$(MCU_VARIANT_LOWER).s
 
-SRC_COMMON_HAL_EXPANDED = $(addprefix shared-bindings/, $(SRC_COMMON_HAL)) \
-						  $(addprefix shared-bindings/, $(SRC_BINDINGS_ENUMS)) \
-						  $(addprefix common-hal/, $(SRC_COMMON_HAL))
-
-SRC_SHARED_MODULE_EXPANDED = $(addprefix shared-bindings/, $(SRC_SHARED_MODULE)) \
-							 $(addprefix shared-module/, $(SRC_SHARED_MODULE)) \
-							 $(addprefix shared-module/, $(SRC_SHARED_MODULE_INTERNAL))
-
+SRC_C += shared/runtime/gchelper_native.c
 
 ifneq ($(FROZEN_MPY_DIR),)
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR) -type f -name '*.py')
@@ -255,7 +251,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(STEPECHO) "LINK $@"
 	$(Q)echo $^ > $(BUILD)/firmware.objs
 	$(Q)$(CC) -o $@ $(LDFLAGS) @$(BUILD)/firmware.objs -Wl,--print-memory-usage -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LD_FILE) $(BUILD)
+	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $@.map $(BUILD)
 endif
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf

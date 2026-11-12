@@ -118,7 +118,7 @@ static mp_uint_t bleio_characteristic_buffer_write(mp_obj_t self_in, const void 
     return 0;
 }
 
-static mp_uint_t bleio_characteristic_buffer_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
+static mp_uint_t bleio_characteristic_buffer_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     bleio_characteristic_buffer_obj_t *self = MP_OBJ_TO_PTR(self_in);
     check_for_deinit(self);
     raise_error_if_not_connected(self);

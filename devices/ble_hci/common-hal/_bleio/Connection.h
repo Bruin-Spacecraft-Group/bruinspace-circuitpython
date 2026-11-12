@@ -61,6 +61,7 @@ typedef struct {
     uint8_t disconnect_reason;
 } bleio_connection_obj_t;
 
+void bleio_check_connected(uint16_t conn_handle);
 uint16_t bleio_connection_get_conn_handle(bleio_connection_obj_t *self);
 mp_obj_t bleio_connection_new_from_internal(bleio_connection_internal_t *connection);
 bleio_connection_internal_t *bleio_conn_handle_to_connection(uint16_t conn_handle);

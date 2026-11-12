@@ -74,7 +74,7 @@ CFLAGS += \
 	-fdata-sections \
 	-Wall \
 
-OPTIMIZATION_FLAGS ?= -O2 -fno-inline-functions
+OPTIMIZATION_FLAGS ?= -O2
 
 # option to override compiler optimization level, set in boards/$(BOARD)/mpconfigboard.mk
 CFLAGS += $(OPTIMIZATION_FLAGS)
@@ -118,7 +118,9 @@ SRC_SHARED_MODULE_EXPANDED = $(addprefix shared-bindings/, $(SRC_SHARED_MODULE))
                              $(addprefix shared-module/, $(SRC_SHARED_MODULE)) \
                              $(addprefix shared-module/, $(SRC_SHARED_MODULE_INTERNAL))
 
-SRC_S = supervisor/cpu.s
+SRC_S = shared/runtime/gchelper_thumb2.s
+
+SRC_C += shared/runtime/gchelper_native.c
 
 SRC_C += \
 	background.c \
@@ -129,8 +131,12 @@ SRC_C += \
 
 OBJ = $(PY_O) $(SUPERVISOR_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
+<<<<<<< HEAD
 OBJ += $(addprefix $(BUILD)/, $(SRC_COMMON_HAL_EXPANDED:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_SHARED_MODULE_EXPANDED:.c=.o))
+=======
+OBJ += $(addprefix $(BUILD)/, $(SRC_COMMON_HAL_SHARED_MODULE_EXPANDED:.c=.o))
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 ifeq ($(INTERNAL_LIBM),1)
 OBJ += $(addprefix $(BUILD)/, $(SRC_LIBM:.c=.o))
 endif

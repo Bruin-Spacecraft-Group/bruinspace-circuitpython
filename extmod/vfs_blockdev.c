@@ -38,6 +38,10 @@
 #include "shared-bindings/sdioio/SDCard.h"
 #endif
 
+#if CIRCUITPY_EMMCIO
+#include "shared-bindings/emmcio/EMMC.h"
+#endif
+
 
 #if MICROPY_VFS
 
@@ -63,7 +67,35 @@ void mp_vfs_blockdev_init(mp_vfs_blockdev_t *self, mp_obj_t bdev) {
     #endif
     #if CIRCUITPY_SDIOIO
     if (mp_obj_get_type(bdev) == &sdioio_SDCard_type) {
-        // TODO: Enable native blockdev for SDIO too.
+        self->flags |= MP_BLOCKDEV_FLAG_NATIVE | MP_BLOCKDEV_FLAG_HAVE_IOCTL;
+        self->readblocks[0] = mp_const_none;
+        self->readblocks[1] = bdev;
+        self->readblocks[2] = (mp_obj_t)sdioio_sdcard_readblocks; // native version
+        self->writeblocks[0] = mp_const_none;
+        self->writeblocks[1] = bdev;
+        self->writeblocks[2] = (mp_obj_t)sdioio_sdcard_writeblocks; // native version
+        self->u.ioctl[0] = mp_const_none;
+        self->u.ioctl[1] = bdev;
+        self->u.ioctl[2] = (mp_obj_t)sdioio_sdcard_ioctl; // native version
+    }
+    #endif
+
+    #if CIRCUITPY_EMMCIO
+    if (mp_obj_get_type(bdev) == &emmcio_emmc_type) {
+        self->flags |= MP_BLOCKDEV_FLAG_NATIVE | MP_BLOCKDEV_FLAG_HAVE_IOCTL;
+        self->readblocks[0] = mp_const_none;
+        self->readblocks[1] = bdev;
+        self->readblocks[2] = (mp_obj_t)emmcio_emmc_readblocks_native;
+        if (emmcio_emmc_is_write_enabled(bdev)) {
+            self->writeblocks[0] = mp_const_none;
+            self->writeblocks[1] = bdev;
+            self->writeblocks[2] = (mp_obj_t)emmcio_emmc_writeblocks_native;
+        } else {
+            self->writeblocks[0] = MP_OBJ_NULL;
+        }
+        self->u.ioctl[0] = mp_const_none;
+        self->u.ioctl[1] = bdev;
+        self->u.ioctl[2] = (mp_obj_t)emmcio_emmc_ioctl_native;
     }
     #endif
     if (self->u.ioctl[0] != MP_OBJ_NULL) {
@@ -73,6 +105,34 @@ void mp_vfs_blockdev_init(mp_vfs_blockdev_t *self, mp_obj_t bdev) {
         // No ioctl method, so assume the device uses the old block protocol
         mp_load_method_maybe(bdev, MP_QSTR_sync, self->u.old.sync);
         mp_load_method(bdev, MP_QSTR_count, self->u.old.count);
+    }
+}
+
+// Helper function to minimise code size of read/write functions
+// note the n_args argument is moved to the end for further code size reduction (args keep same position in caller and callee).
+static int mp_vfs_blockdev_call_rw(mp_obj_t *args, size_t block_num, size_t block_off, size_t len, void *buf, size_t n_args) {
+    mp_obj_array_t ar = {{&mp_type_bytearray}, BYTEARRAY_TYPECODE, 0, len, buf};
+    args[2] = MP_OBJ_NEW_SMALL_INT(block_num);
+    args[3] = MP_OBJ_FROM_PTR(&ar);
+    args[4] = MP_OBJ_NEW_SMALL_INT(block_off); // ignored for n_args == 2
+    mp_obj_t ret = mp_call_method_n_kw(n_args, 0, args);
+
+    if (ret == mp_const_none) {
+        return 0;
+    } else {
+        // Some block devices return a bool indicating success, so
+        // convert those to an errno integer code.
+        if (ret == mp_const_true) {
+            return 0;
+        } else if (ret == mp_const_false) {
+            return -MP_EIO;
+        }
+        // Block device functions are expected to return 0 on success
+        // and negative integer on errors. Check for positive integer
+        // results as some callers (i.e. littlefs) will produce corrupt
+        // results from these.
+        int i = mp_obj_get_int(ret);
+        return i > 0 ? (-MP_EINVAL) : i;
     }
 }
 

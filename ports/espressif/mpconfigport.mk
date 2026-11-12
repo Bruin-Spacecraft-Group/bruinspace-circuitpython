@@ -4,6 +4,9 @@ CROSS_COMPILE = riscv32-esp-elf-
 else ifeq ($(IDF_TARGET),esp32c3)
 IDF_TARGET_ARCH = riscv
 CROSS_COMPILE = riscv32-esp-elf-
+else ifeq ($(IDF_TARGET),esp32c5)
+IDF_TARGET_ARCH = riscv
+CROSS_COMPILE = riscv32-esp-elf-
 else ifeq ($(IDF_TARGET),esp32p4)
 IDF_TARGET_ARCH = riscv
 CROSS_COMPILE = riscv32-esp-elf-
@@ -57,11 +60,13 @@ CIRCUITPY_LIBC_STRING0 = 0
 
 # These modules are implemented in ports/<port>/common-hal:
 CIRCUITPY_ALARM ?= 1
-CIRCUITPY_ALARM_TOUCH ?= 0
+CIRCUITPY_ALARM_PRESERVE_DIOS ?= 1
+CIRCUITPY_ALARM_TOUCH ?= 1
 CIRCUITPY_ANALOGBUFIO ?= 1
 CIRCUITPY_AUDIOBUSIO ?= 1
-CIRCUITPY_AUDIOBUSIO_PDMIN ?= 0
-CIRCUITPY_AUDIOIO ?= 0
+CIRCUITPY_AUDIOBUSIO_PDMIN ?= 0 # Unimportant for now so leave unchecked?
+CIRCUITPY_AUDIOI2SIN ?= 0 		# ^
+CIRCUITPY_AUDIOIO ?= 1
 CIRCUITPY_BLEIO_HCI = 0
 CIRCUITPY_CANIO ?= 1
 CIRCUITPY_COUNTIO ?= 1
@@ -71,7 +76,7 @@ CIRCUITPY_ESPULP ?= 1
 CIRCUITPY_FRAMEBUFFERIO ?= 1
 CIRCUITPY_FREQUENCYIO ?= 1
 CIRCUITPY_HASHLIB ?= 1
-CIRCUITPY_I2CTARGET ?= 0
+CIRCUITPY_I2CTARGET = 0
 CIRCUITPY_MAX3421E ?= 1
 CIRCUITPY_MEMORYMAP ?= 1
 CIRCUITPY_NVM ?= 1
@@ -81,6 +86,7 @@ CIRCUITPY_RGBMATRIX ?= 1
 CIRCUITPY_ROTARYIO ?= 1
 CIRCUITPY_SDIOIO ?= 1
 CIRCUITPY_SYNTHIO_MAX_CHANNELS ?= 12
+CIRCUITPY_TOUCHIO ?= 1
 CIRCUITPY_TOUCHIO_USE_NATIVE ?= 1
 CIRCUITPY_WATCHDOG ?= 1
 CIRCUITPY_WIFI ?= 1
@@ -92,6 +98,7 @@ CIRCUITPY__EVE ?= 1
 # Conditionally turn off modules/features
 ifeq ($(IDF_TARGET),esp32)
 # Modules
+<<<<<<< HEAD
 CIRCUITPY_ALARM_TOUCH = 1
 CIRCUITPY_AUDIOIO = 1
 CIRCUITPY_RGBMATRIX = 0
@@ -100,6 +107,11 @@ CIRCUITPY_RGBMATRIX = 0
 CIRCUITPY_SDIOIO = 0
 
 # Features
+=======
+CIRCUITPY_RGBMATRIX = 0
+
+# Has no USB
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 CIRCUITPY_USB_DEVICE = 0
 
 else ifeq ($(IDF_TARGET),esp32c2)
@@ -110,6 +122,10 @@ else ifeq ($(IDF_TARGET),esp32c2)
 CIRCUITPY_ESPCAMERA = 0
 CIRCUITPY_ESPULP = 0
 CIRCUITPY_MEMORYMAP = 0
+
+# No capacitive touch peripheral
+CIRCUITPY_ALARM_TOUCH = 0
+CIRCUITPY_TOUCHIO_USE_NATIVE = 0
 
 # No I80 support from the IDF
 CIRCUITPY_PARALLELDISPLAYBUS = 0
@@ -127,6 +143,7 @@ CIRCUITPY_ANALOGBUFIO = 0
 
 # No I2S
 CIRCUITPY_AUDIOBUSIO = 0
+CIRCUITPY_AUDIOI2SIN = 0
 
 # No RMT
 CIRCUITPY_NEOPIXEL_WRITE = 0
@@ -136,8 +153,6 @@ CIRCUITPY_RGBMATRIX = 0
 # No SDMMC
 CIRCUITPY_SDIOIO = 0
 
-CIRCUITPY_TOUCHIO ?= 1
-CIRCUITPY_TOUCHIO_USE_NATIVE = 0
 # Features
 CIRCUITPY_USB_DEVICE = 0
 CIRCUITPY_ESP_USB_SERIAL_JTAG = 0
@@ -151,6 +166,20 @@ CIRCUITPY_MEMORYMAP = 0
 # No I80 support from the IDF
 CIRCUITPY_PARALLELDISPLAYBUS = 0
 
+<<<<<<< HEAD
+=======
+# No capacitive touch peripheral
+CIRCUITPY_ALARM_TOUCH = 0
+CIRCUITPY_TOUCHIO_USE_NATIVE = 0
+
+# No DAC
+CIRCUITPY_AUDIOIO = 0
+
+# No I2S peripheral PDM-to-PCM hardware support
+CIRCUITPY_AUDIOBUSIO_PDMIN = 0
+CIRCUITPY_AUDIOI2SIN = 0
+
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 # No PCNT peripheral
 CIRCUITPY_FREQUENCYIO = 0
 CIRCUITPY_COUNTIO = 0
@@ -159,8 +188,37 @@ CIRCUITPY_ROTARYIO = 0
 # No SDMMC
 CIRCUITPY_SDIOIO = 0
 
-CIRCUITPY_TOUCHIO ?= 1
+# Features
+CIRCUITPY_USB_DEVICE = 0
+CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 1
+
+#### esp32c5 ##########################################################
+else ifeq ($(IDF_TARGET),esp32c5)
+# Modules
+CIRCUITPY_ESPCAMERA = 0
+CIRCUITPY_ESPULP = 0
+CIRCUITPY_MEMORYMAP = 0
+CIRCUITPY_RGBMATRIX = 0
+
+# TWAI-FD generation, needs a new canio backend
+CIRCUITPY_CANIO = 0
+
+# No capacitive touch peripheral
+CIRCUITPY_ALARM_TOUCH = 0
 CIRCUITPY_TOUCHIO_USE_NATIVE = 0
+
+# No DAC
+CIRCUITPY_AUDIOIO = 0
+
+# No I2S peripheral PDM-to-PCM hardware support
+CIRCUITPY_AUDIOBUSIO_PDMIN = 0
+
+# No LCD_CAM peripheral, so no esp_lcd_new_i80_bus()
+CIRCUITPY_PARALLELDISPLAYBUS = 0
+
+# No SDMMC
+CIRCUITPY_SDIOIO = 0
+
 # Features
 CIRCUITPY_USB_DEVICE = 0
 CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 1
@@ -176,8 +234,22 @@ CIRCUITPY_ESPULP = 0
 CIRCUITPY_MEMORYMAP = 0
 CIRCUITPY_RGBMATRIX = 0
 
+<<<<<<< HEAD
+=======
+# No capacitive touch peripheral
+CIRCUITPY_ALARM_TOUCH = 0
+CIRCUITPY_TOUCHIO_USE_NATIVE = 0
+
+# No DAC
+CIRCUITPY_AUDIOIO = 0
+
+# No I2S peripheral PDM-to-PCM hardware support
+CIRCUITPY_AUDIOBUSIO_PDMIN = 0
+
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 # No space for this
 CIRCUITPY_AUDIOBUSIO = 0
+CIRCUITPY_AUDIOI2SIN = 0
 
 # No I80 support from the IDF
 CIRCUITPY_PARALLELDISPLAYBUS = 0
@@ -185,12 +257,56 @@ CIRCUITPY_PARALLELDISPLAYBUS = 0
 # No SDMMC
 CIRCUITPY_SDIOIO = 0
 
-CIRCUITPY_TOUCHIO ?= 1
-CIRCUITPY_TOUCHIO_USE_NATIVE = 0
 # Features
 CIRCUITPY_USB_DEVICE = 0
 CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 1
 
+<<<<<<< HEAD
+=======
+#### esp32c6 ##########################################################
+else ifeq ($(IDF_TARGET),esp32c61)
+# Modules
+CIRCUITPY_ESPCAMERA = 0
+CIRCUITPY_ESPULP = 0
+CIRCUITPY_MEMORYMAP = 0
+CIRCUITPY_RGBMATRIX = 0
+
+# No capacitive touch peripheral
+CIRCUITPY_ALARM_TOUCH = 0
+CIRCUITPY_TOUCHIO_USE_NATIVE = 0
+
+# No DAC
+CIRCUITPY_AUDIOIO = 0
+
+# No space for this
+CIRCUITPY_AUDIOBUSIO = 0
+CIRCUITPY_AUDIOI2SIN = 0
+
+# No I80 support from the IDF
+CIRCUITPY_PARALLELDISPLAYBUS = 0
+
+# No SDMMC
+CIRCUITPY_SDIOIO = 0
+
+# Features
+CIRCUITPY_USB_DEVICE = 0
+CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 1
+
+# No TWAI on chip
+CIRCUITPY_CANIO = 0
+
+# No RMT on chip
+CIRCUITPY_NEOPIXEL_WRITE = 0
+CIRCUITPY_PULSEIO = 0
+CIRCUITPY_RGBMATRIX = 0
+
+# No PCNT on chip
+CIRCUITPY_COUNTIO = 0
+CIRCUITPY_ROTARYIO = 0
+CIRCUITPY_FREQUENCYIO = 0
+
+#### esp32h2 ##########################################################
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 else ifeq ($(IDF_TARGET),esp32h2)
 # Modules
 CIRCUITPY_ESPCAMERA = 0
@@ -198,14 +314,24 @@ CIRCUITPY_ESPULP = 0
 CIRCUITPY_MEMORYMAP = 0
 CIRCUITPY_RGBMATRIX = 0
 
+<<<<<<< HEAD
+=======
+# No capacitive touch peripheral
+CIRCUITPY_ALARM_TOUCH = 0
+CIRCUITPY_TOUCHIO_USE_NATIVE = 0
+
+# No DAC
+CIRCUITPY_AUDIOIO = 0
+
+# No I2S peripheral PDM-to-PCM hardware support
+CIRCUITPY_AUDIOBUSIO_PDMIN = 0
+
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 # No I80 support from the IDF
 CIRCUITPY_PARALLELDISPLAYBUS = 0
 
 # No SDMMC
 CIRCUITPY_SDIOIO = 0
-
-CIRCUITPY_TOUCHIO ?= 1
-CIRCUITPY_TOUCHIO_USE_NATIVE = 0
 
 # Features
 CIRCUITPY_USB_DEVICE = 0
@@ -222,13 +348,9 @@ CIRCUITPY_BLEIO = 0
 CIRCUITPY_WIFI = 0
 CIRCUITPY_SSL = 0
 
-CIRCUITPY_TOUCHIO = 1
-CIRCUITPY_TOUCHIO_USE_NATIVE = 0
-
 # Second stage bootloader doesn't work when the factory partition is empty due to
 # UF2 missing.
 UF2_BOOTLOADER = 0
-USB_HIGHSPEED = 1
 CIRCUITPY_USB_HID = 0
 CIRCUITPY_USB_MIDI = 0
 CIRCUITPY_TUSB_MEM_ALIGN = 64
@@ -250,10 +372,25 @@ CIRCUITPY_PARALLELDISPLAYBUS = 0
 # Library doesn't support P4 yet it seems
 CIRCUITPY_ESPCAMERA = 0
 
+<<<<<<< HEAD
 else ifeq ($(IDF_TARGET),esp32s2)
 # Modules
 CIRCUITPY_ALARM_TOUCH = 1
 CIRCUITPY_AUDIOIO = 1
+=======
+# P4 has MIPI-DSI
+CIRCUITPY_MIPIDSI = 1
+
+#### esp32s2 ##########################################################
+else ifeq ($(IDF_TARGET),esp32s2)
+# Modules
+CIRCUITPY_AUDIOIO ?= 1
+CIRCUITPY_AUDIOFILEWRITER ?= 1
+
+# No I2S peripheral PDM-to-PCM hardware support
+CIRCUITPY_AUDIOBUSIO_PDMIN = 0
+
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 # No BLE in hw
 CIRCUITPY_BLEIO = 0
 
@@ -264,11 +401,40 @@ CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 0
 
 else ifeq ($(IDF_TARGET),esp32s3)
 # Modules
+<<<<<<< HEAD
 CIRCUITPY_ALARM_TOUCH = 1
 CIRCUITPY_AUDIOBUSIO_PDMIN = 1
 CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 0
 
 # No room for _bleio on boards with 4MB flash
+=======
+CIRCUITPY_ESP_USB_SERIAL_JTAG ?= 0
+
+# No DAC
+CIRCUITPY_AUDIOIO = 0
+
+endif
+#### end chip-specific choices ########################################
+
+# By default, enable dualbank, and it'll be disabled for small flash sizes
+CIRCUITPY_DUALBANK ?= 1
+
+# No room for large modules on 2MB boards
+# 2MB boards have a single firmware partition, and can't do dualbank.
+ifeq ($(CIRCUITPY_ESP_FLASH_SIZE),2MB)
+CIRCUITPY__EVE = 0
+CIRCUITPY_AUDIOMP3 = 0
+CIRCUITPY_BITMAPFILTER = 0
+CIRCUITPY_BLEIO_NATIVE = 0
+CIRCUITPY_DUALBANK = 0
+CIRCUITPY_MAX3421E = 0
+CIRCUITPY_RGBMATRIX = 0
+CIRCUITPY_SETTABLE_PROCESSOR_FREQUENCY = 0
+OPTIMIZATION_FLAGS ?= -Os
+endif
+
+# 4MB boards have a single firmware partition, and can't do dualbank.
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 ifeq ($(CIRCUITPY_ESP_FLASH_SIZE),4MB)
 CIRCUITPY_BLEIO ?= 0
 endif
@@ -322,8 +488,13 @@ CIRCUITPY_GIFIO ?= $(CIRCUITPY_DISPLAYIO)
 CIRCUITPY_JPEGIO ?= $(CIRCUITPY_DISPLAYIO)
 CIRCUITPY_QRIO ?= $(CIRCUITPY_ESPCAMERA)
 
+<<<<<<< HEAD
 CIRCUITPY_BLE_FILE_SERVICE ?= $(CIRCUITPY_BLEIO)
 CIRCUITPY_SERIAL_BLE ?= $(CIRCUITPY_BLEIO)
+=======
+CIRCUITPY_BLE_FILE_SERVICE ?= $(CIRCUITPY_BLEIO_NATIVE)
+CIRCUITPY_BLE_SERIAL_SERVICE ?= $(CIRCUITPY_BLEIO_NATIVE)
+>>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
 
 # Features dependent on other features
 ifneq ($(CIRCUITPY_USB_DEVICE),0)
@@ -343,6 +514,19 @@ endif
 # only if something else is turned off, such as HID.
 USB_NUM_ENDPOINT_PAIRS = 7
 USB_NUM_IN_ENDPOINTS = 5
+
+# usb_audio is compiled in on the S3 but claims no endpoints until
+# usb_audio.enable() is called from boot.py, so enabling it by default does not
+# affect existing boards. Freeing one IN endpoint (usb_hid.disable()) is then the
+# only thing a user needs, with no custom build.
+ifeq ($(IDF_TARGET),esp32s3)
+# It needs the TinyUSB device stack and audiocore, so leave it off for boards
+# that turn either off. The S3 has no AUDIOIO and no AUDIOPWMIO, so audiocore
+# follows CIRCUITPY_AUDIOBUSIO here.
+ifeq ($(filter 0,$(CIRCUITPY_USB_DEVICE) $(CIRCUITPY_AUDIOCORE) $(CIRCUITPY_AUDIOBUSIO)),)
+CIRCUITPY_USB_AUDIO ?= 1
+endif
+endif
 
 # Usually lots of flash space available
 CIRCUITPY_MESSAGE_COMPRESSION_LEVEL ?= 1

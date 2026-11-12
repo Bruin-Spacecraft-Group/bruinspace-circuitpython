@@ -102,7 +102,7 @@ void check_ble_error(int error_code) {
     }
 }
 
-void common_hal_bleio_check_connected(uint16_t conn_handle) {
+void bleio_check_connected(uint16_t conn_handle) {
     if (conn_handle == BLEIO_HANDLE_INVALID) {
         mp_raise_ConnectionError(MP_ERROR_TEXT("Not connected"));
     }

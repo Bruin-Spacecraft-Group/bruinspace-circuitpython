@@ -7,6 +7,7 @@
 #include "py/objstr.h"
 #include "supervisor/background_callback.h"
 #include "supervisor/linker.h"
+#include "supervisor/port.h"
 #include "supervisor/shared/tick.h"
 #include "supervisor/usb.h"
 #include "shared/readline/readline.h"
@@ -36,6 +37,10 @@
 
 #if CIRCUITPY_USB_VIDEO
 #include "shared-module/usb_video/__init__.h"
+#endif
+
+#if CIRCUITPY_USB_AUDIO
+#include "shared-module/usb_audio/__init__.h"
 #endif
 
 #endif
@@ -85,6 +90,14 @@ static void tinyusb_thread(void *unused0, void *unused1, void *unused2) {
 
 bool usb_enabled(void) {
     return tusb_inited();
+}
+
+bool usb_connected(void) {
+    #if CIRCUITPY_TINYUSB && CIRCUITPY_USB_DEVICE
+    return tud_ready();
+    #else
+    return false;
+    #endif
 }
 
 MP_WEAK void post_usb_init(void) {
@@ -144,40 +157,6 @@ void usb_init(void) {
     #endif
 }
 
-// Set up USB defaults before any USB changes are made in boot.py
-void usb_set_defaults(void) {
-    #if CIRCUITPY_USB_DEVICE
-    #if CIRCUITPY_STORAGE && CIRCUITPY_USB_MSC
-    storage_usb_set_defaults();
-    #endif
-
-    #if CIRCUITPY_USB_CDC
-    usb_cdc_set_defaults();
-    #endif
-
-    #if CIRCUITPY_USB_HID
-    usb_hid_set_defaults();
-    #endif
-
-    #if CIRCUITPY_USB_MIDI
-    usb_midi_set_defaults();
-    #endif
-    #endif
-};
-
-// Call this when ready to run code.py or a REPL, and a VM has been started.
-void usb_setup_with_vm(void) {
-    #if CIRCUITPY_USB_DEVICE
-    #if CIRCUITPY_USB_HID
-    usb_hid_setup_devices();
-    #endif
-
-    #if CIRCUITPY_USB_MIDI
-    usb_midi_setup_ports();
-    #endif
-    #endif
-}
-
 void usb_background(void) {
     if (usb_enabled()) {
         #if CFG_TUSB_OS == OPT_OS_NONE || CFG_TUSB_OS == OPT_OS_PICO
@@ -186,9 +165,8 @@ void usb_background(void) {
         tuh_task();
         #endif
         #elif CFG_TUSB_OS == OPT_OS_FREERTOS
-        // Yield to FreeRTOS in case TinyUSB runs in a separate task. Don't use
-        // port_yield() because it has a longer delay.
-        vTaskDelay(0);
+        // TinyUSB may run in a separate task, at the same priority as CircuitPython.
+        port_task_yield();
         #endif
         // No need to flush if there's no REPL.
         #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_CDC
@@ -200,10 +178,16 @@ void usb_background(void) {
         #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_VIDEO
         usb_video_task();
         #endif
+        #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_AUDIO
+        usb_audio_task();
+        #endif
     }
 }
 
-uint32_t tusb_time_millis_api(void) {
+// Ports may override this with a RAM-resident version when TinyUSB code that
+// calls it must not execute from flash (e.g. raspberrypi polls
+// tuh_task_event_ready(), which calls this, from core1).
+MP_WEAK uint32_t tusb_time_millis_api(void) {
     return supervisor_ticks_ms32();
 }
 

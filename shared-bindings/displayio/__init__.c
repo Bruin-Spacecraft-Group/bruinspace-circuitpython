@@ -79,7 +79,12 @@
 //|     afterwards. This may take seconds to complete if an active EPaperDisplay is refreshing.
 //|
 //|     Use this once in your code.py if you initialize a display. Place it right before the
-//|     initialization so the display is active as long as possible."""
+//|     initialization so the display is active as long as possible.
+//|
+//|     Once you release a builtin display (one that is initialized automatically, not by user code),
+//|     the display will remain released even if you restart the CircuitPython VM, for instance by typing ctrl-D.
+//|     The display is not re-initialized until you do a hard reset or manually initialize it again.
+//|     """
 //|     ...
 //|
 //|

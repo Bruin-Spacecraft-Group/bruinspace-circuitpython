@@ -69,6 +69,11 @@
 #error MICROPY_ENABLE_FINALISER requires MICROPY_ENABLE_GC
 #endif
 
+// CIRCUITPY-CHANGE: Add selective collect support to malloc to optimize GC for large buffers
+#if MICROPY_ENABLE_SELECTIVE_COLLECT
+#error MICROPY_ENABLE_SELECTIVE_COLLECT requires MICROPY_ENABLE_GC
+#endif
+
 static void *realloc_ext(void *ptr, size_t n_bytes, bool allow_move) {
     if (allow_move) {
         return realloc(ptr, n_bytes);
@@ -82,9 +87,26 @@ static void *realloc_ext(void *ptr, size_t n_bytes, bool allow_move) {
 
 #endif // MICROPY_ENABLE_GC
 
-void *m_malloc(size_t num_bytes) {
-    void *ptr = malloc(num_bytes);
-    if (ptr == NULL && num_bytes != 0) {
+// CIRCUITPY-CHANGE: Add malloc helper to factor out flag handling and allow combinations.
+void *m_malloc_helper(size_t num_bytes, uint8_t flags) {
+    void *ptr;
+    #if MICROPY_ENABLE_GC
+    uint8_t gc_flags = 0;
+    #if MICROPY_ENABLE_SELECTIVE_COLLECT
+    if ((flags & M_MALLOC_COLLECT) == 0) {
+        gc_flags |= GC_ALLOC_FLAG_DO_NOT_COLLECT;
+    }
+    #endif
+    #if MICROPY_ENABLE_FINALISER
+    if ((flags & M_MALLOC_WITH_FINALISER) != 0) {
+        gc_flags |= GC_ALLOC_FLAG_HAS_FINALISER;
+    }
+    #endif
+    ptr = gc_alloc(num_bytes, gc_flags);
+    #else
+    ptr = malloc(num_bytes);
+    #endif
+    if (ptr == NULL && num_bytes != 0 && (flags & M_MALLOC_RAISE_ERROR)) {
         m_malloc_fail(num_bytes);
     }
     #if MICROPY_MEM_STATS
@@ -92,44 +114,50 @@ void *m_malloc(size_t num_bytes) {
     MP_STATE_MEM(current_bytes_allocated) += num_bytes;
     UPDATE_PEAK();
     #endif
+    // If this config is set then the GC clears all memory, so we don't need to.
+    #if !MICROPY_GC_CONSERVATIVE_CLEAR
+    if (flags & M_MALLOC_ENSURE_ZEROED) {
+        memset(ptr, 0, num_bytes);
+    }
+    #endif
     DEBUG_printf("malloc %d : %p\n", num_bytes, ptr);
     return ptr;
+}
+
+void *m_malloc(size_t num_bytes) {
+    // CIRCUITPY-CHANGE: use helper
+    return m_malloc_helper(num_bytes, M_MALLOC_RAISE_ERROR | M_MALLOC_COLLECT);
 }
 
 void *m_malloc_maybe(size_t num_bytes) {
-    void *ptr = malloc(num_bytes);
-    #if MICROPY_MEM_STATS
-    MP_STATE_MEM(total_bytes_allocated) += num_bytes;
-    MP_STATE_MEM(current_bytes_allocated) += num_bytes;
-    UPDATE_PEAK();
-    #endif
-    DEBUG_printf("malloc %d : %p\n", num_bytes, ptr);
-    return ptr;
+    // CIRCUITPY-CHANGE: use helper
+    return m_malloc_helper(num_bytes, M_MALLOC_COLLECT);
 }
+#endif
 
 #if MICROPY_ENABLE_FINALISER
 void *m_malloc_with_finaliser(size_t num_bytes) {
-    void *ptr = malloc_with_finaliser(num_bytes);
-    if (ptr == NULL && num_bytes != 0) {
-        m_malloc_fail(num_bytes);
-    }
-    #if MICROPY_MEM_STATS
-    MP_STATE_MEM(total_bytes_allocated) += num_bytes;
-    MP_STATE_MEM(current_bytes_allocated) += num_bytes;
-    UPDATE_PEAK();
-    #endif
-    DEBUG_printf("malloc %d : %p\n", num_bytes, ptr);
-    return ptr;
+    // CIRCUITPY-CHANGE: use helper
+    return m_malloc_helper(num_bytes, M_MALLOC_COLLECT | M_MALLOC_WITH_FINALISER);
 }
 #endif
 
 void *m_malloc0(size_t num_bytes) {
-    void *ptr = m_malloc(num_bytes);
-    // If this config is set then the GC clears all memory, so we don't need to.
-    #if !MICROPY_GC_CONSERVATIVE_CLEAR
-    memset(ptr, 0, num_bytes);
-    #endif
-    return ptr;
+    // CIRCUITPY-CHANGE: use helper
+    return m_malloc_helper(num_bytes,
+        (MICROPY_GC_CONSERVATIVE_CLEAR ? 0 : M_MALLOC_ENSURE_ZEROED)
+        | M_MALLOC_RAISE_ERROR | M_MALLOC_COLLECT);
+}
+
+// CIRCUITPY-CHANGE: add selective collect
+void *m_malloc_without_collect(size_t num_bytes) {
+    return m_malloc_helper(num_bytes, M_MALLOC_RAISE_ERROR);
+}
+
+// CIRCUITPY-CHANGE: add selective collect
+void *m_malloc_maybe_without_collect(size_t num_bytes) {
+
+    return m_malloc_helper(num_bytes, 0);
 }
 
 #if MICROPY_MALLOC_USES_ALLOCATED_SIZE
@@ -209,6 +237,31 @@ void m_free(void *ptr)
 
 #if MICROPY_TRACKED_ALLOC
 
+#if MICROPY_PY_THREAD && !MICROPY_PY_THREAD_GIL
+// If there's no GIL, use the GC recursive mutex to protect the tracked node linked list
+// under m_tracked_head.
+//
+// (For ports with GIL, the expectation is to only call tracked alloc functions
+// while holding the GIL.)
+
+static inline void m_tracked_node_lock(void) {
+    mp_thread_recursive_mutex_lock(&MP_STATE_MEM(gc_mutex), 1);
+}
+
+static inline void m_tracked_node_unlock(void) {
+    mp_thread_recursive_mutex_unlock(&MP_STATE_MEM(gc_mutex));
+}
+
+#else
+
+static inline void m_tracked_node_lock(void) {
+}
+
+static inline void m_tracked_node_unlock(void) {
+}
+
+#endif
+
 #define MICROPY_TRACKED_ALLOC_STORE_SIZE (!MICROPY_ENABLE_GC)
 
 typedef struct _m_tracked_node_t {
@@ -222,6 +275,7 @@ typedef struct _m_tracked_node_t {
 
 #if MICROPY_DEBUG_VERBOSE
 static size_t m_tracked_count_links(size_t *nb) {
+    m_tracked_node_lock();
     m_tracked_node_t *node = MP_STATE_VM(m_tracked_head);
     size_t n = 0;
     *nb = 0;
@@ -234,6 +288,7 @@ static size_t m_tracked_count_links(size_t *nb) {
         #endif
         node = node->next;
     }
+    m_tracked_node_unlock();
     return n;
 }
 #endif
@@ -248,12 +303,14 @@ void *m_tracked_calloc(size_t nmemb, size_t size) {
     size_t n = m_tracked_count_links(&nb);
     DEBUG_printf("m_tracked_calloc(%u, %u) -> (%u;%u) %p\n", (int)nmemb, (int)size, (int)n, (int)nb, node);
     #endif
+    m_tracked_node_lock();
     if (MP_STATE_VM(m_tracked_head) != NULL) {
         MP_STATE_VM(m_tracked_head)->prev = node;
     }
     node->prev = NULL;
     node->next = MP_STATE_VM(m_tracked_head);
     MP_STATE_VM(m_tracked_head) = node;
+    m_tracked_node_unlock();
     #if MICROPY_TRACKED_ALLOC_STORE_SIZE
     node->size = nmemb * size;
     #endif
@@ -279,7 +336,8 @@ void m_tracked_free(void *ptr_in) {
     size_t nb;
     size_t n = m_tracked_count_links(&nb);
     DEBUG_printf("m_tracked_free(%p, [%p, %p], nbytes=%u, links=%u;%u)\n", node, node->prev, node->next, (int)data_bytes, (int)n, (int)nb);
-    #endif
+    #endif // MICROPY_DEBUG_VERBOSE
+    m_tracked_node_lock();
     if (node->next != NULL) {
         node->next->prev = node->prev;
     }
@@ -288,6 +346,7 @@ void m_tracked_free(void *ptr_in) {
     } else {
         MP_STATE_VM(m_tracked_head) = node->next;
     }
+    m_tracked_node_unlock();
     m_free(node
         #if MICROPY_MALLOC_USES_ALLOCATED_SIZE
         #if MICROPY_TRACKED_ALLOC_STORE_SIZE
