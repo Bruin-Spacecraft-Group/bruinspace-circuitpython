@@ -71,7 +71,8 @@ size_t mp_binary_get_size(char struct_type, char val_type, size_t *palign) {
                 case 'Q':
                     size = 8;
                     break;
-                #if MICROPY_PY_STRUCT_UNSAFE_TYPECODES
+                    // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+                #if MICROPY_NONSTANDARD_TYPECODES
                 case 'P':
                 case 'O':
                 case 'S':
@@ -127,7 +128,8 @@ size_t mp_binary_get_size(char struct_type, char val_type, size_t *palign) {
                     align = alignof(long long);
                     size = sizeof(long long);
                     break;
-                #if MICROPY_PY_STRUCT_UNSAFE_TYPECODES
+                    // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+                #if MICROPY_NONSTANDARD_TYPECODES
                 case 'P':
                 case 'O':
                 case 'S':
@@ -206,7 +208,7 @@ static float mp_decode_half_float(uint16_t hf) {
         ++e;
     }
 
-    fpu.i = ((hf & 0x8000u) << 16) | (e << 23) | (m << 13);
+    fpu.i = ((hf & 0x8000) << 16) | (e << 23) | (m << 13);
     return fpu.f;
 }
 
@@ -290,14 +292,15 @@ mp_obj_t mp_binary_get_val_array(char typecode, void *p, size_t index) {
         case 'd':
             return mp_obj_new_float_from_d(((double *)p)[index]);
         #endif
-            // Extension to CPython: array of objects
-        #if MICROPY_PY_STRUCT_UNSAFE_TYPECODES
+            // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+            #if MICROPY_NONSTANDARD_TYPECODES
+        // Extension to CPython: array of objects
         case 'O':
             return ((mp_obj_t *)p)[index];
         // Extension to CPython: array of pointers
         case 'P':
             return mp_obj_new_int((mp_int_t)(uintptr_t)((void **)p)[index]);
-        #endif
+            #endif
     }
     return MP_OBJ_NEW_SMALL_INT(val);
 }
@@ -347,11 +350,14 @@ mp_obj_t mp_binary_get_val(char struct_type, char val_type, byte *p_base, byte *
 
     long long val = mp_binary_get_int(size, is_signed(val_type), (struct_type == '>'), p);
 
-    if (MICROPY_PY_STRUCT_UNSAFE_TYPECODES && val_type == 'O') {
+    // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+    if (MICROPY_NONSTANDARD_TYPECODES && (val_type == 'O')) {
         return (mp_obj_t)(mp_uint_t)val;
-    } else if (MICROPY_PY_STRUCT_UNSAFE_TYPECODES && val_type == 'S') {
+    #if MICROPY_NONSTANDARD_TYPECODES
+    } else if (val_type == 'S') {
         const char *s_val = (const char *)(uintptr_t)(mp_uint_t)val;
-        return mp_obj_new_str_from_cstr(s_val);
+        return mp_obj_new_str(s_val, strlen(s_val));
+    #endif
     #if MICROPY_PY_BUILTINS_FLOAT
     } else if (val_type == 'e') {
         return mp_obj_new_float_from_f(mp_decode_half_float(val));
@@ -420,7 +426,8 @@ void mp_binary_set_val(char struct_type, char val_type, mp_obj_t val_in, byte *p
 
     mp_uint_t val;
     switch (val_type) {
-        #if MICROPY_PY_STRUCT_UNSAFE_TYPECODES
+        // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+        #if MICROPY_NONSTANDARD_TYPECODES
         case 'O':
             val = (mp_uint_t)val_in;
             break;
@@ -438,8 +445,6 @@ void mp_binary_set_val(char struct_type, char val_type, mp_obj_t val_in, byte *p
             val = fp_sp.i;
             break;
         }
-            // CIRCUITPY-CHANGE
-        #if MICROPY_PY_DOUBLE_TYPECODE
         case 'd': {
             union {
                 uint64_t i64;
@@ -500,7 +505,8 @@ void mp_binary_set_val_array(char typecode, void *p, size_t index, mp_obj_t val_
             ((double *)p)[index] = mp_obj_get_float_to_d(val_in);
             break;
         #endif
-        #if MICROPY_PY_STRUCT_UNSAFE_TYPECODES
+        // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+        #if MICROPY_NONSTANDARD_TYPECODES
         // Extension to CPython: array of objects
         case 'O':
             ((mp_obj_t *)p)[index] = val_in;
@@ -572,11 +578,12 @@ void mp_binary_set_val_array_from_int(char typecode, void *p, size_t index, mp_i
             ((double *)p)[index] = (double)val;
             break;
         #endif
-            // Extension to CPython: array of pointers
-        #if MICROPY_PY_STRUCT_UNSAFE_TYPECODES
+            // CIRCUITPY-CHANGE: non-standard typecodes can be turned off
+            #if MICROPY_NONSTANDARD_TYPECODES
+        // Extension to CPython: array of pointers
         case 'P':
             ((void **)p)[index] = (void *)(uintptr_t)val;
             break;
-        #endif
+            #endif
     }
 }

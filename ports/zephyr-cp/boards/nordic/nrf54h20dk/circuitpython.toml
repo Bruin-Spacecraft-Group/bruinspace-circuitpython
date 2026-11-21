@@ -1,2 +1,0 @@
-CIRCUITPY_BUILD_EXTENSIONS = ["elf", "hex"]
-DISABLED_MODULES=["jpegio", "gifio", "tilepalettemapper"]

@@ -27,7 +27,7 @@
 #include "tusb.h"
 
 // Is the MSC device enabled?
-static volatile bool storage_usb_is_enabled;
+bool storage_usb_is_enabled;
 
 void storage_usb_set_defaults(void) {
     storage_usb_is_enabled = CIRCUITPY_USB_MSC_ENABLED_DEFAULT;
@@ -38,29 +38,16 @@ bool storage_usb_enabled(void) {
 }
 
 static bool usb_drive_set_enabled(bool enabled) {
-    // We can't change the descriptors once we're connected, but we can make the LUN be ready or not ready.
-    storage_usb_is_enabled = enabled;
+    // We can't change the descriptors once we're connected.
     if (tud_connected()) {
-        // The TEST UNIT READY callback in usb_msc_flash.c checks the value of storage_usb_is_enabled.
-        // If it's false, TEST UNIT READY will report "not ready"
-        // Linux and macOS send a TEST UNIT READY poll about every 1.1 seconds or faster.
-        // Windows polls every 2.1 seconds or so.
-        // So wait long enough for host to send a TEST UNIT READY and receive a reply.
-        mp_hal_delay_ms(2500);
+        return false;
     }
     filesystem_set_internal_writable_by_usb(enabled);
+    storage_usb_is_enabled = enabled;
     return true;
 }
 
 bool common_hal_storage_disable_usb_drive(void) {
-    if (tud_connected()) {
-        // Complain if already connected. Use `storage.unsafe_disable_usb_drive()` in that case.
-        return false;
-    }
-    return usb_drive_set_enabled(false);
-}
-
-bool common_hal_storage_unsafe_disable_usb_drive(void) {
     return usb_drive_set_enabled(false);
 }
 
@@ -69,10 +56,6 @@ bool common_hal_storage_enable_usb_drive(void) {
 }
 #else
 bool common_hal_storage_disable_usb_drive(void) {
-    return false;
-}
-
-bool common_hal_storage_unsafe_disable_usb_drive(void) {
     return false;
 }
 

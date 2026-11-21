@@ -23,7 +23,7 @@
 //
 #include "AnimatedGIF_circuitpy.h"
 
-#ifndef memcpy_P
+#ifdef HAL_ESP32_HAL_H_
 #define memcpy_P memcpy
 #endif
 

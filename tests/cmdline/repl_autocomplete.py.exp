@@ -1,5 +1,5 @@
-
-Adafruit CircuitPython \.\+ version
+CircuitPython \.\+ version
+Use \.\+
 >>> # tests for autocompletion
 >>> import sys
 >>> not_exist.[K[K[K[K[K[K[K[K[K[K
@@ -11,4 +11,4 @@ Adafruit CircuitPython \.\+ version
 >>> i.lower('ABC')
 'abc'
 >>> None.[K[K[K[K[K
->>> \$
+>>> 

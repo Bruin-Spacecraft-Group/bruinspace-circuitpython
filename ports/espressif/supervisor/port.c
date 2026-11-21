@@ -16,7 +16,6 @@
 #include "py/mpprint.h"
 #include "py/runtime.h"
 
-#include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -53,7 +52,7 @@
 #endif
 
 #if CIRCUITPY_ESPCAMERA
-#include "common-hal/espcamera/Camera.h"
+#include "esp_camera.h"
 #endif
 
 #include "soc/efuse_reg.h"
@@ -100,7 +99,7 @@ static esp_timer_handle_t _sleep_timer;
 
 TaskHandle_t circuitpython_task = NULL;
 
-extern void esp_restart(void) MP_NORETURN;
+extern void esp_restart(void) NORETURN;
 
 static void tick_on_cp_core(void *arg) {
     supervisor_tick();
@@ -241,19 +240,19 @@ safe_mode_t port_init(void) {
     #endif
 
     // Send the ROM output out of the UART. This includes early logs.
-    #if DEBUG && (defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) && CONFIG_ESP_CONSOLE_UART_DEFAULT)
+    #if DEBUG
     esp_rom_install_uart_printf();
     #endif
 
     #define pin_GPIOn(n) pin_GPIO##n
     #define pin_GPIOn_EXPAND(x) pin_GPIOn(x)
 
-    #ifdef CONFIG_ESP_CONSOLE_UART_TX_GPIO
-    common_hal_never_reset_pin(&pin_GPIOn_EXPAND(CONFIG_ESP_CONSOLE_UART_TX_GPIO));
+    #ifdef CONFIG_CONSOLE_UART_TX_GPIO
+    common_hal_never_reset_pin(&pin_GPIOn_EXPAND(CONFIG_CONSOLE_UART_TX_GPIO));
     #endif
 
-    #ifdef CONFIG_ESP_CONSOLE_UART_RX_GPIO
-    common_hal_never_reset_pin(&pin_GPIOn_EXPAND(CONFIG_ESP_CONSOLE_UART_RX_GPIO));
+    #ifdef CONFIG_CONSOLE_UART_RX_GPIO
+    common_hal_never_reset_pin(&pin_GPIOn_EXPAND(CONFIG_CONSOLE_UART_RX_GPIO));
     #endif
 
     #ifndef ENABLE_JTAG
@@ -339,27 +338,24 @@ size_t port_heap_get_largest_free_size(void) {
     return free_size;
 }
 
-void reset_port_early(void) {
-    // esp-camera adds an I2C device on the ESP I2C bus, and keeps it there. This
-    // is unlike busio.I2C, which adds and removes the device on each operation.
-    // So have the esp-camera API shut down the camera now, before reset_board_buses() tries to delete the I2C bus.
-    // Unfortunately, there is no I2C driver API to enumerate or delete all the devices.
-    #if CIRCUITPY_ESPCAMERA
-    espcamera_reset();
-    #endif
-}
-
 void reset_port(void) {
+    // TODO deinit for esp32-camera
+    #if CIRCUITPY_ESPCAMERA
+    esp_camera_deinit();
+    #endif
 
     #if CIRCUITPY_SSL
     ssl_reset();
     #endif
+
+    reset_all_pins();
 
     #if CIRCUITPY_ANALOGIO
     analogout_reset();
     #endif
 
     #if CIRCUITPY_BUSIO
+    spi_reset();
     uart_reset();
     #endif
 
@@ -399,8 +395,8 @@ void reset_port(void) {
     watchdog_reset();
     #endif
 
-    // Yield so the idle task, at priority 0, can run and do any IDF cleanup needed.
-    port_task_sleep_ms(4);
+    // Yield so the idle task can run and do any IDF cleanup needed.
+    port_yield();
 }
 
 void reset_to_bootloader(void) {
@@ -478,13 +474,8 @@ void port_wake_main_task_from_isr() {
     }
 }
 
-// Yield to other tasks at the same priority.
-void port_task_yield(void) {
-    vTaskDelay(0);
-}
-
-void port_task_sleep_ms(uint32_t msecs) {
-    vTaskDelay(pdMS_TO_TICKS(msecs));
+void port_yield() {
+    vTaskDelay(4);
 }
 
 void sleep_timer_cb(void *arg) {
@@ -507,23 +498,8 @@ void port_idle_until_interrupt(void) {
     }
 }
 
-<<<<<<< HEAD
 void port_post_boot_py(bool heap_valid) {
     if (!heap_valid && filesystem_present()) {
-=======
-#if CIRCUITPY_WIFI
-void port_boot_info(void) {
-    uint8_t mac[6];
-    // This runs before esp_wifi_init(), so esp_wifi_get_mac() fails with
-    // ESP_ERR_WIFI_NOT_INIT and leaves mac[] untouched. esp_read_mac() reads
-    // efuse directly and does not need the WiFi driver started.
-    if (esp_read_mac(mac, ESP_MAC_WIFI_STA) != ESP_OK) {
-        return;
-    }
-    mp_printf(&mp_plat_print, "MAC");
-    for (int i = 0; i < 6; i++) {
-        mp_printf(&mp_plat_print, ":%02X", mac[i]);
->>>>>>> b59812b329febfd6c64d54f157f9f795a910eda5
     }
 }
 

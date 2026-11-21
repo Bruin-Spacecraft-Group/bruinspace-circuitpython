@@ -1,10 +1,4 @@
-# test micropython.opt_level()
-
-try:
-    import micropython
-except ImportError:
-    print("SKIP")
-    raise SystemExit
+import micropython as micropython
 
 # check we can get and set the level
 micropython.opt_level(0)

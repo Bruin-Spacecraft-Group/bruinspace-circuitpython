@@ -150,10 +150,7 @@ static void send_command_sequence(epaperdisplay_epaperdisplay_obj_t *self,
             data_size = ((data_size & ~DELAY) << 8) + *(cmd + 2);
             data = cmd + 3;
         }
-        while (!displayio_display_bus_begin_transaction(&self->bus) &&
-               !mp_hal_is_interrupted()) {
-            RUN_BACKGROUND_TASKS;
-        }
+        displayio_display_bus_begin_transaction(&self->bus);
         self->bus.send(self->bus.bus, DISPLAY_COMMAND, self->chip_select, cmd, 1);
         self->bus.send(self->bus.bus, DISPLAY_DATA, self->chip_select, data, data_size);
         displayio_display_bus_end_transaction(&self->bus);
@@ -191,10 +188,6 @@ static void epaperdisplay_epaperdisplay_start_refresh(epaperdisplay_epaperdispla
         // Can't acquire display bus; skip updating this display. Try next display.
         return;
     }
-    if (!displayio_display_core_start_refresh(&self->core)) {
-        // Refresh on this display already in progress.
-        return;
-    }
 
     // run start sequence
     self->bus.bus_reset(self->bus.bus);
@@ -205,6 +198,7 @@ static void epaperdisplay_epaperdisplay_start_refresh(epaperdisplay_epaperdispla
     if (mp_hal_is_interrupted()) {
         return;
     }
+    displayio_display_core_start_refresh(&self->core);
 }
 
 uint32_t common_hal_epaperdisplay_epaperdisplay_get_time_to_refresh(epaperdisplay_epaperdisplay_obj_t *self) {
@@ -311,10 +305,7 @@ static bool epaperdisplay_epaperdisplay_refresh_area(epaperdisplay_epaperdisplay
         if (pass == 1) {
             write_command = self->write_color_ram_command;
         }
-        if (!displayio_display_bus_begin_transaction(&self->bus)) {
-            // Display bus not available now.
-            return false;
-        }
+        displayio_display_bus_begin_transaction(&self->bus);
         self->bus.send(self->bus.bus, DISPLAY_COMMAND, self->chip_select, &write_command, 1);
         displayio_display_bus_end_transaction(&self->bus);
 
@@ -388,9 +379,7 @@ static bool _clean_area(epaperdisplay_epaperdisplay_obj_t *self) {
     memset(buffer, 0x77, width / 2);
 
     uint8_t write_command = self->write_black_ram_command;
-    if (displayio_display_bus_begin_transaction(&self->bus)) {
-        return false;
-    }
+    displayio_display_bus_begin_transaction(&self->bus);
     self->bus.send(self->bus.bus, DISPLAY_COMMAND, self->chip_select, &write_command, 1);
     displayio_display_bus_end_transaction(&self->bus);
 

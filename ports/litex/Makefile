@@ -32,7 +32,7 @@ ifeq ($(DEBUG), 1)
   OPTIMIZATION_FLAGS ?= -Og
 else
   CFLAGS += -DNDEBUG -ggdb3
-  OPTIMIZATION_FLAGS ?= -O2
+  OPTIMIZATION_FLAGS ?= -O2 -fno-inline-functions
 endif
 
 # option to override compiler optimization level, set in boards/$(BOARD)/mpconfigboard.mk
@@ -77,6 +77,9 @@ ifneq ($(CIRCUITPY_USB),0)
 SRC_C += lib/tinyusb/src/portable/valentyusb/eptri/dcd_eptri.c
 endif
 
+SRC_S = \
+	crt0-vexriscv.S
+
 SRC_COMMON_HAL_EXPANDED = $(addprefix shared-bindings/, $(SRC_COMMON_HAL)) \
                           $(addprefix shared-bindings/, $(SRC_BINDINGS_ENUMS)) \
                           $(addprefix common-hal/, $(SRC_COMMON_HAL))
@@ -84,12 +87,6 @@ SRC_COMMON_HAL_EXPANDED = $(addprefix shared-bindings/, $(SRC_COMMON_HAL)) \
 SRC_SHARED_MODULE_EXPANDED = $(addprefix shared-bindings/, $(SRC_SHARED_MODULE)) \
                              $(addprefix shared-module/, $(SRC_SHARED_MODULE)) \
                              $(addprefix shared-module/, $(SRC_SHARED_MODULE_INTERNAL))
-SRC_S_UPPER = \
-	crt0-vexriscv.S
-
-SRC_S = shared/runtime/gchelper_rv32i.s
-
-SRC_C += shared/runtime/gchelper_native.c
 
 $(BUILD)/lib/tlsf/tlsf.o: CFLAGS += -Wno-cast-align
 
@@ -105,8 +102,7 @@ ifeq ($(INTERNAL_LIBM),1)
 OBJ += $(addprefix $(BUILD)/, $(SRC_LIBM:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(SRC_CIRCUITPY_COMMON:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(SRC_S:.s=.o))
-OBJ += $(addprefix $(BUILD)/, $(SRC_S_UPPER:.S=.o))
+OBJ += $(addprefix $(BUILD)/, $(SRC_S:.S=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 
 $(BUILD)/$(FATFS_DIR)/ff.o: COPT += -Os
@@ -126,7 +122,7 @@ else
 $(BUILD)/firmware.elf: $(OBJ)
 	$(STEPECHO) "LINK $@"
 	$(Q)$(CC) -o $@ $(LDFLAGS) $^ -Wl,--print-memory-usage -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $@.map $(BUILD)
+	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LD_FILE) $(BUILD)
 endif
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf

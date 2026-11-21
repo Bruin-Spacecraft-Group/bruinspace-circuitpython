@@ -1,10 +1,4 @@
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 # Does the full test from heapalloc_exc_compressed.py but while the heap is
 # locked (this can only work when the emergency exception buf is enabled).

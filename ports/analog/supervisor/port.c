@@ -63,7 +63,7 @@ static uint32_t subsec, sec = 0;
 static uint32_t tick_flag = 0;
 
 // defined by cmsis core files
-extern void NVIC_SystemReset(void) MP_NORETURN;
+extern void NVIC_SystemReset(void) NORETURN;
 
 volatile uint32_t system_ticks = 0;
 
@@ -112,11 +112,6 @@ safe_mode_t port_init(void) {
     }
     ;
 
-    // enable TRNG (true random number generator)
-    #if CIRCUITPY_RANDOM
-    MXC_TRNG_Init();
-    #endif
-
     return SAFE_MODE_NONE;
 }
 
@@ -149,6 +144,7 @@ void reset_cpu(void) {
 
 // Reset MCU state
 void reset_port(void) {
+    reset_all_pins();
 }
 
 // Reset to the bootloader

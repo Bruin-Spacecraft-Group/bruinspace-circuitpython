@@ -1,11 +1,5 @@
 # Extended stream operations on io.BytesIO
-
-try:
-    import io
-except ImportError:
-    print("SKIP")
-    raise SystemExit
-
+import io
 a = io.BytesIO(b"foobar")
 a.seek(10)
 print(a.read(10))

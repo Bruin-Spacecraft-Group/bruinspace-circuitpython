@@ -8,5 +8,5 @@ except NameError:
 # "Instances of set are compared to instances of frozenset based on their
 # members. For example:"
 print(set('abc') == frozenset('abc'))
-# This doesn't work in MicroPython
+# This doesn't work in uPy
 #print(set('abc') in set([frozenset('abc')]))

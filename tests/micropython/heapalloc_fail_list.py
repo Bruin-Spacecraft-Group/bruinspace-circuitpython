@@ -1,12 +1,6 @@
 # test handling of failed heap allocation with list
 
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 
 class GetSlice:

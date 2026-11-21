@@ -1,12 +1,6 @@
 # Test that we can raise and catch (preallocated) exception
 # without memory allocation.
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 e = ValueError("error")
 

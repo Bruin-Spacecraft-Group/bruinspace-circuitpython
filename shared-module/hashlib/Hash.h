@@ -6,10 +6,13 @@
 
 #pragma once
 
-#include "psa/crypto.h"
+#include "mbedtls/sha1.h"
 
 typedef struct {
     mp_obj_base_t base;
-    psa_hash_operation_t hash_op;
-    psa_algorithm_t hash_alg;
+    union {
+        mbedtls_sha1_context sha1;
+    };
+    // Of MBEDTLS_SSL_HASH_*
+    uint8_t hash_type;
 } hashlib_hash_obj_t;

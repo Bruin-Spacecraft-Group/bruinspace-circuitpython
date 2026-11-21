@@ -1,10 +1,10 @@
 # test the micropython.kbd_intr() function
 
-try:
-    import micropython
+import micropython
 
+try:
     micropython.kbd_intr
-except (ImportError, AttributeError):
+except AttributeError:
     print("SKIP")
     raise SystemExit
 

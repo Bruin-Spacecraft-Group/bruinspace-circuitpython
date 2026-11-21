@@ -57,10 +57,7 @@ static mp_obj_t bleio_packet_buffer_make_new(const mp_obj_type_t *type, size_t n
 
     size_t max_packet_size = common_hal_bleio_characteristic_get_max_length(characteristic);
     if (args[ARG_max_packet_size].u_obj != mp_const_none) {
-        const mp_int_t max_packet_size_int =
-            mp_arg_validate_type_int(args[ARG_max_packet_size].u_obj, MP_QSTR_max_packet_size);
-        max_packet_size =
-            (size_t)mp_arg_validate_int_min(max_packet_size_int, 1, MP_QSTR_max_packet_size);
+        max_packet_size = mp_obj_get_int(args[ARG_max_packet_size].u_obj);
     }
 
     bleio_packet_buffer_obj_t *self = mp_obj_malloc(bleio_packet_buffer_obj_t, &bleio_packet_buffer_type);

@@ -1,11 +1,7 @@
 # tests stack_use function in micropython module
+import micropython
 
-try:
-    import micropython
-
-    micropython.stack_use
-except (ImportError, AttributeError):
+if not hasattr(micropython, "stack_use"):
     print("SKIP")
-    raise SystemExit
-
-print(type(micropython.stack_use()))  # output varies
+else:
+    print(type(micropython.stack_use()))  # output varies

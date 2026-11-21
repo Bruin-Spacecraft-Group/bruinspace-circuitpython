@@ -11,7 +11,7 @@ def test(code):
         print("NotImplementedError")
 
 
-# MPy requires spaces between literal numbers and keywords, CPy doesn't
+# uPy requires spaces between literal numbers and keywords, CPy doesn't
 try:
     eval("1and 0")
 except SyntaxError:

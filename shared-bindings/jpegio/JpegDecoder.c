@@ -23,18 +23,13 @@
 //|     Example::
 //|
 //|         from jpegio import JpegDecoder
-//|         from displayio import Bitmap, TileGrid, ColorConverter, Colorspace
-//|         import supervisor
+//|         from displayio import Bitmap
 //|
 //|         decoder = JpegDecoder()
 //|         width, height = decoder.open("/sd/example.jpg")
 //|         bitmap = Bitmap(width, height, 65535)
 //|         decoder.decode(bitmap)
-//|         tg = TileGrid(bitmap, pixel_shader=ColorConverter(input_colorspace=Colorspace.RGB565_SWAPPED))
-//|         supervisor.runtime.display.root_group = tg
-//|         while True:
-//|             pass
-//|
+//|         # .. do something with bitmap
 //|     """
 //|
 //|     def __init__(self) -> None:
@@ -48,6 +43,7 @@ static mp_obj_t jpegio_jpegdecoder_make_new(const mp_obj_type_t *type, size_t n_
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     jpegio_jpegdecoder_obj_t *self = mp_obj_malloc(jpegio_jpegdecoder_obj_t, &jpegio_jpegdecoder_type);
+    self->base.type = &jpegio_jpegdecoder_type;
     common_hal_jpegio_jpegdecoder_construct(self);
 
     return MP_OBJ_FROM_PTR(self);
@@ -141,7 +137,7 @@ MP_DEFINE_CONST_FUN_OBJ_2(jpegio_jpegdecoder_open_obj, jpegio_jpegdecoder_open);
 //|         """
 //|
 //|
-static mp_obj_t jpegio_jpegdecoder_decode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t jpegio_jpegdecoder_decode(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     jpegio_jpegdecoder_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
 
     enum { ARG_bitmap, ARG_scale, ARG_x, ARG_y, ARGS_X1_Y1_X2_Y2, ARG_skip_source_index, ARG_skip_dest_index };

@@ -43,10 +43,10 @@ CONFIG_ESP_WIFI_RX_BA_WIN=4
 # end of Wi-Fi
 
 #
-# LibC
+# Newlib
 #
-CONFIG_LIBC_NEWLIB_NANO_FORMAT=y
-# end of LibC
+CONFIG_NEWLIB_NANO_FORMAT=y
+# end of Newlib
 
 #
 # Ultra Low Power (ULP) Co-processor

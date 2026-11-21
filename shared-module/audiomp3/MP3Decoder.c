@@ -120,13 +120,8 @@ static void stream_set_blocking(audiomp3_mp3file_obj_t *self, bool block_ok) {
  * Sets self->eof if any read of the file returns 0 bytes
  */
 static bool mp3file_update_inbuf_always(audiomp3_mp3file_obj_t *self, bool block_ok) {
-    // Every return from this function must be preceded by background_callback_allow();
-    background_callback_prevent();
-
     if (self->eof || INPUT_BUFFER_SPACE(self->inbuf) == 0) {
-        bool result = INPUT_BUFFER_AVAILABLE(self->inbuf) > 0;
-        background_callback_allow();
-        return result;
+        return INPUT_BUFFER_AVAILABLE(self->inbuf) > 0;
     }
 
     stream_set_blocking(self, block_ok);
@@ -140,8 +135,7 @@ static bool mp3file_update_inbuf_always(audiomp3_mp3file_obj_t *self, bool block
         self->inbuf.read_off = 0;
     }
 
-    for (size_t to_read; !self->eof && INPUT_BUFFER_SPACE(self->inbuf) > 0 &&
-         (to_read = (size_t)INPUT_BUFFER_SPACE(self->inbuf)) > 0;) {
+    for (size_t to_read; !self->eof && (to_read = INPUT_BUFFER_SPACE(self->inbuf)) > 0;) {
         uint8_t *write_ptr = self->inbuf.buf + self->inbuf.write_off;
         ssize_t n_read = stream_read(self->stream, write_ptr, to_read);
 
@@ -151,7 +145,6 @@ static bool mp3file_update_inbuf_always(audiomp3_mp3file_obj_t *self, bool block
                 break;
             }
             self->eof = true;
-            background_callback_allow();
             mp_raise_OSError(errcode);
         }
 
@@ -167,10 +160,7 @@ static bool mp3file_update_inbuf_always(audiomp3_mp3file_obj_t *self, bool block
     }
 
     // Return true iff there are at least some useful bytes in the buffer
-    bool result = INPUT_BUFFER_AVAILABLE(self->inbuf) > 0;
-
-    background_callback_allow();
-    return result;
+    return INPUT_BUFFER_AVAILABLE(self->inbuf) > 0;
 }
 
 /** Update the inbuf from a background callback.
@@ -517,14 +507,14 @@ audioio_get_buffer_result_t audiomp3_mp3file_get_buffer(audiomp3_mp3file_obj_t *
     return result;
 }
 
-mp_float_t common_hal_audiomp3_mp3file_get_rms_level(audiomp3_mp3file_obj_t *self) {
-    mp_float_t sumsq = MICROPY_FLOAT_CONST(0.0);
+float common_hal_audiomp3_mp3file_get_rms_level(audiomp3_mp3file_obj_t *self) {
+    float sumsq = 0.f;
     // Assumes no DC component to the audio.  Is that a safe assumption?
     int16_t *buffer = (int16_t *)(void *)self->pcm_buffer[self->buffer_index];
     for (size_t i = 0; i < self->base.max_buffer_length / sizeof(int16_t); i++) {
-        sumsq += (mp_float_t)buffer[i] * buffer[i];
+        sumsq += (float)buffer[i] * buffer[i];
     }
-    return MICROPY_FLOAT_C_FUN(sqrt)(sumsq) / (self->base.max_buffer_length / sizeof(int16_t));
+    return sqrtf(sumsq) / (self->base.max_buffer_length / sizeof(int16_t));
 }
 
 uint32_t common_hal_audiomp3_mp3file_get_samples_decoded(audiomp3_mp3file_obj_t *self) {

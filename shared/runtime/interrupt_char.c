@@ -31,7 +31,6 @@
 
 #if MICROPY_KBD_EXCEPTION
 
-// CIRCUITPY-CHANGE
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
 

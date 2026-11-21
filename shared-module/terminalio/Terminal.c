@@ -71,18 +71,12 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
     #endif
 
     const byte *i = data;
-    const byte *end = data + len;
     uint16_t start_y = self->cursor_y;
-    while (i < end) {
+    while (i < data + len) {
         unichar c = utf8_get_char(i);
-        i++;
-        // utf8_next_char() assumes NUL-terminated data but callers pass
-        // length-delimited buffers, so bound the continuation-byte scan.
-        while (i < end && UTF8_IS_CONT(*i)) {
-            i++;
-        }
+        i = utf8_next_char(i);
         if (self->in_osc_command) {
-            if (c == 0x1b && i < end && i[0] == '\\') {
+            if (c == 0x1b && i[0] == '\\') {
                 self->in_osc_command = false;
                 self->status_x = 0;
                 self->status_y = 0;
@@ -130,10 +124,6 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
                 uint8_t n_args = 1;
                 #endif
                 for (; j < 6; j++) {
-                    if (i + j >= end) {
-                        c = 0;
-                        break;
-                    }
                     if ('0' <= i[j] && i[j] <= '9') {
                         vt_args[0] = vt_args[0] * 10 + (i[j] - '0');
                     } else {
@@ -141,14 +131,10 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
                         break;
                     }
                 }
-                if (i < end && i[0] == '[') {
+                if (i[0] == '[') {
                     for (uint8_t i_args = 1; i_args < 3 && c == ';'; i_args++) {
                         vt_args[i_args] = 0;
                         for (++j; j < 12; j++) {
-                            if (i + j >= end) {
-                                c = 0;
-                                break;
-                            }
                             if ('0' <= i[j] && i[j] <= '9') {
                                 vt_args[i_args] = vt_args[i_args] * 10 + (i[j] - '0');
                                 #if CIRCUITPY_TERMINALIO_VT100
@@ -160,7 +146,7 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
                             }
                         }
                     }
-                    if (c == '?' && i + 4 < end) {
+                    if (c == '?') {
                         #if CIRCUITPY_TERMINALIO_VT100
                         if (i[2] == '2' && i[3] == '5') {
                             // cursor visibility commands
@@ -246,7 +232,7 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
                         i += j + 1;
                     }
                 #if CIRCUITPY_TERMINALIO_VT100
-                } else if (i < end && i[0] == 'M') {
+                } else if (i[0] == 'M') {
                     if (self->cursor_y != SCRNMOD(self->vt_scroll_top)) {
                         if (self->cursor_y > 0) {
                             self->cursor_y = self->cursor_y - 1;
@@ -280,11 +266,11 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
                     }
                     start_y = self->cursor_y;
                     i++;
-                } else if (i < end && i[0] == 'D') {
+                } else if (i[0] == 'D') {
                     self->cursor_y++;
                     i++;
                 #endif
-                } else if (i < end && i[0] == ']' && c == ';') {
+                } else if (i[0] == ']' && c == ';') {
                     self->in_osc_command = true;
                     self->osc_command = vt_args[0];
                     i += j + 1;
@@ -331,9 +317,6 @@ size_t common_hal_terminalio_terminal_write(terminalio_terminal_obj_t *self, con
             }
             start_y = self->cursor_y;
         }
-    }
-    if (i > end) {
-        i = end;
     }
     return i - data;
 }

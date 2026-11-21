@@ -1,4 +1,4 @@
-# test MicroPython json behaviour that's not valid in CPy
+# test uPy json behaviour that's not valid in CPy
 # CIRCUITPY-CHANGE: This behavior matches CPython
 print("SKIP")
 raise SystemExit

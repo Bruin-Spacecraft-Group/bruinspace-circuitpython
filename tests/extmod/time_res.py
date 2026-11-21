@@ -37,12 +37,9 @@ def test():
         time.sleep_ms(100)
         for func_name, _ in EXPECTED_MAP:
             try:
-                if func_name.endswith("_time"):
-                    time_func = globals()[func_name]
-                else:
-                    time_func = getattr(time, func_name)
+                time_func = getattr(time, func_name, None) or globals()[func_name]
                 now = time_func()  # may raise AttributeError
-            except AttributeError:
+            except (KeyError, AttributeError):
                 continue
             try:
                 results_map[func_name].add(now)

@@ -425,6 +425,10 @@ safe_mode_t port_init(void) {
 }
 
 void reset_port(void) {
+    #if CIRCUITPY_BUSIO
+    spi_reset();
+    #endif
+
     #if CIRCUITPY_AUDIOIO
     audio_dma_reset();
     #endif
@@ -446,6 +450,8 @@ void reset_port(void) {
     #endif
 
     // reset_event_system();
+
+    reset_all_pins();
 }
 
 void reset_to_bootloader(void) {

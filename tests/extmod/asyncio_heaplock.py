@@ -4,11 +4,7 @@
 # - StreamWriter.write, stream is blocked and data to write is a bytes object
 # - StreamWriter.write, when stream is not blocked
 
-try:
-    import asyncio, micropython
-except ImportError:
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 # strict stackless builds can't call functions without allocating a frame on the heap
 try:
@@ -25,6 +21,12 @@ except RuntimeError:
     # RuntimeError (max recursion depth) not MemoryError because effectively
     # the recursion depth is at the limit while the heap is locked with
     # stackless
+    print("SKIP")
+    raise SystemExit
+
+try:
+    import asyncio
+except ImportError:
     print("SKIP")
     raise SystemExit
 

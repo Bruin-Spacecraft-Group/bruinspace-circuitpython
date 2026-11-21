@@ -57,7 +57,7 @@
 
 // CIRCUITPY-CHANGE
 // Factoring this common call saves about 90 bytes.
-static MP_NORETURN void mp_raise_OSError_fresult(FRESULT res) {
+static NORETURN void mp_raise_OSError_fresult(FRESULT res) {
     mp_raise_OSError(fresult_to_errno_table[res]);
 }
 

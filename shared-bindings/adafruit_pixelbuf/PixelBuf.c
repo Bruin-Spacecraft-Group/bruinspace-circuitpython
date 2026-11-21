@@ -24,7 +24,7 @@
 #include "extmod/ulab/code/ndarray.h"
 #endif
 
-static MP_NORETURN void invalid_byteorder(void) {
+static NORETURN void invalid_byteorder(void) {
     mp_arg_error_invalid(MP_QSTR_byteorder);
 }
 

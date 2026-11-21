@@ -18,7 +18,7 @@ class S(io.IOBase):
 
     def write(self, buf):
         if type(buf) == bytearray:
-            # MicroPython passes a bytearray, CPython passes a str
+            # uPy passes a bytearray, CPython passes a str
             buf = str(buf, "ascii")
         self.buf += buf
         return len(buf)

@@ -339,7 +339,6 @@ safe_mode_t port_init(void) {
     init_shared_dma();
 
     // Reset everything into a known state before board_init.
-    // Pins are reset in main() after this routine returns.
     reset_port();
 
     #ifdef SAMD21
@@ -411,6 +410,8 @@ void reset_port(void) {
         reset_event_system();
         reset_ticks();
     }
+
+    reset_all_pins();
 
     // Output clocks for debugging.
     // not supported by SAMD51G; uncomment for SAMD51J or update for 51G
@@ -685,7 +686,7 @@ void port_idle_until_interrupt(void) {
 /**
  * \brief Default interrupt handler for unused IRQs.
  */
-__attribute__((used)) MP_NORETURN void HardFault_Handler(void) {
+__attribute__((used)) void HardFault_Handler(void) {
     #ifdef ENABLE_MICRO_TRACE_BUFFER
     // Turn off the micro trace buffer so we don't fill it up in the infinite
     // loop below.

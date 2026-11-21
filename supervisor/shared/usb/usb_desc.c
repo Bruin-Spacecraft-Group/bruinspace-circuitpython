@@ -32,10 +32,6 @@
 #include "shared-module/usb_video/__init__.h"
 #endif
 
-#if CIRCUITPY_USB_AUDIO
-#include "shared-module/usb_audio/__init__.h"
-#endif
-
 #include "shared-bindings/microcontroller/Processor.h"
 
 
@@ -174,12 +170,6 @@ static bool usb_build_configuration_descriptor(void) {
     }
     #endif
 
-    #if CIRCUITPY_USB_AUDIO
-    if (usb_audio_enabled()) {
-        total_descriptor_length += usb_audio_descriptor_length();
-    }
-    #endif
-
     // Now we know how big the configuration descriptor will be, so we can allocate space for it.
     configuration_descriptor =
         (uint8_t *)port_malloc(total_descriptor_length,
@@ -266,13 +256,6 @@ static bool usb_build_configuration_descriptor(void) {
     #if CIRCUITPY_USB_VIDEO
     if (usb_video_enabled()) {
         descriptor_buf_remaining += usb_video_add_descriptor(
-            descriptor_buf_remaining, &descriptor_counts, &current_interface_string);
-    }
-    #endif
-
-    #if CIRCUITPY_USB_AUDIO
-    if (usb_audio_enabled()) {
-        descriptor_buf_remaining += usb_audio_add_descriptor(
             descriptor_buf_remaining, &descriptor_counts, &current_interface_string);
     }
     #endif

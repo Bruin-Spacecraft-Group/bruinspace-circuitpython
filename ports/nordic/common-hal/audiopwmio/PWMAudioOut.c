@@ -236,9 +236,6 @@ void common_hal_audiopwmio_pwmaudioout_play(audiopwmio_pwmaudioout_obj_t *self, 
     if (common_hal_audiopwmio_pwmaudioout_get_playing(self)) {
         common_hal_audiopwmio_pwmaudioout_stop(self);
     }
-
-    audiosample_check(sample);
-
     self->sample = sample;
     self->loop = loop;
 

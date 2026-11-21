@@ -31,8 +31,6 @@
 
 #include "driver/gpio.h"
 #include "driver/rmt_tx.h"
-#include "hal/rmt_periph.h"
-#include "soc/soc_caps.h"
 
 // Use closer to WS2812-style timings instead of WS2812B, to accommodate more varieties.
 #define WS2812_T0H_NS (316)
@@ -55,13 +53,14 @@ void common_hal_neopixel_write(const digitalio_digitalinout_obj_t *digitalinout,
         .trans_queue_depth = 1,
     };
 
-    // Greedily allocate as much RMT memory as possible, stepping down by one
-    // channel's worth each time. More memory means fewer interrupts and smoother output.
-    // We'll give it all back once we're done.
+    // Greedily try and grab as much RMT memory as we can. The more we get, the
+    // smoother the output will be because we'll trigger fewer interrupts. We'll
+    // give it all back once we're done.
     rmt_channel_handle_t channel;
     esp_err_t result = ESP_ERR_NOT_FOUND;
-    config.mem_block_symbols = SOC_RMT_MEM_WORDS_PER_CHANNEL * RMT_LL_CHANS_PER_INST;
-    while (result == ESP_ERR_NOT_FOUND && config.mem_block_symbols >= SOC_RMT_MEM_WORDS_PER_CHANNEL) {
+    // If no other channels are in use, we can use all of the RMT RAM including the RX channels.
+    config.mem_block_symbols = SOC_RMT_MEM_WORDS_PER_CHANNEL * SOC_RMT_CHANNELS_PER_GROUP;
+    while (result == ESP_ERR_NOT_FOUND && config.mem_block_symbols > 0) {
         result = rmt_new_tx_channel(&config, &channel);
         config.mem_block_symbols -= SOC_RMT_MEM_WORDS_PER_CHANNEL;
     }
@@ -118,7 +117,6 @@ void common_hal_neopixel_write(const digitalio_digitalinout_obj_t *digitalinout,
         rmt_del_channel(channel);
         raise_esp_error(result);
     }
-
     result = ESP_ERR_TIMEOUT;
     while (result == ESP_ERR_TIMEOUT) {
         RUN_BACKGROUND_TASKS;

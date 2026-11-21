@@ -1,13 +1,6 @@
 # Test that int.from_bytes() for small number of bytes generates
 # small int.
-
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 micropython.heap_lock()
 print(int.from_bytes(b"1", "little"))

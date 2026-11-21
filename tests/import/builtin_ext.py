@@ -1,9 +1,3 @@
-try:
-    import uos, utime
-except ImportError:
-    print("SKIP")
-    raise SystemExit
-
 # Verify that sys is a builtin.
 import sys
 

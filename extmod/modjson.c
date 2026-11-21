@@ -227,8 +227,7 @@ static mp_obj_t _mod_json_load(mp_obj_t stream_obj, bool return_first_json) {
     for (;;) {
     cont:
         if (S_END(s)) {
-            // Input finished abruptly in the middle of a composite entity.
-            goto fail;
+            break;
         }
         mp_obj_t next = MP_OBJ_NULL;
         bool enter = false;

@@ -2,7 +2,6 @@
 #
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
-import time
 import gc
 import _thread
 
@@ -45,6 +44,6 @@ n_thread += 1
 
 # busy wait for threads to finish
 while n_finished < n_thread:
-    time.sleep(0)
+    pass
 
 print(n_correct == n_finished)

@@ -1,9 +1,4 @@
-try:
-    import io
-except ImportError:
-    print("SKIP")
-    raise SystemExit
-
+import io
 a = io.BytesIO(b"foobar")
 try:
     a.seek(-10)

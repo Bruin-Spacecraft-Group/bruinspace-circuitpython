@@ -192,15 +192,9 @@ audioio_get_buffer_result_t audiofilters_distortion_get_buffer(audiofilters_dist
             if (self->sample) {
                 // Load another sample buffer to play
                 audioio_get_buffer_result_t result = audiosample_get_buffer(self->sample, false, 0, (uint8_t **)&self->sample_remaining_buffer, &self->sample_buffer_length);
-                if (result == GET_BUFFER_ERROR) {
-                    self->sample = NULL;
-                    self->sample_buffer_length = 0;
-                    self->more_data = false;
-                } else {
-                    // Track length in terms of words.
-                    self->sample_buffer_length /= (self->base.bits_per_sample / 8);
-                    self->more_data = result == GET_BUFFER_MORE_DATA;
-                }
+                // Track length in terms of words.
+                self->sample_buffer_length /= (self->base.bits_per_sample / 8);
+                self->more_data = result == GET_BUFFER_MORE_DATA;
             }
         }
 

@@ -30,5 +30,3 @@ runs:
     - name: Set up Zephyr
       if: inputs.port == 'zephyr-cp'
       uses: ./.github/actions/deps/ports/zephyr-cp
-      with:
-        sdl: ${{ startsWith(inputs.board, 'native_') }}

@@ -43,10 +43,10 @@ CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=4
 # end of Wi-Fi
 
 #
-# LibC
+# Newlib
 #
-CONFIG_LIBC_NEWLIB_NANO_FORMAT=y
-# end of LibC
+CONFIG_NEWLIB_NANO_FORMAT=y
+# end of Newlib
 
 # end of Component config
 

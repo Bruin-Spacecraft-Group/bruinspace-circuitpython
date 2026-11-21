@@ -1,5 +1,5 @@
-
-Adafruit CircuitPython \.\+ version
+CircuitPython \.\+ version
+Use \.\+
 >>> # word movement
 >>> # backward-word, start in word
 >>> \.\+
@@ -19,7 +19,7 @@ Adafruit CircuitPython \.\+ version
 >>> # forward-word on eol. if cursor is moved, this will result in a SyntaxError
 >>> \.\+
 6
->>> \$
+>>> 
 >>> # kill word
 >>> # backward-kill-word, start in word
 >>> \.\+
@@ -33,7 +33,7 @@ Adafruit CircuitPython \.\+ version
 >>> # forward-kill-word, don't start in word
 >>> \.\+
 3
->>> \$
+>>> 
 >>> # extra move/kill shortcuts
 >>> # ctrl-left
 >>> \.\+
@@ -44,4 +44,4 @@ Adafruit CircuitPython \.\+ version
 >>> # ctrl-w
 >>> \.\+
 1
->>> \$
+>>> 

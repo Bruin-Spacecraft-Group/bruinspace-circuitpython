@@ -47,6 +47,8 @@
 //|     ...
 //|
 static mp_obj_t adafruit_bus_device_i2cdevice_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+    adafruit_bus_device_i2cdevice_obj_t *self =
+        mp_obj_malloc(adafruit_bus_device_i2cdevice_obj_t, &adafruit_bus_device_i2cdevice_type);
     enum { ARG_i2c, ARG_device_address, ARG_probe };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_i2c, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -58,14 +60,12 @@ static mp_obj_t adafruit_bus_device_i2cdevice_make_new(const mp_obj_type_t *type
 
     mp_obj_t *i2c = args[ARG_i2c].u_obj;
 
-    adafruit_bus_device_i2cdevice_obj_t *self =
-        mp_obj_malloc(adafruit_bus_device_i2cdevice_obj_t, &adafruit_bus_device_i2cdevice_type);
     common_hal_adafruit_bus_device_i2cdevice_construct(MP_OBJ_TO_PTR(self), i2c, args[ARG_device_address].u_int);
     if (args[ARG_probe].u_bool == true) {
         common_hal_adafruit_bus_device_i2cdevice_probe_for_device(self);
     }
 
-    return MP_OBJ_FROM_PTR(self);
+    return (mp_obj_t)self;
 }
 
 //|     def __enter__(self) -> I2CDevice:

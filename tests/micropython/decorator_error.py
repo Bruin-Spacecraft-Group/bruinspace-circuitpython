@@ -1,4 +1,4 @@
-# test syntax errors for MicroPython-specific decorators
+# test syntax errors for uPy-specific decorators
 
 
 def test_syntax(code):

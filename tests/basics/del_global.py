@@ -14,7 +14,7 @@ except NameError:
 try:
     do_del()
 except: # NameError:
-    # FIXME MicroPython returns KeyError for this
+    # FIXME uPy returns KeyError for this
     print("NameError")
 
 # delete globals using a list

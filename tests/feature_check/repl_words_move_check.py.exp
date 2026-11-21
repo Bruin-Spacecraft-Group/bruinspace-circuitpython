@@ -1,5 +1,5 @@
 MicroPython \.\+ version
-Type "help()" for more information.
+Use \.\+
 >>> # Check for emacs keys in REPL
 >>> t = \.\+
 >>> t == 2

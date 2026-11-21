@@ -175,14 +175,14 @@ void validate_pins(qstr what, uint8_t *pin_nos, mp_int_t max_pins, mp_obj_t seq,
     }
 }
 
-MP_NORETURN void raise_ValueError_invalid_pin(void) {
+NORETURN void raise_ValueError_invalid_pin(void) {
     mp_arg_error_invalid(MP_QSTR_pin);
 }
 
-MP_NORETURN void raise_ValueError_invalid_pins(void) {
+NORETURN void raise_ValueError_invalid_pins(void) {
     mp_arg_error_invalid(MP_QSTR_pins);
 }
 
-MP_NORETURN void raise_ValueError_invalid_pin_name(qstr pin_name) {
+NORETURN void raise_ValueError_invalid_pin_name(qstr pin_name) {
     mp_raise_ValueError_varg(MP_ERROR_TEXT("Invalid %q pin"), pin_name);
 }

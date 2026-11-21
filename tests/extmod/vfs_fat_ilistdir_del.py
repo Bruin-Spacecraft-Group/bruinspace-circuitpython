@@ -1,7 +1,8 @@
 # Test ilistdir __del__ for VfsFat using a RAM device.
+import gc
 
 try:
-    import gc, os, vfs
+    import os, vfs
 
     vfs.VfsFat
 except (ImportError, AttributeError):

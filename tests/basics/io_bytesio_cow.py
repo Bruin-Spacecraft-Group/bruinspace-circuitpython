@@ -1,12 +1,6 @@
 # Make sure that write operations on io.BytesIO don't
 # change original object it was constructed from.
-
-try:
-    import io
-except ImportError:
-    print("SKIP")
-    raise SystemExit
-
+import io
 b = b"foobar"
 
 a = io.BytesIO(b)

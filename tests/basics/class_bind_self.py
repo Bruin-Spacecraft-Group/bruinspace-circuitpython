@@ -52,7 +52,7 @@ print(C.f7(12))
 print(C.f8(13))
 print(C.f9(14))
 
-# not working in MicroPython
+# not working in uPy
 #class C(list):
 #    # this acts like a method and binds self
 #    f1 = list.extend

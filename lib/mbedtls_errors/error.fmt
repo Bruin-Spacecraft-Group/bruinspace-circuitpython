@@ -19,8 +19,11 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
-// CIRCUITPY-CHANGE: #include change from original in lib/mbedtls_errors/error.fmt
-#include "mbedtls/build_info.h"
+#if !defined(MBEDTLS_CONFIG_FILE)
+#include "mbedtls/config.h"
+#else
+#include MBEDTLS_CONFIG_FILE
+#endif
 
 #if defined(MBEDTLS_ERROR_C) || defined(MBEDTLS_ERROR_STRERROR_DUMMY)
 #include "mbedtls/error.h"

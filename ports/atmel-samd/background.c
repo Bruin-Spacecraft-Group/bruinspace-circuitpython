@@ -14,7 +14,7 @@
 #include "supervisor/shared/stack.h"
 #include "supervisor/port.h"
 
-#if CIRCUITPY_DISPLAYIO
+#ifdef CIRCUITPY_DISPLAYIO
 #include "shared-module/displayio/__init__.h"
 #endif
 

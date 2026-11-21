@@ -23,14 +23,12 @@
 
 #define DEFAULT_VREF        1100
 #define NO_OF_SAMPLES       2
-#define ATTENUATION         ADC_ATTEN_DB_12
+#define ATTENUATION         ADC_ATTEN_DB_11
 #if defined(CONFIG_IDF_TARGET_ESP32)
 #define DATA_WIDTH          ADC_BITWIDTH_12
 #elif defined(CONFIG_IDF_TARGET_ESP32C2)
 #define DATA_WIDTH          ADC_BITWIDTH_12
 #elif defined(CONFIG_IDF_TARGET_ESP32C3)
-#define DATA_WIDTH          ADC_BITWIDTH_12
-#elif defined(CONFIG_IDF_TARGET_ESP32C5)
 #define DATA_WIDTH          ADC_BITWIDTH_12
 #elif defined(CONFIG_IDF_TARGET_ESP32C6)
 #define DATA_WIDTH          ADC_BITWIDTH_12

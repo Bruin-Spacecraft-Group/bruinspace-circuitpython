@@ -29,7 +29,6 @@
 // CIRCUITPY-CHANGE
 #include <stdbool.h>
 
-// CIRCUITPY-CHANGE
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
 

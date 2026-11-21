@@ -1,12 +1,6 @@
 # test handling of failed heap allocation with dict
 
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 # create dict
 x = 1

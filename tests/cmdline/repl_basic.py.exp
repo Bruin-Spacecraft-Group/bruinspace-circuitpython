@@ -1,5 +1,5 @@
-
-Adafruit CircuitPython \.\+ version
+CircuitPython \.\+ version
+Use \.\+
 >>> # basic REPL tests
 >>> print(1)
 1
@@ -7,4 +7,4 @@ Adafruit CircuitPython \.\+ version
 1
 >>> 2
 2
->>> \$
+>>> 

@@ -1,9 +1,4 @@
-try:
-    import io
-except ImportError:
-    print("SKIP")
-    raise SystemExit
-
+import io
 # test __enter__/__exit__
 with io.StringIO() as b:
     b.write("foo")

@@ -83,10 +83,10 @@ CONFIG_ESP_WIFI_CACHE_TX_BUFFER_NUM=16
 # end of Wi-Fi
 
 #
-# LibC
+# Newlib
 #
-CONFIG_LIBC_NEWLIB_NANO_FORMAT=y
-# end of LibC
+CONFIG_NEWLIB_NANO_FORMAT=y
+# end of Newlib
 
 #
 # Ultra Low Power (ULP) Co-processor

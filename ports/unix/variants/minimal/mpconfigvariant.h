@@ -49,7 +49,6 @@
 #define MICROPY_COMP_DOUBLE_TUPLE_ASSIGN (1)
 #define MICROPY_ENABLE_COMPILER (1)
 #define MICROPY_ENABLE_EXTERNAL_IMPORT (1)
-#define MICROPY_STACK_CHECK (1)
 #define MICROPY_FULL_CHECKS (1)
 #define MICROPY_HELPER_REPL (1)
 #define MICROPY_KBD_EXCEPTION (1)
@@ -62,5 +61,6 @@
 #define MICROPY_PY_BUILTINS_RANGE_ATTRS (1)
 #define MICROPY_PY_GENERATOR_PEND_THROW (1)
 
-// Add just the os built-in module.
+// Enable just the sys and os built-in modules.
+#define MICROPY_PY_SYS (1)
 #define MICROPY_PY_OS (1)

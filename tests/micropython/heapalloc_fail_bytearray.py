@@ -1,12 +1,6 @@
 # test handling of failed heap allocation with bytearray
 
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 
 class GetSlice:

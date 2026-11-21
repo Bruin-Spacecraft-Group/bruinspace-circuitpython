@@ -78,16 +78,31 @@ void common_hal_bleio_adapter_set_enabled(bleio_adapter_obj_t *self,
     bool enabled) {
 
     const bool is_enabled = common_hal_bleio_adapter_get_enabled(self);
+    bd_addr get_address;
+    uint8_t address_type;
     uint8_t conn_index;
     bleio_connection_internal_t *connection;
+    sl_status_t sc = SL_STATUS_FAIL;
+    uint8_t device_name[DEVICE_NAME_LEN + 1];
+    memset(device_name, 0, DEVICE_NAME_LEN);
 
     // Don't enable or disable twice
     if (is_enabled == enabled) {
         return;
     }
 
+    sc = sl_bt_system_get_identity_address(&get_address, &address_type);
+    if (SL_STATUS_OK != sc) {
+        mp_raise_bleio_BluetoothError(MP_ERROR_TEXT("Get address fail."));
+    }
+    snprintf((char *)device_name, DEVICE_NAME_LEN + 1,
+        "CIRCUITPY-%X%X", get_address.addr[1], get_address.addr[0]);
+
     if (enabled) {
-        bleio_adapter_reset_name(self);
+        sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
+            0,
+            DEVICE_NAME_LEN,
+            device_name);
 
         // Clear all of the internal connection objects.
         for (conn_index = 0; conn_index < BLEIO_TOTAL_CONNECTION_COUNT; conn_index++) {
@@ -105,17 +120,17 @@ bleio_address_obj_t *common_hal_bleio_adapter_get_address(bleio_adapter_obj_t *s
     bd_addr get_address;
     uint8_t address_type;
     sl_status_t sc = SL_STATUS_FAIL;
+    bleio_address_obj_t *address;
 
     sc = sl_bt_system_get_identity_address(&get_address, &address_type);
     if (SL_STATUS_OK != sc) {
         return NULL;
     }
 
-    // The cached address is refreshed on every call.
-    common_hal_bleio_address_construct(&self->address, get_address.addr,
+    address = mp_obj_malloc(bleio_address_obj_t, &bleio_address_type);
+    common_hal_bleio_address_construct(address, get_address.addr,
         BLEIO_ADDRESS_TYPE_RANDOM_STATIC);
-    self->address.base.type = &bleio_address_type;
-    return &self->address;
+    return address;
 }
 
 // Set identity address
@@ -123,13 +138,17 @@ bool common_hal_bleio_adapter_set_address(bleio_adapter_obj_t *self,
     bleio_address_obj_t *address) {
 
     sl_status_t sc = SL_STATUS_FAIL;
+    mp_buffer_info_t bufinfo;
     bd_addr ble_addr;
 
     if (NULL == address) {
         return false;
     }
-    memcpy(ble_addr.addr, address->bytes, 6);
-    sc = sl_bt_system_set_identity_address(ble_addr, PUBLIC_ADDRESS);
+    if (!mp_get_buffer(address->bytes, &bufinfo, MP_BUFFER_READ)) {
+        return false;
+    }
+    memcpy(ble_addr.addr, bufinfo.buf, 6);
+    sl_bt_system_set_identity_address(ble_addr, PUBLIC_ADDRESS);
     return sc == SL_STATUS_OK;
 }
 
@@ -153,13 +172,9 @@ mp_obj_str_t *common_hal_bleio_adapter_get_name(bleio_adapter_obj_t *self) {
 // Set name of the BLE adapter
 void common_hal_bleio_adapter_set_name(bleio_adapter_obj_t *self,
     const char *name) {
-    size_t len = strlen(name);
-    if (len > DEVICE_NAME_LEN) {
-        len = DEVICE_NAME_LEN;
-    }
     sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
         0,
-        len,
+        DEVICE_NAME_LEN,
         (const uint8_t *)name);
 }
 
@@ -438,8 +453,10 @@ bool common_hal_bleio_adapter_get_advertising(bleio_adapter_obj_t *self) {
 // Convert mac address of remote device to connect
 static void _convert_address(const bleio_address_obj_t *address,
     bd_addr *sd_address, uint8_t *addr_type) {
+    mp_buffer_info_t address_buf_info;
     *addr_type = address->type;
-    memcpy(sd_address->addr, address->bytes, 6);
+    mp_get_buffer_raise(address->bytes, &address_buf_info, MP_BUFFER_READ);
+    memcpy(sd_address->addr, (uint8_t *)address_buf_info.buf, 6);
 }
 
 // Add new connection into connection list
@@ -623,11 +640,11 @@ void bleio_adapter_reset(bleio_adapter_obj_t *adapter) {
     // Wait up to 125 ms (128 ticks) for disconnect to complete. This should be
     // greater than most connection intervals.
     start_ticks = supervisor_ticks_ms64();
-    do {
+    while (any_connected && supervisor_ticks_ms64() - start_ticks < 128) {
         any_connected = false;
         for (conn_index = 0; conn_index < BLEIO_TOTAL_CONNECTION_COUNT; conn_index++) {
             connection = &bleio_connections[conn_index];
             any_connected |= connection->conn_handle != BLEIO_HANDLE_INVALID;
         }
-    } while (any_connected && supervisor_ticks_ms64() - start_ticks < 128);
+    }
 }

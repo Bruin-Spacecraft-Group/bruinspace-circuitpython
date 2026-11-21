@@ -21,8 +21,9 @@ typedef struct {
     uint8_t bits;
     uint8_t phase;
     uint8_t polarity;
-    uint32_t baudrate;            // Actual frequency, reported by the frequency property.
-    uint32_t requested_baudrate;  // Value passed to configure(); used for the cache-hit check.
+    uint32_t baudrate;
 
     SemaphoreHandle_t mutex;
 } busio_spi_obj_t;
+
+void spi_reset(void);

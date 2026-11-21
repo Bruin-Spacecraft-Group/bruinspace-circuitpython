@@ -8,14 +8,13 @@ except:
 
 
 def f():
-    e = sys.exc_info()
-    print(e[0], e[1])
+    print(sys.exc_info()[0:2])
 
 
 try:
     raise ValueError("value", 123)
 except:
-    print(sys.exc_info()[0], sys.exc_info()[1])
+    print(sys.exc_info()[0:2])
     f()
 
 # Outside except block, sys.exc_info() should be back to None's

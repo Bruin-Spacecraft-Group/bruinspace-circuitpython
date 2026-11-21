@@ -1,6 +1,6 @@
 """
 categories: Types,float
-description: MicroPython allows implicit conversion of objects in maths operations while CPython does not.
+description: uPy allows implicit conversion of objects in maths operations while CPython does not.
 cause: Unknown
 workaround: Objects should be wrapped in ``float(obj)`` for compatibility with CPython.
 """

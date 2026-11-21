@@ -1,3 +1,5 @@
+USB_HIGHSPEED = 1
+
 # Number of USB endpoint pairs.
 USB_NUM_ENDPOINT_PAIRS = 6
 

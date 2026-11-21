@@ -26,7 +26,7 @@
 //| """
 //|
 
-static MP_NORETURN void math_error(void) {
+static NORETURN void math_error(void) {
     mp_raise_ValueError(MP_ERROR_TEXT("math domain error"));
 }
 

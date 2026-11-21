@@ -3,10 +3,6 @@
 d = {}
 x = 1
 while x < 1000:
-    try:
-        d[x] = x
-    except MemoryError:
-        print("SKIP")
-        raise SystemExit
+    d[x] = x
     x += 1
 print(d[500])

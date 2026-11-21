@@ -135,7 +135,7 @@ qstr mp_obj_fun_get_name(mp_const_obj_t fun_in) {
     const mp_obj_fun_bc_t *fun = MP_OBJ_TO_PTR(fun_in);
     const byte *bc = fun->bytecode;
 
-    #if MICROPY_ENABLE_NATIVE_CODE
+    #if MICROPY_EMIT_NATIVE
     if (fun->base.type == &mp_type_fun_native || fun->base.type == &mp_type_native_gen_wrap) {
         bc = mp_obj_fun_native_get_prelude_ptr(fun);
     }
@@ -156,8 +156,7 @@ qstr mp_obj_fun_get_name(mp_const_obj_t fun_in) {
 static void fun_bc_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
     (void)kind;
     mp_obj_fun_bc_t *o = MP_OBJ_TO_PTR(o_in);
-    // CIRCUITPY-CHANGE: %p already prints "0x", so don't include it explicitly.
-    mp_printf(print, "<function %q at %p>", mp_obj_fun_get_name(o_in), o);
+    mp_printf(print, "<function %q at 0x%p>", mp_obj_fun_get_name(o_in), o);
 }
 #endif
 
@@ -399,7 +398,7 @@ mp_obj_t mp_obj_new_fun_bc(const mp_obj_t *def_args, const byte *code, const mp_
 /******************************************************************************/
 /* native functions                                                           */
 
-#if MICROPY_ENABLE_NATIVE_CODE
+#if MICROPY_EMIT_NATIVE
 
 // CIRCUITPY-CHANGE: PLACE_IN_ITCM
 static mp_obj_t PLACE_IN_ITCM(fun_native_call)(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
@@ -429,8 +428,12 @@ MP_DEFINE_CONST_OBJ_TYPE(
     call, fun_native_call
     );
 
+#endif // MICROPY_EMIT_NATIVE
+
 /******************************************************************************/
 /* viper functions                                                           */
+
+#if MICROPY_EMIT_NATIVE
 
 static mp_obj_t fun_viper_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     MP_STACK_CHECK();
@@ -446,7 +449,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     call, fun_viper_call
     );
 
-#endif // MICROPY_ENABLE_NATIVE_CODE
+#endif // MICROPY_EMIT_NATIVE
 
 /******************************************************************************/
 /* inline assembler functions                                                 */

@@ -1,10 +1,8 @@
 # test micropython.heap_locked()
 
-try:
-    import micropython
+import micropython
 
-    micropython.heap_locked
-except (AttributeError, ImportError):
+if not hasattr(micropython, "heap_locked"):
     print("SKIP")
     raise SystemExit
 

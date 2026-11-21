@@ -12,11 +12,9 @@
 #include "shared-bindings/alarm/SleepMemory.h"
 
 //| class SleepMemory:
-//|     """Store raw bytes in RAM that persists across deep sleep and software resets.
+//|     """Store raw bytes in RAM that persists during deep sleep.
 //|     The class acts as a ``bytearray``.
-//|     Contents are preserved across ``microcontroller.reset()``, watchdog resets,
-//|     and deep sleep wake. Contents are lost when power is removed and restored,
-//|     or on brown-out reset.
+//|     If power is lost, the memory contents are lost.
 //|
 //|     Note that this class can't be imported and used directly. The sole
 //|     instance of :class:`SleepMemory` is available at

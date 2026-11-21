@@ -2,7 +2,6 @@
 #
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
-import time
 import _thread
 
 # the shared set
@@ -34,7 +33,7 @@ for i in range(n_thread):
 
 # busy wait for threads to finish
 while n_finished < n_thread:
-    time.sleep(0)
+    pass
 
 # check set has correct contents
 print(sorted(se))

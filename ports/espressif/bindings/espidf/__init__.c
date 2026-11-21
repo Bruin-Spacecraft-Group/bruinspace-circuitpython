@@ -106,7 +106,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
 //|     ...
 //|
 //|
-MP_NORETURN void mp_raise_espidf_MemoryError(void) {
+NORETURN void mp_raise_espidf_MemoryError(void) {
     nlr_raise(mp_obj_new_exception(&mp_type_espidf_MemoryError));
 }
 

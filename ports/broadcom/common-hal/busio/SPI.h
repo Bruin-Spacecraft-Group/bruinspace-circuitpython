@@ -23,3 +23,5 @@ typedef struct {
     uint8_t bits;
     uint8_t index;
 } busio_spi_obj_t;
+
+void reset_spi(void);

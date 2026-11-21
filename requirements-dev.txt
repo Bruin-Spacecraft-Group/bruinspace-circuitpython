@@ -3,11 +3,8 @@ cascadetoml
 jinja2
 typer
 
-# for generating mbedtls's PSA driver wrappers (jinja2, above, is also required)
-jsonschema
-
 sh
-click<8.2.0
+click
 cpp-coveralls
 
 requests
@@ -27,7 +24,6 @@ intelhex
 
 # for building & testing natmods
 pyelftools
-ar
 
 cryptography
 
@@ -44,6 +40,3 @@ setuptools
 
 # For zephyr port
 tomlkit
-pytest
-pytest-rerunfailures
-perfetto

@@ -1,2 +1,0 @@
-CIRCUITPY_BUILD_EXTENSIONS = ["hex"]
-BLOBS=["hal_stm32"]

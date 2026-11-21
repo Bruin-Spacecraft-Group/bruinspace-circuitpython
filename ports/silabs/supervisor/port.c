@@ -156,7 +156,10 @@ safe_mode_t port_init(void) {
 }
 
 void reset_port(void) {
+    reset_all_pins();
+
     #if CIRCUITPY_BUSIO
+    spi_reset();
     uart_reset();
     #endif
 

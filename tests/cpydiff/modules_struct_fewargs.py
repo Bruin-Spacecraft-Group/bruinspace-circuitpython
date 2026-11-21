@@ -1,6 +1,6 @@
 """
 categories: Modules,struct
-description: Struct pack with too few args, not checked by MicroPython
+description: Struct pack with too few args, not checked by uPy
 cause: Unknown
 workaround: Unknown
 """

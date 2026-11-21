@@ -192,12 +192,7 @@ include_patterns = [
     # Port READMEs in various formats
     "ports/*/README*",
 ]
-exclude_patterns = [
-    "docs/autoapi/templates/**",
-    "docs/README.md",
-    "AGENTS.md",
-    "**/AGENTS.md",
-]
+exclude_patterns = ["docs/autoapi/templates/**", "docs/README.md"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.

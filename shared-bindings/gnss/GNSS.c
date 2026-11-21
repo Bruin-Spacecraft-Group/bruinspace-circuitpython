@@ -38,6 +38,7 @@
 //|         ...
 //|
 static mp_obj_t gnss_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+    gnss_obj_t *self = mp_obj_malloc(gnss_obj_t, &gnss_type);
     enum { ARG_system };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_system, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -62,9 +63,7 @@ static mp_obj_t gnss_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         mp_raise_TypeError(MP_ERROR_TEXT("System entry must be gnss.SatelliteSystem"));
     }
 
-    gnss_obj_t *self = mp_obj_malloc(gnss_obj_t, &gnss_type);
     common_hal_gnss_construct(self, selection);
-
     return MP_OBJ_FROM_PTR(self);
 }
 

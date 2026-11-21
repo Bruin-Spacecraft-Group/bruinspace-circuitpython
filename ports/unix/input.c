@@ -104,9 +104,6 @@ void prompt_write_history(void) {
     #if MICROPY_USE_READLINE == 1
     char *home = getenv("HOME");
     if (home != NULL) {
-        if (MP_STATE_THREAD(gc_lock_depth) != 0) {
-            return;
-        }
         vstr_t vstr;
         vstr_init(&vstr, 50);
         vstr_printf(&vstr, "%s/.micropython.history", home);

@@ -1,7 +1,8 @@
 # Test ilistdir __del__ for VfsPosix.
+import gc
 
 try:
-    import gc, os, vfs
+    import os, vfs
 
     vfs.VfsPosix
 except (ImportError, AttributeError):

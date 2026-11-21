@@ -3,7 +3,6 @@
 #
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
-import time
 import _thread
 
 
@@ -32,5 +31,5 @@ for i in range(n_thread):
 
 # busy wait for threads to finish
 while n_finished < n_thread:
-    time.sleep(0)
+    pass
 print(lst)

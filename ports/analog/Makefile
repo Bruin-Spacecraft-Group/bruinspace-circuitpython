@@ -140,9 +140,6 @@ endif
 
 SRC_S += supervisor/cpu.s \
 			$(STARTUPFILE)
-SRC_S += shared/runtime/gchelper_thumb2.s
-
-SRC_C += shared/runtime/gchelper_native.c
 
 # Needed to compile some MAX32 headers
 CFLAGS += 	-D$(MCU_VARIANT_UPPER) \
@@ -292,7 +289,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(STEPECHO) "LINK $@"
 	$(Q)echo $^ > $(BUILD)/firmware.objs
 	$(Q)$(CC) -o $@ $(LDFLAGS) @$(BUILD)/firmware.objs -Wl,--print-memory-usage -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $@.map $(BUILD)
+	$(Q)$(SIZE) $@ | $(PYTHON) $(TOP)/tools/build_memory_info.py $(LINKERFILE) $(BUILD)
 
 $(BUILD)/firmware.hex: $(BUILD)/firmware.elf
 	$(STEPECHO) "Create $@"

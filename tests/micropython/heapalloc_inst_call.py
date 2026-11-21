@@ -1,13 +1,6 @@
 # Test that calling clazz.__call__() with up to at least 3 arguments
 # doesn't require heap allocation.
-
-try:
-    import micropython
-
-    micropython.heap_lock
-except (ImportError, AttributeError):
-    print("SKIP")
-    raise SystemExit
+import micropython
 
 
 class Foo0:

@@ -14,8 +14,5 @@
 typedef struct {
     mp_obj_base_t base;
     uint8_t type;
-    // Little-endian BD_ADDR order: bytes[0] is the least-significant byte.
-    // Stored inline so an Address can live in static storage (e.g. embedded in
-    // an adapter) without allocating a separate bytes object.
-    uint8_t bytes[NUM_BLEIO_ADDRESS_BYTES];
+    mp_obj_t bytes;    // a bytes() object
 } bleio_address_obj_t;
